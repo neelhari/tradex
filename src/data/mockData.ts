@@ -1,0 +1,213 @@
+import { 
+  EmployeeProfile, 
+  TelecallerStats, 
+  CallLogItem, 
+  ClientLead, 
+  AttendanceRecord, 
+  LeaveRequest, 
+  PayslipItem 
+} from '../types';
+
+export const INITIAL_PROFILE: EmployeeProfile = {
+  id: 'emp-101',
+  empCode: 'TNX-8492',
+  name: 'Arjun Kumar',
+  roleTitle: 'Senior Telecaller / SDR',
+  department: 'Sales & Client Acquisition',
+  teamName: 'Alpha Growth Team',
+  teamLeaderName: 'Ramesh Sharma',
+  email: 'arjun.k@tradenexus.io',
+  phone: '+91 98450 12345',
+  joinDate: '12 Jan 2024',
+  bloodGroup: 'O+ Positive',
+  faceIdStatus: 'VERIFIED_PRESENT',
+  checkInTime: '09:12 AM',
+  totalLeaveBalance: 14,
+};
+
+export const INITIAL_TELECALLER_STATS: TelecallerStats = {
+  todayGoalCalls: 100,
+  dialsMade: 68,
+  connected: 44,
+  interested: 12,
+  rejected: 12,
+  averageCallDurationSec: 185,
+  monthlySalesTarget: 200000,
+  monthlySalesAchieved: 145000,
+};
+
+export const INITIAL_CALL_LOGS: CallLogItem[] = [
+  {
+    id: 'call-1',
+    clientName: 'Vikram Mehta',
+    companyName: 'Apex Global Corp',
+    phoneNumber: '+91 98765 43210',
+    timestamp: '09:45 AM',
+    durationSec: 240,
+    outcome: 'INTERESTED',
+    notes: 'Requested complete product pricing demo. Scheduled callback for 10:00 AM.',
+    followUpDate: 'Today, 10:00 AM',
+  },
+  {
+    id: 'call-2',
+    clientName: 'Pooja Agarwal',
+    companyName: 'Zenith Logistics',
+    phoneNumber: '+91 98111 22334',
+    timestamp: '09:32 AM',
+    durationSec: 320,
+    outcome: 'DEAL_CLOSED',
+    notes: 'Agreed on Annual Enterprise Plan. Payment confirmation pending.',
+  },
+  {
+    id: 'call-3',
+    clientName: 'Rahul Verma',
+    companyName: 'Nova FinTech',
+    phoneNumber: '+91 97222 33445',
+    timestamp: '09:20 AM',
+    durationSec: 45,
+    outcome: 'BUSY',
+    notes: 'Line busy. Set reminder to retry in afternoon.',
+    followUpDate: 'Today, 02:30 PM',
+  },
+  {
+    id: 'call-4',
+    clientName: 'Sanjay Reddy',
+    companyName: 'Metro Health Systems',
+    phoneNumber: '+91 96333 44556',
+    timestamp: '09:15 AM',
+    durationSec: 150,
+    outcome: 'NOT_INTERESTED',
+    notes: 'Already using another CRM solution. Re-contact in 6 months.',
+  }
+];
+
+export const INITIAL_CLIENT_LEADS: ClientLead[] = [
+  {
+    id: 'lead-1',
+    name: 'Vikram Mehta',
+    company: 'Apex Global Corp',
+    phone: '+91 98765 43210',
+    email: 'vikram@apexglobal.com',
+    temperature: 'HOT',
+    status: 'Due Today',
+    dueTime: '10:00 AM (Due in 15 mins)',
+    dealValue: 45000,
+    requirement: 'Product Demo & Custom Pricing Review',
+    lastContacted: 'Today, 09:45 AM',
+  },
+  {
+    id: 'lead-2',
+    name: 'Pooja Agarwal',
+    company: 'Zenith Logistics',
+    phone: '+91 98111 22334',
+    email: 'pooja@zenithlog.in',
+    temperature: 'CONVERTED',
+    status: 'Converted',
+    dealValue: 80000,
+    requirement: 'Annual Enterprise Plan Sign-off',
+    lastContacted: 'Today, 09:32 AM',
+  },
+  {
+    id: 'lead-3',
+    name: 'Deepak Singhal',
+    company: 'Singhal Trading Co.',
+    phone: '+91 99444 55667',
+    email: 'deepak@singhaltrade.com',
+    temperature: 'HOT',
+    status: 'Due Today',
+    dueTime: '11:30 AM',
+    dealValue: 35000,
+    requirement: 'Quote comparison with existing software',
+    lastContacted: 'Yesterday, 04:15 PM',
+  },
+  {
+    id: 'lead-4',
+    name: 'Ananya Roy',
+    company: 'Roy Digital Studios',
+    phone: '+91 98222 33119',
+    email: 'ananya@roystudios.io',
+    temperature: 'WARM',
+    status: 'Pending',
+    dealValue: 20000,
+    requirement: 'Team Management & Attendance tracking',
+    lastContacted: '2 days ago',
+  },
+  {
+    id: 'lead-5',
+    name: 'Karan Malhotra',
+    company: 'Karan Exports Ltd',
+    phone: '+91 97111 44558',
+    email: 'karan@karanexports.com',
+    temperature: 'WARM',
+    status: 'Follow-up',
+    dealValue: 50000,
+    requirement: 'Requested WhatsApp presentation deck',
+    lastContacted: '3 days ago',
+  }
+];
+
+export const INITIAL_ATTENDANCE_LOGS: AttendanceRecord[] = [
+  { date: '2025-05-28', dayNumber: 28, status: 'PRESENT', checkIn: '09:12 AM', checkOut: '06:30 PM', workHours: '9h 18m', method: 'Face ID Biometric' },
+  { date: '2025-05-27', dayNumber: 27, status: 'PRESENT', checkIn: '09:05 AM', checkOut: '06:15 PM', workHours: '9h 10m', method: 'Face ID Biometric' },
+  { date: '2025-05-26', dayNumber: 26, status: 'PRESENT', checkIn: '09:14 AM', checkOut: '06:40 PM', workHours: '9h 26m', method: 'Face ID Biometric' },
+  { date: '2025-05-25', dayNumber: 25, status: 'HOLIDAY' },
+  { date: '2025-05-24', dayNumber: 24, status: 'HOLIDAY' },
+  { date: '2025-05-23', dayNumber: 23, status: 'PRESENT', checkIn: '09:10 AM', checkOut: '06:20 PM', workHours: '9h 10m', method: 'Face ID Biometric' },
+  { date: '2025-05-22', dayNumber: 22, status: 'LEAVE', workHours: '0h 00m' },
+  { date: '2025-05-21', dayNumber: 21, status: 'PRESENT', checkIn: '09:15 AM', checkOut: '06:05 PM', workHours: '8h 50m', method: 'Face ID Biometric' },
+];
+
+export const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
+  {
+    id: 'leave-1',
+    leaveType: 'Casual Leave',
+    fromDate: '22 May 2025',
+    toDate: '22 May 2025',
+    totalDays: 1,
+    reason: 'Family personal commitment in hometown',
+    status: 'APPROVED',
+    appliedOn: '20 May 2025',
+    approvedBy: 'Ramesh Sharma (Team Leader)',
+  },
+  {
+    id: 'leave-2',
+    leaveType: 'Sick Leave',
+    fromDate: '05 Jun 2025',
+    toDate: '06 Jun 2025',
+    totalDays: 2,
+    reason: 'Scheduled medical health checkup',
+    status: 'PENDING',
+    appliedOn: 'Today',
+  }
+];
+
+export const INITIAL_PAYSLIPS: PayslipItem[] = [
+  {
+    id: 'pay-2025-04',
+    month: 'April',
+    year: 2025,
+    basicSalary: 28000,
+    hra: 12000,
+    specialAllowance: 6000,
+    incentives: 14500,
+    pfDeduction: 2400,
+    taxDeduction: 1800,
+    netPay: 56300,
+    generatedDate: '01 May 2025',
+    status: 'PAID',
+  },
+  {
+    id: 'pay-2025-03',
+    month: 'March',
+    year: 2025,
+    basicSalary: 28000,
+    hra: 12000,
+    specialAllowance: 6000,
+    incentives: 18200,
+    pfDeduction: 2400,
+    taxDeduction: 2100,
+    netPay: 59700,
+    generatedDate: '01 Apr 2025',
+    status: 'PAID',
+  }
+];
