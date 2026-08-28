@@ -17,15 +17,12 @@ export const TradeNexusLogo: React.FC<TradeNexusLogoProps> = ({
 
   return (
     <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      {/* Perfect Circular Emblem: Cropped to ONLY the circular badge with zero text */}
-      <div className={`${iconDimensions} rounded-full overflow-hidden flex-shrink-0 bg-[#0A2540] shadow-md shadow-[#00C9A7]/25 border border-[#00C9A7]/40 relative flex items-center justify-center`}>
-        <div 
-          className="w-full h-full bg-no-repeat bg-center"
-          style={{
-            backgroundImage: "url('/logo.png')",
-            backgroundSize: '185%',
-            backgroundPosition: 'center 22%',
-          }}
+      {/* Exact Official Circular Emblem with ZERO text */}
+      <div className={`${iconDimensions} rounded-full overflow-hidden flex-shrink-0 bg-[#0A2540] shadow-md shadow-[#00C9A7]/20 border border-[#00C9A7]/40 flex items-center justify-center`}>
+        <img 
+          src="/logo-icon.png" 
+          alt="Trade Nexus Emblem" 
+          className="w-full h-full object-cover"
         />
       </div>
 

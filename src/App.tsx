@@ -4,11 +4,17 @@ import { BottomNav } from './components/layout/BottomNav';
 import { MobileHeader } from './components/layout/MobileHeader';
 import { TradeNexusLogo } from './components/common/TradeNexusLogo';
 
+// Auth Flow Views (Matching Sample Images 1 & 2)
+import { EmployeeLoginView } from './views/auth/EmployeeLoginView';
+import { FaceScanAttendanceView } from './views/auth/FaceScanAttendanceView';
+import { AttendanceSuccessView } from './views/auth/AttendanceSuccessView';
+
 // Modals
 import { FaceIdScannerModal } from './components/modals/FaceIdScannerModal';
 import { QuickCallLogModal } from './components/modals/QuickCallLogModal';
 import { ApplyLeaveModal } from './components/modals/ApplyLeaveModal';
 import { DigitalIdCardModal } from './components/modals/DigitalIdCardModal';
+import { DevSettingsModal } from './components/common/DevSettingsModal';
 
 // Mobile Views
 import { TelecallerHomeView } from './views/TelecallerHomeView';
@@ -41,12 +47,17 @@ import {
   Plus, 
   UserCheck, 
   Shield, 
-  ChevronDown 
+  ChevronDown,
+  LogOut,
+  ScanFace
 } from 'lucide-react';
 import { NavTab, UserRole } from './types';
 
 export const App: React.FC = () => {
   const { 
+    authStep,
+    setAuthStep,
+    logout,
     currentRole, 
     setCurrentRole, 
     activeTab, 
@@ -62,6 +73,18 @@ export const App: React.FC = () => {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isMobileRoleMenuOpen, setIsMobileRoleMenuOpen] = useState(false);
 
+  // 1. If currently in the 4-step Authentication / Face ID flow, render the active step!
+  if (authStep === 'LOGIN') {
+    return <EmployeeLoginView />;
+  }
+  if (authStep === 'FACE_SCAN') {
+    return <FaceScanAttendanceView />;
+  }
+  if (authStep === 'ATTENDANCE_SUCCESS') {
+    return <AttendanceSuccessView />;
+  }
+
+  // 2. Full Workspace once authenticated
   const renderActiveView = (isDesktop: boolean = false) => {
     if (currentRole === 'team_leader') {
       return <TeamLeaderDashboardView />;
@@ -183,6 +206,16 @@ export const App: React.FC = () => {
               )}
             </div>
 
+            {/* Test Login Flow Trigger */}
+            <button
+              onClick={() => setAuthStep('LOGIN')}
+              title="Test the 4-Step Login & Biometric Flow"
+              className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-[#5B3DF5] font-bold text-xs px-3.5 py-2 rounded-xl hover:bg-indigo-100 transition-all shadow-xs"
+            >
+              <ScanFace className="w-4 h-4" />
+              <span>Test Login Flow</span>
+            </button>
+
             <button
               onClick={() => setIsFaceIdModalOpen(true)}
               className="flex items-center gap-1.5 bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00A88B] font-bold text-xs px-3.5 py-2 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-xs"
@@ -215,6 +248,13 @@ export const App: React.FC = () => {
                 <span className="font-display font-bold text-xs text-[#0A2540] block leading-tight">{profile.name}</span>
                 <span className="text-[10px] text-slate-400 font-semibold">{profile.roleTitle}</span>
               </div>
+              <button 
+                onClick={logout}
+                title="Logout" 
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all ml-1"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </header>
@@ -250,20 +290,31 @@ export const App: React.FC = () => {
             </div>
 
             {/* Sidebar Bottom Calling Goal Mini Progress */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-bold">Calling Goal</span>
-                <span className="font-mono font-black text-[#00A88B]">{Math.round((stats.dialsMade / stats.todayGoalCalls) * 100)}%</span>
+            <div className="space-y-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-bold">Calling Goal</span>
+                  <span className="font-mono font-black text-[#00A88B]">{Math.round((stats.dialsMade / stats.todayGoalCalls) * 100)}%</span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[#00C9A7] rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round((stats.dialsMade / stats.todayGoalCalls) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[11px] text-slate-400 font-mono block text-center font-medium">
+                  {stats.dialsMade} of {stats.todayGoalCalls} calls completed
+                </span>
               </div>
-              <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[#00C9A7] rounded-full transition-all duration-500"
-                  style={{ width: `${Math.round((stats.dialsMade / stats.todayGoalCalls) * 100)}%` }}
-                />
-              </div>
-              <span className="text-[11px] text-slate-400 font-mono block text-center font-medium">
-                {stats.dialsMade} of {stats.todayGoalCalls} calls completed
-              </span>
+
+              {/* Quick Logout Button */}
+              <button
+                onClick={logout}
+                className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
             </div>
           </aside>
 
@@ -286,33 +337,48 @@ export const App: React.FC = () => {
           {renderActiveView(false)}
         </main>
 
-        {/* Role Switcher Button - Positioned above the Profile icon on the navbar */}
-        <div className="fixed bottom-16 right-4 z-40">
+        {/* Perfect Circular Floating Role Button with comfortable gap above the Profile tab */}
+        <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-2 items-end">
+          
           <div className="relative">
             <button
               onClick={() => setIsMobileRoleMenuOpen(!isMobileRoleMenuOpen)}
-              className="flex items-center gap-1.5 bg-[#0A2540] text-white text-[11px] font-extrabold px-3 py-1.5 rounded-full shadow-lg border border-[#00C9A7]/50 active:scale-95 transition-all"
+              title="Switch Active Role"
+              className="w-12 h-12 rounded-full bg-[#0A2540] text-white flex items-center justify-center shadow-xl shadow-black/35 border-2 border-[#00C9A7] active:scale-95 transition-all relative hover:scale-105"
             >
-              <Shield className="w-3.5 h-3.5 text-[#00C9A7]" />
-              <span>Role: <strong className="capitalize">{currentRole === 'telecaller' ? 'Telecaller' : currentRole === 'team_leader' ? 'TL' : currentRole === 'hr' ? 'HR' : 'Admin'}</strong></span>
+              <Shield className="w-5 h-5 text-[#00C9A7]" />
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#00C9A7] text-[#0A2540] font-black text-[8px] flex items-center justify-center">
+                {currentRole === 'telecaller' ? 'TC' : currentRole === 'team_leader' ? 'TL' : currentRole === 'hr' ? 'HR' : 'AD'}
+              </span>
             </button>
 
+            {/* Menu Popup */}
             {isMobileRoleMenuOpen && (
-              <div className="absolute bottom-10 right-0 bg-[#0A2540] text-white rounded-2xl shadow-2xl p-2 border border-white/10 w-44 space-y-1 animate-in slide-in-from-bottom duration-150">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider px-2 block py-1 border-b border-white/10">
-                  Switch Active Role
+              <div className="absolute bottom-14 right-0 bg-[#0A2540] text-white rounded-2xl shadow-2xl p-2 border border-white/10 w-48 space-y-1 animate-in slide-in-from-bottom duration-150">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider px-2.5 block py-1 border-b border-white/10">
+                  Switch Active Portal
                 </span>
                 {(['telecaller', 'team_leader', 'hr', 'admin'] as UserRole[]).map((r) => (
                   <button
                     key={r}
                     onClick={() => handleRoleSelect(r)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                       currentRole === r ? 'bg-[#00C9A7] text-[#0A2540] font-black' : 'text-slate-300 hover:bg-white/10'
                     }`}
                   >
                     {r === 'telecaller' ? 'Telecaller / SDR' : r === 'team_leader' ? 'Team Leader' : r === 'hr' ? 'HR Portal' : 'Admin Console'}
                   </button>
                 ))}
+
+                <div className="border-t border-white/10 pt-1 mt-1">
+                  <button
+                    onClick={logout}
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/20 flex items-center gap-2"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Test Full Login Flow</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -334,6 +400,7 @@ export const App: React.FC = () => {
       <QuickCallLogModal />
       <ApplyLeaveModal />
       <DigitalIdCardModal />
+      <DevSettingsModal />
     </div>
   );
 };

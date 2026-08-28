@@ -1,5 +1,7 @@
 export type UserRole = 'telecaller' | 'team_leader' | 'hr' | 'admin';
 
+export type AuthStep = 'LOGIN' | 'FACE_SCAN' | 'ATTENDANCE_SUCCESS' | 'AUTHENTICATED';
+
 export type NavTab = 'home' | 'calling' | 'clients' | 'leaves' | 'profile' | 'menu';
 
 export type CallOutcome = 'CONNECTED' | 'BUSY' | 'CALLBACK' | 'INTERESTED' | 'NOT_INTERESTED' | 'DEAL_CLOSED';
@@ -96,3 +98,55 @@ export interface EmployeeProfile {
   checkInTime: string;
   totalLeaveBalance: number;
 }
+
+export interface TeamMember {
+  id: string;
+  empCode: string;
+  name: string;
+  avatar: string;
+  role: string;
+  group: string;
+  phone: string;
+  attendanceStatus: 'PRESENT' | 'LATE' | 'ON_LEAVE' | 'ABSENT';
+  checkInTime?: string;
+  checkInMethod?: 'Face ID Biometric' | 'Geo-tagged';
+  dialsToday: number;
+  goalCalls: number;
+  connected: number;
+  interested: number;
+  salesAchieved: number;
+  salesTarget: number;
+  conversionRate: number;
+}
+
+export interface TeamGroup {
+  id: string;
+  name: string;
+  description: string;
+  leaderName: string;
+  memberCount: number;
+  monthlyTarget: number;
+  achieved: number;
+  color: string;
+}
+
+export interface TeamTask {
+  id: string;
+  title: string;
+  assignedTo: string;
+  group?: string;
+  dueDate: string;
+  priority: 'HIGH' | 'MEDIUM' | 'NORMAL';
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+}
+
+export interface TeamMeeting {
+  id: string;
+  title: string;
+  dateTime: string;
+  type: 'Team Standup' | 'Sales Pipeline Review' | 'Product Training' | '1-on-1 Coaching';
+  location: string;
+  attendeesCount: number;
+  agenda: string;
+}
+
