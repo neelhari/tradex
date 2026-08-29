@@ -40,15 +40,22 @@ export const AttendanceSuccessView: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#E6FAF6]/80 via-white to-white flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 p-6">
       
-      {/* 1. Header Sparkle */}
-      <div className="flex items-center justify-between pt-4">
-        <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#00A88B] bg-[#E6FAF6] px-3 py-1 rounded-full border border-[#00C9A7]/30">
+      {/* 1. Header with Trade Nexus Emblem */}
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl overflow-hidden bg-[#0A2540] border border-[#00C9A7]/40 shadow-sm flex items-center justify-center p-0.5">
+            <img src="/logo-icon.png" alt="Trade Nexus" className="w-full h-full object-cover rounded-lg" />
+          </div>
+          <div>
+            <span className="font-display font-black text-xs text-[#0A2540] tracking-wider block leading-tight">TRADE NEXUS</span>
+            <span className="text-[9px] font-mono font-bold text-[#00A88B] block leading-tight">Attendance Verified</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#00A88B] bg-[#E6FAF6] px-3 py-1 rounded-full border border-[#00C9A7]/30">
           <Sparkles className="w-3.5 h-3.5 text-[#00C9A7]" />
           <span>{isLeader ? 'SUPERVISOR VERIFIED' : 'BIOMETRIC VERIFIED'}</span>
         </div>
-        <span className="text-xs font-mono font-bold text-slate-400">
-          {isLeader ? 'Supervisor Bay' : 'Terminal #4'}
-        </span>
       </div>
 
       {/* 2. Main Success Card */}

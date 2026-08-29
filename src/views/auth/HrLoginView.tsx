@@ -65,32 +65,36 @@ export const HrLoginView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-indigo-500/20 pb-6">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-[#00C9A7]/20 pb-6">
       
-      {/* 1. Executive Indigo & Emerald Top Header */}
-      <div className="bg-gradient-to-b from-[#1E1B4B] via-[#2E287A] to-[#1E1B4B] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
+      {/* 1. Official Trade Nexus Brand Top Header */}
+      <div className="bg-gradient-to-b from-[#07192C] via-[#0A2540] to-[#0D3155] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
         {/* Subtle geometric background grid */}
-        <div className="absolute inset-0 bg-[radial-gradient(rgba(99,102,241,0.2)_1px,transparent_1px)] [background-size:16px_16px] opacity-35" />
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(0,201,167,0.2)_1px,transparent_1px)] [background-size:16px_16px] opacity-35" />
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
-            {/* HR Badge Logo */}
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-400 to-[#00C9A7] text-[#0A2540] p-2 flex items-center justify-center shadow-lg shadow-indigo-500/20 flex-shrink-0">
-              <Building2 className="w-7 h-7 stroke-[2.2] text-white" />
+            {/* Official Trade Nexus Emblem */}
+            <div className="w-12 h-12 rounded-2xl overflow-hidden bg-[#0A2540] border-2 border-[#00C9A7]/50 shadow-lg shadow-[#00C9A7]/20 flex items-center justify-center flex-shrink-0 p-0.5">
+              <img 
+                src="/logo-icon.png" 
+                alt="Trade Nexus" 
+                className="w-full h-full object-cover rounded-xl"
+              />
             </div>
             <div>
-              <h1 className="font-display font-black text-xl text-white tracking-tight leading-tight">
-                HR Operations Portal
+              <h1 className="font-display font-black text-xl text-white tracking-wider leading-tight">
+                TRADE NEXUS
               </h1>
-              <p className="text-[11px] text-indigo-200 font-semibold tracking-wide">
-                People &amp; Talent Administration Console
+              <p className="text-xs text-[#00C9A7] font-bold tracking-wide">
+                HR Portal
               </p>
             </div>
           </div>
 
-          <div className="bg-indigo-500/20 border border-indigo-400/40 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 text-indigo-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-ping" />
-            <span>HR LEVEL 3</span>
+          <div className="bg-[#00C9A7]/15 border border-[#00C9A7]/40 px-3 py-1 rounded-full text-[10px] font-mono font-extrabold flex items-center gap-1.5 text-[#38E1B7]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />
+            <span>HR PORTAL</span>
           </div>
         </div>
       </div>
@@ -101,7 +105,7 @@ export const HrLoginView: React.FC = () => {
           
           <div className="text-center space-y-0.5">
             <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
-              HR Officer Login
+              HR Portal Login
             </h2>
             <p className="text-xs text-slate-500 font-medium">
               Sign in to manage employee lifecycle &amp; payroll
@@ -120,7 +124,7 @@ export const HrLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'gmail'
-                  ? 'border-indigo-500 bg-indigo-50 shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
@@ -133,9 +137,9 @@ export const HrLoginView: React.FC = () => {
                 </svg>
               </div>
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'gmail' ? 'text-indigo-700' : 'text-slate-700'
+                activeLoginType === 'gmail' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
-                Google HR
+                Google Account
               </span>
             </button>
 
@@ -147,15 +151,15 @@ export const HrLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'mobile'
-                  ? 'border-indigo-500 bg-indigo-50 shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
               <Smartphone className={`w-5 h-5 ${
-                activeLoginType === 'mobile' ? 'text-indigo-600' : 'text-slate-500'
+                activeLoginType === 'mobile' ? 'text-[#00A88B]' : 'text-slate-500'
               }`} />
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'mobile' ? 'text-indigo-700' : 'text-slate-700'
+                activeLoginType === 'mobile' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
                 Mobile OTP
               </span>
@@ -169,15 +173,15 @@ export const HrLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'password'
-                  ? 'border-indigo-500 bg-indigo-50 shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
               <Mail className={`w-5 h-5 ${
-                activeLoginType === 'password' ? 'text-indigo-600' : 'text-slate-500'
+                activeLoginType === 'password' ? 'text-[#00A88B]' : 'text-slate-500'
               }`} />
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'password' ? 'text-indigo-700' : 'text-slate-700'
+                activeLoginType === 'password' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
                 Password Login
               </span>
@@ -207,7 +211,7 @@ export const HrLoginView: React.FC = () => {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
               </svg>
             </div>
-            <span>{isLoading ? 'Signing In...' : 'Continue with Google (HR Officer)'}</span>
+            <span>{isLoading ? 'Signing In...' : 'Continue with Google (HR Portal)'}</span>
           </button>
 
           <div className="relative flex items-center justify-center">
@@ -227,8 +231,8 @@ export const HrLoginView: React.FC = () => {
                   type="tel"
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value)}
-                  placeholder="Enter HR administrator mobile number"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-600 font-medium"
+                  placeholder="Enter HR mobile number"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
               </div>
 
@@ -241,7 +245,7 @@ export const HrLoginView: React.FC = () => {
                     onChange={(e) => setOtp(e.target.value)}
                     placeholder="Enter 6-digit OTP (e.g. 849201)"
                     maxLength={6}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-600 font-mono font-bold tracking-widest"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-mono font-bold tracking-widest"
                   />
                 </div>
               )}
@@ -249,7 +253,7 @@ export const HrLoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-700 to-indigo-900 hover:from-indigo-800 hover:to-indigo-950 text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="w-full py-3.5 rounded-2xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs shadow-lg shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <span>{isOtpSent ? 'Verify OTP & Proceed to Biometric' : 'Get OTP & Proceed'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -265,7 +269,7 @@ export const HrLoginView: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter HR email (e.g. pooja.hegde@tradenexus.io)"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-600 font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
               </div>
 
@@ -276,7 +280,7 @@ export const HrLoginView: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter HR access password"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-600 font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
                 <button
                   type="button"
@@ -288,7 +292,7 @@ export const HrLoginView: React.FC = () => {
               </div>
 
               <div className="flex justify-end">
-                <a href="#forgot" onClick={(e) => { e.preventDefault(); triggerToast('HR security password recovery link dispatched'); }} className="text-[11px] font-bold text-indigo-600 hover:underline">
+                <a href="#forgot" onClick={(e) => { e.preventDefault(); triggerToast('HR security password recovery link dispatched'); }} className="text-[11px] font-bold text-[#00A88B] hover:underline">
                   Forgot Password?
                 </a>
               </div>
@@ -297,7 +301,7 @@ export const HrLoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-700 to-indigo-900 hover:from-indigo-800 hover:to-indigo-950 text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="w-full py-3.5 rounded-2xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs shadow-lg shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <span>Login as HR Officer</span>
                 <ArrowRight className="w-4 h-4" />
@@ -324,9 +328,9 @@ export const HrLoginView: React.FC = () => {
               onClick={() => setAuthStep('LOGIN')}
               className="flex-1 flex flex-col items-center cursor-pointer hover:opacity-80 transition-all"
             >
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700 relative mb-1.5 shadow-2xs">
+              <div className="w-10 h-10 rounded-2xl bg-[#E6FAF6] border border-[#00C9A7]/40 flex items-center justify-center text-[#00A88B] relative mb-1.5 shadow-2xs">
                 <ShieldCheck className="w-5 h-5" />
-                <span className="w-4 h-4 rounded-full bg-indigo-700 text-white font-black text-[9px] flex items-center justify-center absolute -top-1 -right-1">1</span>
+                <span className="w-4 h-4 rounded-full bg-[#00C9A7] text-[#0A2540] font-black text-[9px] flex items-center justify-center absolute -top-1 -right-1">1</span>
               </div>
               <span className="font-display font-bold text-xs text-[#0A2540] block">HR Login</span>
               <span className="text-[9px] text-slate-400 leading-tight block">Portal token</span>

@@ -67,30 +67,34 @@ export const TeamLeaderLoginView: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-[#00C9A7]/20 pb-6">
       
-      {/* 1. Deep Navy & Mint Top Header (Dedicated to Team Leader Portal) */}
+      {/* 1. Official Trade Nexus Brand Top Header */}
       <div className="bg-gradient-to-b from-[#07192C] via-[#0A2540] to-[#0D3155] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
-        {/* Futuristic grid background */}
+        {/* Subtle geometric background grid */}
         <div className="absolute inset-0 bg-[radial-gradient(rgba(0,201,167,0.2)_1px,transparent_1px)] [background-size:16px_16px] opacity-35" />
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
-            {/* Executive Shield Logo */}
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00C9A7] to-[#00B4D8] text-[#0A2540] p-2 flex items-center justify-center shadow-lg shadow-[#00C9A7]/20 flex-shrink-0">
-              <Shield className="w-7 h-7 stroke-[2.5]" />
+            {/* Official Trade Nexus Emblem */}
+            <div className="w-12 h-12 rounded-2xl overflow-hidden bg-[#0A2540] border-2 border-[#00C9A7]/50 shadow-lg shadow-[#00C9A7]/20 flex items-center justify-center flex-shrink-0 p-0.5">
+              <img 
+                src="/logo-icon.png" 
+                alt="Trade Nexus" 
+                className="w-full h-full object-cover rounded-xl"
+              />
             </div>
             <div>
-              <h1 className="font-display font-black text-xl text-white tracking-tight leading-tight">
-                Team Leader Portal
+              <h1 className="font-display font-black text-xl text-white tracking-wider leading-tight">
+                TRADE NEXUS
               </h1>
-              <p className="text-[11px] text-[#38E1B7] font-semibold tracking-wide">
-                Supervisor &amp; Team Management Console
+              <p className="text-xs text-[#00C9A7] font-bold tracking-wide">
+                Team Leader
               </p>
             </div>
           </div>
 
-          <div className="bg-[#00C9A7]/15 border border-[#00C9A7]/40 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 text-[#00C9A7]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-ping" />
-            <span>SUPERVISOR</span>
+          <div className="bg-[#00C9A7]/15 border border-[#00C9A7]/40 px-3 py-1 rounded-full text-[10px] font-mono font-extrabold flex items-center gap-1.5 text-[#38E1B7]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />
+            <span>TEAM LEADER</span>
           </div>
         </div>
       </div>
@@ -249,7 +253,7 @@ export const TeamLeaderLoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-[#0A2540] hover:bg-[#0F3258] text-[#00C9A7] font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all border border-[#00C9A7]/40"
+                className="w-full py-3.5 rounded-2xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs shadow-lg shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <span>{isOtpSent ? 'Verify OTP & Enter Supervisor Console' : 'Get OTP & Proceed'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -297,7 +301,7 @@ export const TeamLeaderLoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-[#0A2540] hover:bg-[#0F3258] text-[#00C9A7] font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all border border-[#00C9A7]/40"
+                className="w-full py-3.5 rounded-2xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs shadow-lg shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <span>Login as Team Leader</span>
                 <ArrowRight className="w-4 h-4" />

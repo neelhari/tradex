@@ -56,14 +56,21 @@ export const FaceScanAttendanceView: React.FC = () => {
       
       {/* 1. Terminal Top Bar */}
       <div className="flex items-center justify-between py-2 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-[#00C9A7]/20 text-[#00C9A7] flex items-center justify-center font-bold">
-            TN
+        <div className="flex items-center gap-2.5">
+          {/* Official Trade Nexus Emblem */}
+          <div className="w-9 h-9 rounded-xl overflow-hidden bg-[#0A2540] border border-[#00C9A7]/40 shadow-md shadow-[#00C9A7]/20 flex items-center justify-center flex-shrink-0 p-0.5">
+            <img 
+              src="/logo-icon.png" 
+              alt="Trade Nexus" 
+              className="w-full h-full object-cover rounded-lg"
+            />
           </div>
           <div>
-            <h2 className="font-display font-black text-sm text-white tracking-wide">Trade Nexus</h2>
-            <span className="text-[9px] font-mono text-[#38E1B7] uppercase tracking-widest block">
-              {isLeader ? 'Supervisor Kiosk #1' : 'Biometric Terminal #4'}
+            <h2 className="font-display font-black text-sm text-white tracking-wider leading-tight">
+              TRADE NEXUS
+            </h2>
+            <span className="text-[9px] font-mono text-[#00C9A7] uppercase tracking-widest block font-bold">
+              {isLeader ? 'Team Leader Face Scan' : 'Face Recognition Attendance'}
             </span>
           </div>
         </div>

@@ -42,32 +42,36 @@ export const AdminLoginView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-amber-400/20 pb-6">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-[#00C9A7]/20 pb-6">
       
-      {/* 1. Executive Master Admin Top Header */}
-      <div className="bg-gradient-to-b from-[#0A192F] via-[#0F2847] to-[#0A192F] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-[radial-gradient(rgba(245,158,11,0.2)_1px,transparent_1px)] [background-size:16px_16px] opacity-35" />
+      {/* 1. Official Trade Nexus Brand Top Header */}
+      <div className="bg-gradient-to-b from-[#07192C] via-[#0A2540] to-[#0D3155] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
+        {/* Subtle geometric background grid */}
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(0,201,167,0.2)_1px,transparent_1px)] [background-size:16px_16px] opacity-35" />
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
-            {/* Crown Emblem */}
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-[#0A192F] p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
-              <Crown className="w-7 h-7 stroke-[2.5]" />
+            {/* Official Trade Nexus Emblem */}
+            <div className="w-12 h-12 rounded-2xl overflow-hidden bg-[#0A2540] border-2 border-[#00C9A7]/50 shadow-lg shadow-[#00C9A7]/20 flex items-center justify-center flex-shrink-0 p-0.5">
+              <img 
+                src="/logo-icon.png" 
+                alt="Trade Nexus" 
+                className="w-full h-full object-cover rounded-xl"
+              />
             </div>
             <div>
-              <h1 className="font-display font-black text-xl text-white tracking-tight leading-tight">
-                Admin Panel
+              <h1 className="font-display font-black text-xl text-white tracking-wider leading-tight">
+                TRADE NEXUS
               </h1>
-              <p className="text-[11px] text-amber-300 font-semibold tracking-wide">
-                Master Management &amp; System Oversight
+              <p className="text-xs text-[#00C9A7] font-bold tracking-wide">
+                Admin Console
               </p>
             </div>
           </div>
 
-          <div className="bg-amber-400/15 border border-amber-400/40 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 text-amber-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-            <span>LEVEL 4 ADMIN</span>
+          <div className="bg-[#00C9A7]/15 border border-[#00C9A7]/40 px-3 py-1 rounded-full text-[10px] font-mono font-extrabold flex items-center gap-1.5 text-[#38E1B7]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />
+            <span>SUPER ADMIN</span>
           </div>
         </div>
       </div>
@@ -77,10 +81,9 @@ export const AdminLoginView: React.FC = () => {
         <div className="nexus-card p-6 bg-white border border-slate-200/80 shadow-2xl rounded-3xl space-y-4">
           
           <div className="text-center space-y-0.5">
-            <div className="flex items-center justify-center gap-1.5 text-amber-500 font-display font-black text-2xl tracking-tight">
-              <span>Hello, Admin</span>
-              <span>👑</span>
-            </div>
+            <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
+              Admin Login
+            </h2>
             <p className="text-xs text-slate-500 font-medium">
               Sign in to manage system users, teams &amp; global controls
             </p>
@@ -101,13 +104,13 @@ export const AdminLoginView: React.FC = () => {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
               </svg>
             </div>
-            <span>{isLoading ? 'Authenticating...' : 'Continue with Google Workspace (Super Admin)'}</span>
+            <span>{isLoading ? 'Authenticating...' : 'Continue with Google (Super Admin)'}</span>
           </button>
 
           <div className="relative flex items-center justify-center">
             <div className="border-t border-slate-200 w-full" />
             <span className="bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute">
-              OR MASTER CREDENTIALS
+              OR DIRECT CREDENTIALS
             </span>
           </div>
 
@@ -120,7 +123,7 @@ export const AdminLoginView: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter master admin email (e.g. admin@tradenexus.io)"
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-amber-500 font-medium"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
               />
             </div>
 
@@ -131,7 +134,7 @@ export const AdminLoginView: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter administrator password"
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 focus:outline-none focus:border-amber-500 font-medium"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
               />
               <button
                 type="button"
@@ -149,7 +152,7 @@ export const AdminLoginView: React.FC = () => {
                 value={masterKey}
                 onChange={(e) => setMasterKey(e.target.value)}
                 placeholder="2FA Master Security Key (Optional)"
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-amber-500 font-mono"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-mono"
               />
             </div>
 
@@ -157,9 +160,9 @@ export const AdminLoginView: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 rounded-2xl bg-[#0A192F] hover:bg-[#0F2847] text-amber-400 font-black text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all border border-amber-400/40"
+              className="w-full py-3.5 rounded-2xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs shadow-lg shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
             >
-              <span>Enter Admin Panel</span>
+              <span>Enter Admin Console</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

@@ -63,30 +63,34 @@ export const EmployeeLoginView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-[#5B3DF5]/20 pb-6">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-[#00C9A7]/20 pb-6">
       
-      {/* 1. Purple Gradient Top Header (Matching Reference Image 1) */}
-      <div className="bg-gradient-to-b from-[#381D88] via-[#4F2BB9] to-[#3B1F8F] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
-        {/* Futuristic background grid */}
-        <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px] opacity-25" />
+      {/* 1. Official Trade Nexus Brand Top Header */}
+      <div className="bg-gradient-to-b from-[#07192C] via-[#0A2540] to-[#0D3155] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
+        {/* Subtle geometric background grid */}
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(0,201,167,0.2)_1px,transparent_1px)] [background-size:16px_16px] opacity-35" />
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
-            {/* White SmartAttend Face Box Logo */}
-            <div className="w-12 h-12 rounded-2xl bg-white text-[#4F2BB9] p-2 flex items-center justify-center shadow-lg shadow-black/20 flex-shrink-0">
-              <ScanFace className="w-7 h-7 stroke-[2]" />
+            {/* Official Trade Nexus Emblem */}
+            <div className="w-12 h-12 rounded-2xl overflow-hidden bg-[#0A2540] border-2 border-[#00C9A7]/50 shadow-lg shadow-[#00C9A7]/20 flex items-center justify-center flex-shrink-0 p-0.5">
+              <img 
+                src="/logo-icon.png" 
+                alt="Trade Nexus" 
+                className="w-full h-full object-cover rounded-xl"
+              />
             </div>
             <div>
-              <h1 className="font-display font-black text-xl text-white tracking-tight leading-tight">
-                SmartAttend
+              <h1 className="font-display font-black text-xl text-white tracking-wider leading-tight">
+                TRADE NEXUS
               </h1>
-              <p className="text-[11px] text-white/80 font-medium tracking-wide">
-                Face Recognition Attendance
+              <p className="text-xs text-[#00C9A7] font-bold tracking-wide">
+                Telecaller
               </p>
             </div>
           </div>
 
-          <div className="bg-white/10 border border-white/20 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 text-white">
+          <div className="bg-[#00C9A7]/15 border border-[#00C9A7]/40 px-3 py-1 rounded-full text-[10px] font-mono font-extrabold flex items-center gap-1.5 text-[#38E1B7]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />
             <span>TELECALLER</span>
           </div>
@@ -99,7 +103,7 @@ export const EmployeeLoginView: React.FC = () => {
           
           <div className="text-center space-y-0.5">
             <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
-              Employee Login
+              Telecaller Login
             </h2>
             <p className="text-xs text-slate-500 font-medium">
               Login to your account to continue
@@ -118,7 +122,7 @@ export const EmployeeLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'gmail'
-                  ? 'border-[#4F2BB9] bg-[#EDE9FE] shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
@@ -131,9 +135,9 @@ export const EmployeeLoginView: React.FC = () => {
                 </svg>
               </div>
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'gmail' ? 'text-[#4F2BB9]' : 'text-slate-700'
+                activeLoginType === 'gmail' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
-                Login with Gmail
+                Google Account
               </span>
             </button>
 
@@ -145,15 +149,15 @@ export const EmployeeLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'mobile'
-                  ? 'border-[#4F2BB9] bg-[#EDE9FE] shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
               <Smartphone className={`w-5 h-5 ${
-                activeLoginType === 'mobile' ? 'text-[#4F2BB9]' : 'text-slate-500'
+                activeLoginType === 'mobile' ? 'text-[#00A88B]' : 'text-slate-500'
               }`} />
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'mobile' ? 'text-[#4F2BB9]' : 'text-slate-700'
+                activeLoginType === 'mobile' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
                 Mobile Number
               </span>
@@ -167,15 +171,15 @@ export const EmployeeLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'password'
-                  ? 'border-[#4F2BB9] bg-[#EDE9FE] shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
               <Mail className={`w-5 h-5 ${
-                activeLoginType === 'password' ? 'text-[#4F2BB9]' : 'text-slate-500'
+                activeLoginType === 'password' ? 'text-[#00A88B]' : 'text-slate-500'
               }`} />
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'password' ? 'text-[#4F2BB9]' : 'text-slate-700'
+                activeLoginType === 'password' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
                 Password Login
               </span>
@@ -226,7 +230,7 @@ export const EmployeeLoginView: React.FC = () => {
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value)}
                   placeholder="Enter telecaller mobile number"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#4F2BB9] font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
               </div>
 
@@ -239,7 +243,7 @@ export const EmployeeLoginView: React.FC = () => {
                     onChange={(e) => setOtp(e.target.value)}
                     placeholder="Enter 6-digit OTP (e.g. 584920)"
                     maxLength={6}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#4F2BB9] font-mono font-bold tracking-widest"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-mono font-bold tracking-widest"
                   />
                 </div>
               )}
@@ -247,7 +251,7 @@ export const EmployeeLoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-[#4F2BB9] hover:bg-[#3D1E99] text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="w-full py-3.5 rounded-2xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs shadow-lg shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <span>{isOtpSent ? 'Verify OTP & Proceed to Face ID' : 'Get OTP & Proceed'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -263,7 +267,7 @@ export const EmployeeLoginView: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter telecaller email"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#4F2BB9] font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
               </div>
 
@@ -274,7 +278,7 @@ export const EmployeeLoginView: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#4F2BB9] font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
                 <button
                   type="button"
@@ -286,7 +290,7 @@ export const EmployeeLoginView: React.FC = () => {
               </div>
 
               <div className="flex justify-end">
-                <a href="#forgot" onClick={(e) => { e.preventDefault(); triggerToast('Password reset link sent to registered email'); }} className="text-[11px] font-bold text-[#4F2BB9] hover:underline">
+                <a href="#forgot" onClick={(e) => { e.preventDefault(); triggerToast('Password reset link sent to registered email'); }} className="text-[11px] font-bold text-[#00A88B] hover:underline">
                   Forgot Password?
                 </a>
               </div>
@@ -295,7 +299,7 @@ export const EmployeeLoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-[#4F2BB9] hover:bg-[#3D1E99] text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="w-full py-3.5 rounded-2xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs shadow-lg shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <span>Login as Telecaller</span>
                 <ArrowRight className="w-4 h-4" />
@@ -309,7 +313,7 @@ export const EmployeeLoginView: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. 3-Step "How SmartAttend Works" Infographic Footer */}
+      {/* 3. 3-Step "How Face Recognition Works" Infographic Footer */}
       <div className="px-5 mt-4">
         <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
           <span className="text-[11px] font-extrabold text-[#0A2540] uppercase tracking-wider block text-center mb-3">
@@ -322,9 +326,9 @@ export const EmployeeLoginView: React.FC = () => {
               onClick={() => setAuthStep('LOGIN')}
               className="flex-1 flex flex-col items-center cursor-pointer hover:opacity-80 transition-all"
             >
-              <div className="w-10 h-10 rounded-2xl bg-[#EDE9FE] border border-[#4F2BB9]/40 flex items-center justify-center text-[#4F2BB9] relative mb-1.5 shadow-2xs">
+              <div className="w-10 h-10 rounded-2xl bg-[#E6FAF6] border border-[#00C9A7]/40 flex items-center justify-center text-[#00A88B] relative mb-1.5 shadow-2xs">
                 <UserCheck className="w-5 h-5" />
-                <span className="w-4 h-4 rounded-full bg-[#4F2BB9] text-white text-[9px] font-black absolute -top-1 -right-1 flex items-center justify-center">1</span>
+                <span className="w-4 h-4 rounded-full bg-[#00C9A7] text-[#0A2540] text-[9px] font-black absolute -top-1 -right-1 flex items-center justify-center">1</span>
               </div>
               <span className="font-display font-bold text-xs text-[#0A2540] block">Login</span>
               <span className="text-[9px] text-slate-400 leading-tight block">Portal credentials</span>

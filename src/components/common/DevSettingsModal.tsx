@@ -21,7 +21,25 @@ import {
 } from 'lucide-react';
 import { UserRole, AuthStep } from '../../types';
 
+const isLocalHost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
+    hostname.endsWith('.localhost') ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.endsWith('.local')
+  );
+};
+
 export const DevSettingsModal: React.FC = () => {
+  if (!isLocalHost()) {
+    return null;
+  }
+
   const [isOpen, setIsOpen] = useState(false);
   const { 
     currentRole, 
