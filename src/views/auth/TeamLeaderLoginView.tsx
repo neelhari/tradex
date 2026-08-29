@@ -6,13 +6,15 @@ import {
   Lock, 
   Eye, 
   EyeOff, 
-  ScanFace, 
-  UserCheck, 
+  Shield, 
+  Users, 
   CheckCircle2, 
-  ArrowRight
+  ArrowRight,
+  TrendingUp,
+  ScanFace
 } from 'lucide-react';
 
-export const EmployeeLoginView: React.FC = () => {
+export const TeamLeaderLoginView: React.FC = () => {
   const { setAuthStep, triggerToast } = useApp();
   
   const [activeLoginType, setActiveLoginType] = useState<'gmail' | 'mobile' | 'password'>('gmail');
@@ -27,7 +29,7 @@ export const EmployeeLoginView: React.FC = () => {
   // Instant Google Login -> Step 2
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    triggerToast('✓ Authenticating Arjun Kumar (Senior Telecaller)...');
+    triggerToast('✓ Authenticating Ramesh Sharma (Team Leader)...');
     setTimeout(() => {
       setIsLoading(false);
       setAuthStep('FACE_SCAN');
@@ -38,13 +40,13 @@ export const EmployeeLoginView: React.FC = () => {
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     setIsOtpSent(true);
-    triggerToast(`✓ 6-digit OTP sent to ${mobileNumber || '+91 98450 12345'}`);
+    triggerToast(`✓ 6-digit Supervisor OTP sent to ${mobileNumber || '+91 98450 00112'}`);
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    triggerToast('✓ OTP Verified! Proceeding to Biometric Face ID...');
+    triggerToast('✓ OTP Verified! Proceeding to Supervisor Biometric Face ID...');
     setTimeout(() => {
       setIsLoading(false);
       setAuthStep('FACE_SCAN');
@@ -55,7 +57,7 @@ export const EmployeeLoginView: React.FC = () => {
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    triggerToast('✓ Telecaller credentials verified! Proceeding to Face Recognition...');
+    triggerToast('✓ Team Leader credentials verified! Proceeding to Face Recognition...');
     setTimeout(() => {
       setIsLoading(false);
       setAuthStep('FACE_SCAN');
@@ -63,46 +65,46 @@ export const EmployeeLoginView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-[#5B3DF5]/20 pb-6">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans text-slate-800 selection:bg-[#00C9A7]/20 pb-6">
       
-      {/* 1. Purple Gradient Top Header (Matching Reference Image 1) */}
-      <div className="bg-gradient-to-b from-[#381D88] via-[#4F2BB9] to-[#3B1F8F] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
-        {/* Futuristic background grid */}
-        <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:16px_16px] opacity-25" />
+      {/* 1. Deep Navy & Mint Top Header (Dedicated to Team Leader Portal) */}
+      <div className="bg-gradient-to-b from-[#07192C] via-[#0A2540] to-[#0D3155] text-white pt-10 pb-14 px-6 rounded-b-[36px] shadow-xl relative overflow-hidden">
+        {/* Futuristic grid background */}
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(0,201,167,0.2)_1px,transparent_1px)] [background-size:16px_16px] opacity-35" />
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
-            {/* White SmartAttend Face Box Logo */}
-            <div className="w-12 h-12 rounded-2xl bg-white text-[#4F2BB9] p-2 flex items-center justify-center shadow-lg shadow-black/20 flex-shrink-0">
-              <ScanFace className="w-7 h-7 stroke-[2]" />
+            {/* Executive Shield Logo */}
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00C9A7] to-[#00B4D8] text-[#0A2540] p-2 flex items-center justify-center shadow-lg shadow-[#00C9A7]/20 flex-shrink-0">
+              <Shield className="w-7 h-7 stroke-[2.5]" />
             </div>
             <div>
               <h1 className="font-display font-black text-xl text-white tracking-tight leading-tight">
-                SmartAttend
+                Team Leader Portal
               </h1>
-              <p className="text-[11px] text-white/80 font-medium tracking-wide">
-                Face Recognition Attendance
+              <p className="text-[11px] text-[#38E1B7] font-semibold tracking-wide">
+                Supervisor &amp; Team Management Console
               </p>
             </div>
           </div>
 
-          <div className="bg-white/10 border border-white/20 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 text-white">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />
-            <span>TELECALLER</span>
+          <div className="bg-[#00C9A7]/15 border border-[#00C9A7]/40 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 text-[#00C9A7]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-ping" />
+            <span>SUPERVISOR</span>
           </div>
         </div>
       </div>
 
-      {/* 2. Telecaller Employee Login Card Body */}
+      {/* 2. Team Leader Login Card Body */}
       <div className="px-5 -mt-8 relative z-20 flex-1 flex flex-col justify-center">
         <div className="nexus-card p-6 bg-white border border-slate-200/80 shadow-2xl rounded-3xl space-y-4">
           
           <div className="text-center space-y-0.5">
             <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
-              Employee Login
+              Team Leader Login
             </h2>
             <p className="text-xs text-slate-500 font-medium">
-              Login to your account to continue
+              Sign in to manage your squad &amp; review production
             </p>
           </div>
 
@@ -118,7 +120,7 @@ export const EmployeeLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'gmail'
-                  ? 'border-[#4F2BB9] bg-[#EDE9FE] shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
@@ -131,9 +133,9 @@ export const EmployeeLoginView: React.FC = () => {
                 </svg>
               </div>
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'gmail' ? 'text-[#4F2BB9]' : 'text-slate-700'
+                activeLoginType === 'gmail' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
-                Login with Gmail
+                Google Account
               </span>
             </button>
 
@@ -145,17 +147,17 @@ export const EmployeeLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'mobile'
-                  ? 'border-[#4F2BB9] bg-[#EDE9FE] shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
               <Smartphone className={`w-5 h-5 ${
-                activeLoginType === 'mobile' ? 'text-[#4F2BB9]' : 'text-slate-500'
+                activeLoginType === 'mobile' ? 'text-[#00A88B]' : 'text-slate-500'
               }`} />
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'mobile' ? 'text-[#4F2BB9]' : 'text-slate-700'
+                activeLoginType === 'mobile' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
-                Mobile Number
+                Mobile OTP
               </span>
             </button>
 
@@ -167,15 +169,15 @@ export const EmployeeLoginView: React.FC = () => {
               }}
               className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
                 activeLoginType === 'password'
-                  ? 'border-[#4F2BB9] bg-[#EDE9FE] shadow-xs'
+                  ? 'border-[#00C9A7] bg-[#E6FAF6] shadow-xs'
                   : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100'
               }`}
             >
               <Mail className={`w-5 h-5 ${
-                activeLoginType === 'password' ? 'text-[#4F2BB9]' : 'text-slate-500'
+                activeLoginType === 'password' ? 'text-[#00A88B]' : 'text-slate-500'
               }`} />
               <span className={`text-[10px] font-bold leading-tight ${
-                activeLoginType === 'password' ? 'text-[#4F2BB9]' : 'text-slate-700'
+                activeLoginType === 'password' ? 'text-[#00A88B]' : 'text-slate-700'
               }`}>
                 Password Login
               </span>
@@ -205,7 +207,7 @@ export const EmployeeLoginView: React.FC = () => {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
               </svg>
             </div>
-            <span>{isLoading ? 'Signing In...' : 'Continue with Google (Telecaller)'}</span>
+            <span>{isLoading ? 'Signing In...' : 'Continue with Google (Supervisor)'}</span>
           </button>
 
           <div className="relative flex items-center justify-center">
@@ -225,8 +227,8 @@ export const EmployeeLoginView: React.FC = () => {
                   type="tel"
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value)}
-                  placeholder="Enter telecaller mobile number"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#4F2BB9] font-medium"
+                  placeholder="Enter supervisor mobile number"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
               </div>
 
@@ -239,7 +241,7 @@ export const EmployeeLoginView: React.FC = () => {
                     onChange={(e) => setOtp(e.target.value)}
                     placeholder="Enter 6-digit OTP (e.g. 584920)"
                     maxLength={6}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#4F2BB9] font-mono font-bold tracking-widest"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-mono font-bold tracking-widest"
                   />
                 </div>
               )}
@@ -247,9 +249,9 @@ export const EmployeeLoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-[#4F2BB9] hover:bg-[#3D1E99] text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="w-full py-3.5 rounded-2xl bg-[#0A2540] hover:bg-[#0F3258] text-[#00C9A7] font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all border border-[#00C9A7]/40"
               >
-                <span>{isOtpSent ? 'Verify OTP & Proceed to Face ID' : 'Get OTP & Proceed'}</span>
+                <span>{isOtpSent ? 'Verify OTP & Enter Supervisor Console' : 'Get OTP & Proceed'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
@@ -262,8 +264,8 @@ export const EmployeeLoginView: React.FC = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter telecaller email"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#4F2BB9] font-medium"
+                  placeholder="Enter supervisor email (e.g. ramesh.sharma@...)"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
               </div>
 
@@ -273,8 +275,8 @@ export const EmployeeLoginView: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#4F2BB9] font-medium"
+                  placeholder="Enter supervisor password"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
                 />
                 <button
                   type="button"
@@ -286,7 +288,7 @@ export const EmployeeLoginView: React.FC = () => {
               </div>
 
               <div className="flex justify-end">
-                <a href="#forgot" onClick={(e) => { e.preventDefault(); triggerToast('Password reset link sent to registered email'); }} className="text-[11px] font-bold text-[#4F2BB9] hover:underline">
+                <a href="#forgot" onClick={(e) => { e.preventDefault(); triggerToast('Supervisor password reset sent'); }} className="text-[11px] font-bold text-[#00A88B] hover:underline">
                   Forgot Password?
                 </a>
               </div>
@@ -295,25 +297,25 @@ export const EmployeeLoginView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-[#4F2BB9] hover:bg-[#3D1E99] text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+                className="w-full py-3.5 rounded-2xl bg-[#0A2540] hover:bg-[#0F3258] text-[#00C9A7] font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all border border-[#00C9A7]/40"
               >
-                <span>Login as Telecaller</span>
+                <span>Login as Team Leader</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           )}
 
           <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-            By logging in, you agree to our <a href="#" className="underline text-slate-600">Terms &amp; Conditions</a> and <a href="#" className="underline text-slate-600">Privacy Policy</a>.
+            Restricted to authorized supervisors and managers. <a href="#" className="underline text-slate-600">Security Policy</a>.
           </p>
         </div>
       </div>
 
-      {/* 3. 3-Step "How SmartAttend Works" Infographic Footer */}
+      {/* 3. 3-Step Supervisor Access Flow Infographic */}
       <div className="px-5 mt-4">
         <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
           <span className="text-[11px] font-extrabold text-[#0A2540] uppercase tracking-wider block text-center mb-3">
-            How Face Recognition Works
+            Supervisor Verification Process
           </span>
 
           <div className="flex items-center justify-between text-center relative">
@@ -322,12 +324,12 @@ export const EmployeeLoginView: React.FC = () => {
               onClick={() => setAuthStep('LOGIN')}
               className="flex-1 flex flex-col items-center cursor-pointer hover:opacity-80 transition-all"
             >
-              <div className="w-10 h-10 rounded-2xl bg-[#EDE9FE] border border-[#4F2BB9]/40 flex items-center justify-center text-[#4F2BB9] relative mb-1.5 shadow-2xs">
-                <UserCheck className="w-5 h-5" />
-                <span className="w-4 h-4 rounded-full bg-[#4F2BB9] text-white text-[9px] font-black absolute -top-1 -right-1 flex items-center justify-center">1</span>
+              <div className="w-10 h-10 rounded-2xl bg-[#E6FAF6] border border-[#00C9A7]/40 flex items-center justify-center text-[#00A88B] relative mb-1.5 shadow-2xs">
+                <Shield className="w-5 h-5" />
+                <span className="w-4 h-4 rounded-full bg-[#00C9A7] text-[#0A2540] font-black text-[9px] flex items-center justify-center absolute -top-1 -right-1">1</span>
               </div>
-              <span className="font-display font-bold text-xs text-[#0A2540] block">Login</span>
-              <span className="text-[9px] text-slate-400 leading-tight block">Portal credentials</span>
+              <span className="font-display font-bold text-xs text-[#0A2540] block">Leader Login</span>
+              <span className="text-[9px] text-slate-400 leading-tight block">Executive access</span>
             </div>
 
             <div className="text-slate-300 font-bold px-1">➔</div>
@@ -339,9 +341,9 @@ export const EmployeeLoginView: React.FC = () => {
             >
               <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 relative mb-1.5 shadow-2xs">
                 <ScanFace className="w-5 h-5" />
-                <span className="w-4 h-4 rounded-full bg-[#0A2540] text-white font-black text-[9px] flex items-center justify-center">2</span>
+                <span className="w-4 h-4 rounded-full bg-[#0A2540] text-white font-black text-[9px] flex items-center justify-center absolute -top-1 -right-1">2</span>
               </div>
-              <span className="font-display font-bold text-xs text-[#0A2540] block">Face Scan</span>
+              <span className="font-display font-bold text-xs text-[#0A2540] block">Face ID</span>
               <span className="text-[9px] text-slate-400 leading-tight block">Biometric kiosk</span>
             </div>
 
@@ -354,10 +356,10 @@ export const EmployeeLoginView: React.FC = () => {
             >
               <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 relative mb-1.5 shadow-2xs">
                 <CheckCircle2 className="w-5 h-5" />
-                <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">3</span>
+                <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center absolute -top-1 -right-1">3</span>
               </div>
-              <span className="font-display font-bold text-xs text-[#0A2540] block">Marked</span>
-              <span className="text-[9px] text-slate-400 leading-tight block">Shift active</span>
+              <span className="font-display font-bold text-xs text-[#0A2540] block">Console Active</span>
+              <span className="text-[9px] text-slate-400 leading-tight block">Team dashboard</span>
             </div>
           </div>
         </div>

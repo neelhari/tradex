@@ -6,6 +6,9 @@ import { TradeNexusLogo } from './components/common/TradeNexusLogo';
 
 // Auth Flow Views (Matching Sample Images 1 & 2)
 import { EmployeeLoginView } from './views/auth/EmployeeLoginView';
+import { TeamLeaderLoginView } from './views/auth/TeamLeaderLoginView';
+import { HrLoginView } from './views/auth/HrLoginView';
+import { AdminLoginView } from './views/auth/AdminLoginView';
 import { FaceScanAttendanceView } from './views/auth/FaceScanAttendanceView';
 import { AttendanceSuccessView } from './views/auth/AttendanceSuccessView';
 
@@ -73,15 +76,30 @@ export const App: React.FC = () => {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isMobileRoleMenuOpen, setIsMobileRoleMenuOpen] = useState(false);
 
-  // 1. If currently in the 4-step Authentication / Face ID flow, render the active step!
-  if (authStep === 'LOGIN') {
-    return <EmployeeLoginView />;
-  }
-  if (authStep === 'FACE_SCAN') {
-    return <FaceScanAttendanceView />;
-  }
-  if (authStep === 'ATTENDANCE_SUCCESS') {
-    return <AttendanceSuccessView />;
+  // 1. If currently in the 4-step Authentication / Face ID flow, render the active step with Dev Settings!
+  if (authStep === 'LOGIN' || authStep === 'FACE_SCAN' || authStep === 'ATTENDANCE_SUCCESS') {
+    return (
+      <div className="relative min-h-screen">
+        {authStep === 'LOGIN' && (
+          currentRole === 'team_leader' ? <TeamLeaderLoginView /> :
+          currentRole === 'hr' ? <HrLoginView /> :
+          currentRole === 'admin' ? <AdminLoginView /> :
+          <EmployeeLoginView />
+        )}
+        {authStep === 'FACE_SCAN' && <FaceScanAttendanceView />}
+        {authStep === 'ATTENDANCE_SUCCESS' && <AttendanceSuccessView />}
+        
+        {/* Floating Notification Toast */}
+        {activeToast && (
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#0A2540] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-xl border border-[#00C9A7]/40 flex items-center gap-2 animate-in slide-in-from-bottom duration-200">
+            <span>{activeToast}</span>
+          </div>
+        )}
+
+        {/* Dev Settings Modal accessible on Login & Face Scan */}
+        <DevSettingsModal />
+      </div>
+    );
   }
 
   // 2. Full Workspace once authenticated
@@ -143,9 +161,10 @@ export const App: React.FC = () => {
 
   const handleRoleSelect = (r: UserRole) => {
     setCurrentRole(r);
+    setAuthStep('LOGIN');
     setIsRoleDropdownOpen(false);
     setIsMobileRoleMenuOpen(false);
-    triggerToast(`Role switched to: ${r.toUpperCase().replace('_', ' ')}`);
+    triggerToast(`Switched to ${r.toUpperCase().replace('_', ' ')} (Opened Login Page)`);
   };
 
   return (

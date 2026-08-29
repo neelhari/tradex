@@ -150,3 +150,65 @@ export interface TeamMeeting {
   agenda: string;
 }
 
+export interface CandidateInterview {
+  id: string;
+  candidateName: string;
+  roleApplied: string;
+  experience: string;
+  email: string;
+  phone: string;
+  status: 'APPLIED' | 'SCREENING' | 'INTERVIEW_SCHEDULED' | 'OFFER_EXTENDED' | 'HIRED' | 'REJECTED';
+  interviewTime?: string;
+  interviewer?: string;
+  rating?: number;
+  notes?: string;
+}
+
+export interface OnboardingEmployee {
+  id: string;
+  empCode: string;
+  name: string;
+  role: string;
+  department: string;
+  joiningDate: string;
+  probationEnd: string;
+  status: 'DOCS_PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  checklist: {
+    documentsVerified: boolean;
+    workstationAllocated: boolean;
+    biometricEnrolled: boolean;
+    trainingScheduled: boolean;
+  };
+}
+
+export interface ExitEmployee {
+  id: string;
+  empCode: string;
+  name: string;
+  role: string;
+  department: string;
+  resignationDate: string;
+  lastWorkingDay: string;
+  status: 'CLEARANCE_PENDING' | 'CLEARANCE_COMPLETED' | 'RELIEVED';
+  checklist: {
+    assetsReturned: boolean;
+    accountsSettled: boolean;
+    knowledgeTransfer: boolean;
+    relievingLetterIssued: boolean;
+  };
+}
+
+export interface PaymentVerificationItem {
+  id: string;
+  leadName: string;
+  companyName: string;
+  telecallerName: string;
+  dealAmount: number;
+  utrNumber: string;
+  paymentMode: string;
+  timestamp: string;
+  status: 'PENDING_HR_AUDIT' | 'VERIFIED' | 'REJECTED';
+  receiptUrl?: string;
+}
+
+

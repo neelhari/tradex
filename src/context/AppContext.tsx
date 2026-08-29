@@ -14,7 +14,11 @@ import {
   TeamMember,
   TeamGroup,
   TeamTask,
-  TeamMeeting
+  TeamMeeting,
+  CandidateInterview,
+  OnboardingEmployee,
+  ExitEmployee,
+  PaymentVerificationItem
 } from '../types';
 import { 
   INITIAL_PROFILE, 
@@ -27,7 +31,11 @@ import {
   INITIAL_TEAM_MEMBERS,
   INITIAL_TEAM_GROUPS,
   INITIAL_TEAM_TASKS,
-  INITIAL_TEAM_MEETINGS
+  INITIAL_TEAM_MEETINGS,
+  INITIAL_CANDIDATES,
+  INITIAL_ONBOARDING,
+  INITIAL_EXIT_LIST,
+  INITIAL_PAYMENTS
 } from '../data/mockData';
 
 interface AppContextType {
@@ -58,6 +66,18 @@ interface AppContextType {
   createTeamTask: (data: { title: string; assignedTo: string; group?: string; dueDate: string; priority: 'HIGH' | 'MEDIUM' | 'NORMAL' }) => void;
   toggleTaskStatus: (taskId: string) => void;
   scheduleTeamMeeting: (data: { title: string; dateTime: string; type: TeamMeeting['type']; location: string; agenda: string }) => void;
+  
+  // HR Module State
+  candidates: CandidateInterview[];
+  onboardingList: OnboardingEmployee[];
+  exitList: ExitEmployee[];
+  paymentVerifications: PaymentVerificationItem[];
+  scheduleInterview: (data: { candidateName: string; roleApplied: string; experience: string; email: string; phone: string; interviewTime: string; interviewer: string }) => void;
+  updateCandidateStatus: (candidateId: string, status: CandidateInterview['status'], notes?: string) => void;
+  toggleOnboardingChecklist: (employeeId: string, itemKey: keyof OnboardingEmployee['checklist']) => void;
+  toggleExitChecklist: (employeeId: string, itemKey: keyof ExitEmployee['checklist']) => void;
+  verifyPayment: (paymentId: string, status: 'VERIFIED' | 'REJECTED') => void;
+  generateBulkPayslips: (month: string, year: string) => void;
   
   // Authentication Flow
   authStep: AuthStep;
@@ -113,13 +133,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [clients, setClients] = useState<ClientLead[]>(INITIAL_CLIENT_LEADS);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE_LOGS);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
-  const [payslips] = useState<PayslipItem[]>(INITIAL_PAYSLIPS);
+  const [payslips, setPayslips] = useState<PayslipItem[]>(INITIAL_PAYSLIPS);
 
   // Team Leader Module State
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(INITIAL_TEAM_MEMBERS);
   const [teamGroups, setTeamGroups] = useState<TeamGroup[]>(INITIAL_TEAM_GROUPS);
   const [teamTasks, setTeamTasks] = useState<TeamTask[]>(INITIAL_TEAM_TASKS);
   const [teamMeetings, setTeamMeetings] = useState<TeamMeeting[]>(INITIAL_TEAM_MEETINGS);
+
+  // HR Module State
+  const [candidates, setCandidates] = useState<CandidateInterview[]>(INITIAL_CANDIDATES);
+  const [onboardingList, setOnboardingList] = useState<OnboardingEmployee[]>(INITIAL_ONBOARDING);
+  const [exitList, setExitList] = useState<ExitEmployee[]>(INITIAL_EXIT_LIST);
+  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerificationItem[]>(INITIAL_PAYMENTS);
 
   // Modals
   const [isFaceIdModalOpen, setIsFaceIdModalOpen] = useState(false);
@@ -224,6 +250,94 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     setTeamMeetings(prev => [newMtg, ...prev]);
     triggerToast(`✓ Team meeting "${data.title}" scheduled & invites dispatched`);
+  };
+
+  // HR Actions
+  const scheduleInterview = (data: { candidateName: string; roleApplied: string; experience: string; email: string; phone: string; interviewTime: string; interviewer: string }) => {
+    const newCandidate: CandidateInterview = {
+      id: `cand-${Date.now()}`,
+      candidateName: data.candidateName,
+      roleApplied: data.roleApplied,
+      experience: data.experience,
+      email: data.email,
+      phone: data.phone,
+      status: 'INTERVIEW_SCHEDULED',
+      interviewTime: data.interviewTime,
+      interviewer: data.interviewer,
+    };
+    setCandidates(prev => [newCandidate, ...prev]);
+    triggerToast(`✓ Interview scheduled for ${data.candidateName}`);
+  };
+
+  const updateCandidateStatus = (candidateId: string, status: CandidateInterview['status'], notes?: string) => {
+    setCandidates(prev => prev.map(c => {
+      if (c.id === candidateId) {
+        return { ...c, status, notes: notes || c.notes };
+      }
+      return c;
+    }));
+    triggerToast(`✓ Candidate status updated to: ${status.replace('_', ' ')}`);
+  };
+
+  const toggleOnboardingChecklist = (employeeId: string, itemKey: keyof OnboardingEmployee['checklist']) => {
+    setOnboardingList(prev => prev.map(emp => {
+      if (emp.id === employeeId) {
+        const updatedChecklist = { ...emp.checklist, [itemKey]: !emp.checklist[itemKey] };
+        const allCompleted = Object.values(updatedChecklist).every(Boolean);
+        return { 
+          ...emp, 
+          checklist: updatedChecklist,
+          status: allCompleted ? 'COMPLETED' : 'IN_PROGRESS'
+        };
+      }
+      return emp;
+    }));
+    triggerToast('✓ Onboarding checklist updated');
+  };
+
+  const toggleExitChecklist = (employeeId: string, itemKey: keyof ExitEmployee['checklist']) => {
+    setExitList(prev => prev.map(emp => {
+      if (emp.id === employeeId) {
+        const updatedChecklist = { ...emp.checklist, [itemKey]: !emp.checklist[itemKey] };
+        const allCompleted = Object.values(updatedChecklist).every(Boolean);
+        return { 
+          ...emp, 
+          checklist: updatedChecklist,
+          status: allCompleted ? 'RELIEVED' : 'CLEARANCE_PENDING'
+        };
+      }
+      return emp;
+    }));
+    triggerToast('✓ Exit clearance updated');
+  };
+
+  const verifyPayment = (paymentId: string, status: 'VERIFIED' | 'REJECTED') => {
+    setPaymentVerifications(prev => prev.map(p => {
+      if (p.id === paymentId) {
+        return { ...p, status };
+      }
+      return p;
+    }));
+    triggerToast(`✓ Payment ${status === 'VERIFIED' ? 'Approved & Verified' : 'Rejected'}`);
+  };
+
+  const generateBulkPayslips = (month: string, year: string) => {
+    const newPayslip: PayslipItem = {
+      id: `ps-${Date.now()}`,
+      month: month,
+      year: parseInt(year, 10) || 2025,
+      basicSalary: 38000,
+      hra: 14000,
+      specialAllowance: 6500,
+      incentives: 22500,
+      pfDeduction: 2400,
+      taxDeduction: 2600,
+      netPay: 76000,
+      generatedDate: `01 ${month} ${year}`,
+      status: 'PAID',
+    };
+    setPayslips(prev => [newPayslip, ...prev]);
+    triggerToast(`✓ Generated ${month} ${year} payslips for 96 active employees!`);
   };
 
   const logNewCall = (data: {
@@ -350,6 +464,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         teamGroups,
         teamTasks,
         teamMeetings,
+        candidates,
+        onboardingList,
+        exitList,
+        paymentVerifications,
         approveLeaveRequest,
         rejectLeaveRequest,
         reassignLead,
@@ -357,6 +475,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createTeamTask,
         toggleTaskStatus,
         scheduleTeamMeeting,
+        scheduleInterview,
+        updateCandidateStatus,
+        toggleOnboardingChecklist,
+        toggleExitChecklist,
+        verifyPayment,
+        generateBulkPayslips,
         authStep,
         setAuthStep,
         logout,

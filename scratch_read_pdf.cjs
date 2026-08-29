@@ -7,8 +7,8 @@ async function extractPages1to6() {
   await parser.load();
   const text = await parser.getText();
   const pages = text.text.split(/-- \d+ of \d+ --/);
-  console.log('=== PAGES 1 TO 6 ===');
-  for (let i = 0; i < Math.min(6, pages.length); i++) {
+  console.log('=== PAGES 7 TO 10 ===');
+  for (let i = 6; i < pages.length; i++) {
     console.log(`\n--- PAGE ${i + 1} ---`);
     console.log(pages[i]);
   }

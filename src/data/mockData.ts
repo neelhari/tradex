@@ -9,7 +9,11 @@ import {
   TeamMember,
   TeamGroup,
   TeamTask,
-  TeamMeeting
+  TeamMeeting,
+  CandidateInterview,
+  OnboardingEmployee,
+  ExitEmployee,
+  PaymentVerificationItem
 } from '../types';
 
 export const INITIAL_PROFILE: EmployeeProfile = {
@@ -414,4 +418,125 @@ export const INITIAL_TEAM_MEETINGS: TeamMeeting[] = [
     agenda: 'Deep dive into handling price objections and closing enterprise annual subscriptions.',
   }
 ];
+
+export const INITIAL_CANDIDATES: CandidateInterview[] = [
+  {
+    id: 'cand-1',
+    candidateName: 'Siddharth Rao',
+    roleApplied: 'Senior Telecaller Specialist',
+    experience: '3.5 Yrs in FinTech Sales',
+    email: 'siddharth.rao@gmail.com',
+    phone: '+91 98190 22334',
+    status: 'INTERVIEW_SCHEDULED',
+    interviewTime: 'Today • 03:30 PM',
+    interviewer: 'Ramesh Sharma (Team Leader)',
+    rating: 4.5,
+    notes: 'Strong telecalling pitch. Scheduled Round 2 technical demo.',
+  },
+  {
+    id: 'cand-2',
+    candidateName: 'Megha Nair',
+    roleApplied: 'SDR Team Lead',
+    experience: '5 Yrs in Enterprise Sales',
+    email: 'megha.nair@outlook.com',
+    phone: '+91 98765 11223',
+    status: 'OFFER_EXTENDED',
+    interviewTime: 'Completed (Cleared)',
+    interviewer: 'Pooja Hegde (HR Head)',
+    rating: 4.8,
+    notes: 'Offer letter dispatched with CTC ₹9.5 LPA. Joining scheduled for 01 June 2025.',
+  },
+  {
+    id: 'cand-3',
+    candidateName: 'Anil Kapoor',
+    roleApplied: 'Inside Sales Representative',
+    experience: '1.5 Yrs in B2B Calling',
+    email: 'anil.k@gmail.com',
+    phone: '+91 98330 99887',
+    status: 'SCREENING',
+    interviewTime: 'Tomorrow • 11:00 AM',
+    interviewer: 'Pooja Hegde (HR)',
+    notes: 'Resume screened. Good English & Hindi communication.',
+  }
+];
+
+export const INITIAL_ONBOARDING: OnboardingEmployee[] = [
+  {
+    id: 'onb-1',
+    empCode: 'TNX-8510',
+    name: 'Vikram Joshi',
+    role: 'Telecaller Executive',
+    department: 'Sales & Client Acquisition',
+    joiningDate: '01 May 2025',
+    probationEnd: '01 Nov 2025 (3 Months Remaining)',
+    status: 'IN_PROGRESS',
+    checklist: {
+      documentsVerified: true,
+      workstationAllocated: true,
+      biometricEnrolled: true,
+      trainingScheduled: false,
+    },
+  },
+  {
+    id: 'onb-2',
+    empCode: 'TNX-8512',
+    name: 'Ananya Roy',
+    role: 'Inside Sales Associate',
+    department: 'Alpha Growth Team',
+    joiningDate: '15 May 2025',
+    probationEnd: '15 Nov 2025',
+    status: 'DOCS_PENDING',
+    checklist: {
+      documentsVerified: false,
+      workstationAllocated: true,
+      biometricEnrolled: false,
+      trainingScheduled: false,
+    },
+  }
+];
+
+export const INITIAL_EXIT_LIST: ExitEmployee[] = [
+  {
+    id: 'exit-1',
+    empCode: 'TNX-8390',
+    name: 'Manish Pandey',
+    role: 'Junior Telecaller',
+    department: 'Retention Squad',
+    resignationDate: '10 May 2025',
+    lastWorkingDay: '31 May 2025',
+    status: 'CLEARANCE_PENDING',
+    checklist: {
+      assetsReturned: true,
+      accountsSettled: false,
+      knowledgeTransfer: true,
+      relievingLetterIssued: false,
+    },
+  }
+];
+
+export const INITIAL_PAYMENTS: PaymentVerificationItem[] = [
+  {
+    id: 'pay-1',
+    leadName: 'Rajesh Singhania',
+    companyName: 'Singhania Logistics Ltd',
+    telecallerName: 'Arjun Kumar',
+    dealAmount: 85000,
+    utrNumber: 'HDFC948295820491',
+    paymentMode: 'NEFT / RTGS',
+    timestamp: 'Today, 11:45 AM',
+    status: 'PENDING_HR_AUDIT',
+  },
+  {
+    id: 'pay-2',
+    leadName: 'Vikram Mehta',
+    companyName: 'Mehta Global Logistics',
+    telecallerName: 'Priya Nair',
+    dealAmount: 120000,
+    utrNumber: 'ICIC849204928104',
+    paymentMode: 'Corporate Net Banking',
+    timestamp: 'Yesterday, 04:15 PM',
+    status: 'VERIFIED',
+  }
+];
+
 

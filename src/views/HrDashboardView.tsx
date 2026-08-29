@@ -1,110 +1,698 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  Building2, 
-  UserPlus, 
-  FileCheck, 
-  DollarSign, 
+  Menu,
+  Bell,
+  Users, 
+  UserCheck, 
+  FileText, 
   CreditCard, 
-  Calendar, 
+  UserPlus, 
   CheckCircle2, 
-  ArrowRight,
-  TrendingUp
+  XCircle, 
+  Plus, 
+  Download, 
+  ChevronRight, 
+  TrendingUp, 
+  Layers, 
+  Check, 
+  Home,
+  MoreHorizontal,
+  DollarSign,
+  QrCode,
+  Printer,
+  Shield,
+  Calendar,
+  Briefcase
 } from 'lucide-react';
+import { OnboardingEmployee, ExitEmployee } from '../types';
 
 export const HrDashboardView: React.FC = () => {
-  const { triggerToast } = useApp();
+  const { 
+    teamMembers, 
+    candidates, 
+    onboardingList, 
+    exitList, 
+    payslips, 
+    leaveRequests,
+    paymentVerifications,
+    scheduleInterview,
+    updateCandidateStatus,
+    toggleOnboardingChecklist,
+    toggleExitChecklist,
+    generateBulkPayslips,
+    approveLeaveRequest,
+    rejectLeaveRequest,
+    verifyPayment,
+    triggerToast 
+  } = useApp();
 
-  const candidates = [
-    { name: 'Siddharth Rao', role: 'Telecalling Specialist', stage: 'Interview Scheduled', time: 'Today, 03:30 PM' },
-    { name: 'Megha Nair', role: 'SDR Team Lead', stage: 'Offer Extended', time: 'Joining 01 Jun' },
-    { name: 'Anil Kapoor', role: 'Inside Sales Rep', stage: 'Onboarding Checklist', time: 'Documents Pending' },
+  const [activeHrNav, setActiveHrNav] = useState<'home' | 'employees' | 'approvals' | 'reports' | 'more'>('home');
+  
+  // Modals
+  const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
+  const [isPayslipGenModalOpen, setIsPayslipGenModalOpen] = useState(false);
+  const [selectedIdCardEmp, setSelectedIdCardEmp] = useState(teamMembers[0] || null);
+
+  // Form states
+  const [candName, setCandName] = useState('');
+  const [candRole, setCandRole] = useState('Senior Telecaller Specialist');
+  const [candExp, setCandExp] = useState('2+ Years in B2B Sales');
+  const [candEmail, setCandEmail] = useState('');
+  const [candPhone, setCandPhone] = useState('');
+  const [candTime, setCandTime] = useState('Tomorrow • 02:30 PM');
+  const [candInterviewer, setCandInterviewer] = useState('Ramesh Sharma (Team Leader)');
+
+  const [payrollMonth, setPayrollMonth] = useState('May');
+  const [payrollYear, setPayrollYear] = useState('2025');
+
+  // Stats from Reference Mockup
+  const totalTeams = 8;
+  const totalEmployees = 96;
+  const onLeaveCount = 7;
+  const attendancePercent = 92;
+  const targetAchievedPercent = 78;
+  const pendingApprovalsCount = 14;
+
+  // Team attendance data for bar chart
+  const teamAnalyticsData = [
+    { team: 'Team A', percent: 72, label: 'Alpha Closers' },
+    { team: 'Team B', percent: 75, label: 'Inbound Qualifiers' },
+    { team: 'Team C', percent: 85, label: 'Enterprise Squad' },
+    { team: 'Team D', percent: 68, label: 'Retention Wing' },
+    { team: 'Team E', percent: 82, label: 'Corporate Desk' },
   ];
 
+  const handleScheduleInterviewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!candName.trim()) return;
+    scheduleInterview({
+      candidateName: candName,
+      roleApplied: candRole,
+      experience: candExp,
+      email: candEmail || `${candName.toLowerCase().replace(/\s+/g, '.')}@gmail.com`,
+      phone: candPhone || '+91 98450 11223',
+      interviewTime: candTime,
+      interviewer: candInterviewer,
+    });
+    setCandName('');
+    setCandEmail('');
+    setCandPhone('');
+    setIsInterviewModalOpen(false);
+  };
+
+  const handleBulkPayrollSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    generateBulkPayslips(payrollMonth, payrollYear);
+    setIsPayslipGenModalOpen(false);
+  };
+
+  const exportHrReportCSV = () => {
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + "Name,Role,Group,Status,Check-in,Dials,Sales Achieved\n"
+      + teamMembers.map(e => `"${e.name}","${e.role}","${e.group}","${e.attendanceStatus}","${e.checkInTime || 'N/A'}",${e.dialsToday},${e.salesAchieved}`).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `HR_Org_Report_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    triggerToast('✓ Exported HR Organization Audit Report (CSV)');
+  };
+
   return (
-    <div className="flex flex-col gap-4 pb-20 pt-2 px-4 max-w-lg mx-auto">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col justify-between max-w-lg mx-auto font-sans pb-28 selection:bg-[#00C9A7]/20">
       
-      {/* Top Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display font-black text-xl text-[#0A2540]">HR Operations Portal</h2>
-          <p className="text-xs text-slate-500 font-semibold">Priya Verma • People & Compliance</p>
-        </div>
-        <span className="text-xs font-bold text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
-          96 Active Employees
-        </span>
-      </div>
-
-      {/* HR KPI Cards */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="nexus-card p-3 text-center bg-white border border-slate-200 shadow-sm">
-          <span className="text-[10px] font-bold text-slate-400 block uppercase">Attendance</span>
-          <span className="font-mono-nums font-black text-xl text-emerald-600">94.2%</span>
-          <span className="text-[9px] text-slate-500 font-bold block">Biometric Verified</span>
-        </div>
-
-        <div className="nexus-card p-3 text-center bg-white border border-slate-200 shadow-sm">
-          <span className="text-[10px] font-bold text-slate-400 block uppercase">Open Positions</span>
-          <span className="font-mono-nums font-black text-xl text-[#00A88B]">6</span>
-          <span className="text-[9px] text-slate-500 font-bold block">14 Interviews</span>
-        </div>
-
-        <div className="nexus-card p-3 text-center bg-white border border-slate-200 shadow-sm">
-          <span className="text-[10px] font-bold text-slate-400 block uppercase">Onboarding</span>
-          <span className="font-mono-nums font-black text-xl text-sky-600">3</span>
-          <span className="text-[9px] text-slate-500 font-bold block">New Joiners</span>
-        </div>
-      </div>
-
-      {/* Quick HR Actions */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <button
-          onClick={() => triggerToast('✓ May 2025 Bulk Payslips Generated & Sent to 96 Employees')}
-          className="p-3 rounded-2xl bg-white border border-slate-200 hover:border-[#00C9A7] text-left shadow-sm active:scale-95 transition-all"
-        >
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2">
-            <DollarSign className="w-4 h-4" />
-          </div>
-          <h4 className="font-display font-bold text-xs text-[#0A2540]">Generate Payslips</h4>
-          <p className="text-[10px] text-slate-400">1-click bulk monthly salary</p>
-        </button>
-
-        <button
-          onClick={() => triggerToast('✓ Batch ID Card generator opened')}
-          className="p-3 rounded-2xl bg-white border border-slate-200 hover:border-[#00C9A7] text-left shadow-sm active:scale-95 transition-all"
-        >
-          <div className="w-8 h-8 rounded-xl bg-[#E6FAF6] text-[#00C9A7] flex items-center justify-center mb-2">
-            <CreditCard className="w-4 h-4" />
-          </div>
-          <h4 className="font-display font-bold text-xs text-[#0A2540]">Issue ID Cards</h4>
-          <p className="text-[10px] text-slate-400">Generate print-ready PDFs</p>
-        </button>
-      </div>
-
-      {/* Recruitment & Candidates */}
-      <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="font-display font-bold text-sm text-[#0A2540]">Active Candidate Pipeline</h4>
-          <span className="text-xs font-bold text-[#00A88B] cursor-pointer" onClick={() => triggerToast('Viewing complete recruitment board')}>View All</span>
-        </div>
-
-        <div className="space-y-2">
-          {candidates.map((cand, idx) => (
-            <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+      {/* Main Content Viewport */}
+      <main className="flex-1 p-3.5 sm:p-4 space-y-4 pt-2">
+        
+        {/* --- TAB 1: HOME (Exact 1-to-1 Match with Image 1 Mockup) --- */}
+        {activeHrNav === 'home' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            
+            {/* Greeting Header matching Mockup: Hello, Priya 👋 / HR / Admin */}
+            <div className="flex items-center justify-between pt-1">
               <div>
-                <span className="font-display font-bold text-xs text-[#0A2540] block">{cand.name}</span>
-                <span className="text-[10px] text-slate-500">{cand.role}</span>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
+                    Hello, Priya
+                  </h2>
+                  <span className="text-xl">👋</span>
+                </div>
+                <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                  HR / Admin • <span className="text-[#00A88B] font-bold">People Operations</span>
+                </p>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200 block mb-0.5">
-                  {cand.stage}
-                </span>
-                <span className="text-[9px] text-slate-400 font-mono">{cand.time}</span>
+
+              {/* Avatar Badge */}
+              <div className="w-10 h-10 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-black text-xs shadow-sm">
+                PV
               </div>
             </div>
-          ))}
+
+            {/* 3 Top Stat Cards (3 Columns: Teams 8, Employees 96, On Leave 7) */}
+            <div className="grid grid-cols-3 gap-2.5">
+              
+              {/* Card 1: Teams */}
+              <div 
+                onClick={() => setActiveHrNav('employees')}
+                className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs flex flex-col justify-between cursor-pointer hover:border-[#00C9A7] transition-all active:scale-95"
+              >
+                <span className="text-[11px] font-bold text-slate-600 leading-tight mb-1">
+                  Teams
+                </span>
+                <span className="font-display font-black text-2xl text-[#0A2540]">
+                  {totalTeams}
+                </span>
+              </div>
+
+              {/* Card 2: Employees */}
+              <div 
+                onClick={() => setActiveHrNav('employees')}
+                className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs flex flex-col justify-between cursor-pointer hover:border-[#00C9A7] transition-all active:scale-95"
+              >
+                <span className="text-[11px] font-bold text-slate-600 leading-tight mb-1">
+                  Employees
+                </span>
+                <span className="font-display font-black text-2xl text-[#0A2540]">
+                  {totalEmployees}
+                </span>
+              </div>
+
+              {/* Card 3: On Leave */}
+              <div 
+                onClick={() => setActiveHrNav('approvals')}
+                className="bg-white border border-amber-200/80 rounded-2xl p-3 shadow-xs flex flex-col justify-between cursor-pointer hover:border-amber-500 transition-all active:scale-95"
+              >
+                <span className="text-[11px] font-bold text-amber-700 leading-tight mb-1">
+                  On Leave
+                </span>
+                <span className="font-display font-black text-2xl text-amber-600">
+                  {onLeaveCount}
+                </span>
+              </div>
+
+            </div>
+
+            {/* Overview Section (This Month - 3 Columns: Attendance 92%, Target 78%, Pending Approvals 14) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-bold text-sm text-[#0A2540]">
+                  Overview
+                </h3>
+                <span className="text-[11px] font-bold text-[#00A88B] bg-[#E6FAF6] px-2.5 py-0.5 rounded-full">
+                  This Month
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                
+                {/* Attendance */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs text-center space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 block">Attendance</span>
+                  <span className="font-display font-black text-xl text-[#00A88B]">
+                    {attendancePercent}%
+                  </span>
+                </div>
+
+                {/* Target Achievement */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs text-center space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 block">Target Achieved</span>
+                  <span className="font-display font-black text-xl text-amber-500">
+                    {targetAchievedPercent}%
+                  </span>
+                </div>
+
+                {/* Pending Approvals */}
+                <div 
+                  onClick={() => setActiveHrNav('approvals')}
+                  className="bg-white border border-slate-200 hover:border-rose-400 rounded-2xl p-3 shadow-xs text-center space-y-1 cursor-pointer transition-all active:scale-95"
+                >
+                  <span className="text-[10px] font-bold text-slate-500 block">Pending Approvals</span>
+                  <span className="font-display font-black text-xl text-rose-600">
+                    {pendingApprovalsCount}
+                  </span>
+                </div>
+
+              </div>
+            </div>
+
+            {/* HR Analytics Section: Attendance % Bar Chart (Matching Image 1) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-bold text-sm text-[#0A2540]">
+                  HR Analytics
+                </h3>
+                <button 
+                  onClick={() => setActiveHrNav('reports')}
+                  className="text-[11px] font-bold text-[#00A88B] hover:underline"
+                >
+                  View All
+                </button>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
+                <span className="text-xs font-bold text-[#0A2540] block">
+                  Attendance %
+                </span>
+
+                {/* Vertical Bar Chart Container */}
+                <div className="h-40 flex items-end justify-between gap-3 pt-4 px-2 border-b border-slate-100 relative">
+                  
+                  {/* Background grid lines */}
+                  <div className="absolute inset-x-0 top-0 border-b border-dashed border-slate-100 text-[9px] text-slate-300">100%</div>
+                  <div className="absolute inset-x-0 top-1/4 border-b border-dashed border-slate-100 text-[9px] text-slate-300">80%</div>
+                  <div className="absolute inset-x-0 top-2/4 border-b border-dashed border-slate-100 text-[9px] text-slate-300">60%</div>
+                  <div className="absolute inset-x-0 top-3/4 border-b border-dashed border-slate-100 text-[9px] text-slate-300">40%</div>
+
+                  {teamAnalyticsData.map((item) => (
+                    <div key={item.team} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end relative z-10 group cursor-pointer">
+                      {/* Tooltip on hover */}
+                      <span className="text-[10px] font-mono font-bold text-[#00A88B] opacity-0 group-hover:opacity-100 transition-opacity">
+                        {item.percent}%
+                      </span>
+                      {/* Bar */}
+                      <div 
+                        className="w-full max-w-[36px] bg-gradient-to-t from-[#00A88B] to-[#00C9A7] rounded-t-xl group-hover:brightness-110 transition-all shadow-xs"
+                        style={{ height: `${item.percent}%` }}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Team Labels X-Axis */}
+                <div className="flex justify-between px-2 text-[10px] font-bold text-slate-500">
+                  {teamAnalyticsData.map(item => (
+                    <span key={item.team} className="flex-1 text-center truncate">{item.team}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions Grid (Matching Mockup) */}
+            <div className="space-y-2">
+              <h3 className="font-display font-bold text-sm text-[#0A2540]">
+                Quick Actions
+              </h3>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                
+                {/* Action 1: Generate Payslips */}
+                <button
+                  onClick={() => setIsPayslipGenModalOpen(true)}
+                  className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-[#E6FAF6] text-[#00A88B] flex items-center justify-center font-bold flex-shrink-0">
+                    ₹
+                  </div>
+                  <div>
+                    <strong className="text-xs font-bold text-[#0A2540] block">Generate Payslips</strong>
+                    <span className="text-[10px] text-slate-400">1-click bulk monthly salary</span>
+                  </div>
+                </button>
+
+                {/* Action 2: Issue ID Cards */}
+                <button
+                  onClick={() => setActiveHrNav('more')}
+                  className="bg-white border border-slate-200 hover:border-sky-400 rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-bold text-[#0A2540] block">Issue ID Cards</strong>
+                    <span className="text-[10px] text-slate-400">Print-ready PDF with QR</span>
+                  </div>
+                </button>
+
+                {/* Action 3: Schedule Interview */}
+                <button
+                  onClick={() => setIsInterviewModalOpen(true)}
+                  className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-bold text-[#0A2540] block">Schedule Interview</strong>
+                    <span className="text-[10px] text-slate-400">Candidate hiring pipeline</span>
+                  </div>
+                </button>
+
+                {/* Action 4: Onboarding Checklists */}
+                <button
+                  onClick={() => setActiveHrNav('more')}
+                  className="bg-white border border-slate-200 hover:border-emerald-400 rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-bold text-[#0A2540] block">Onboarding &amp; Exit</strong>
+                    <span className="text-[10px] text-slate-400">Joiner &amp; exit clearance</span>
+                  </div>
+                </button>
+
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* --- TAB 2: EMPLOYEES & TEAM LEADERS --- */}
+        {activeHrNav === 'employees' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div>
+              <h2 className="font-display font-black text-lg text-[#0A2540]">Employee Directory ({totalEmployees})</h2>
+              <p className="text-xs text-slate-500">Supervision across all 8 squads &amp; Team Leaders</p>
+            </div>
+
+            <div className="space-y-2.5">
+              {teamMembers.map((member) => (
+                <div key={member.id} className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-bold text-xs">
+                      {member.avatar}
+                    </div>
+                    <div>
+                      <strong className="text-xs font-bold text-[#0A2540] block">{member.name}</strong>
+                      <span className="text-[11px] text-slate-500 font-medium">{member.role} • {member.group}</span>
+                    </div>
+                  </div>
+
+                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                    member.attendanceStatus === 'PRESENT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  }`}>
+                    {member.attendanceStatus}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 3: APPROVALS & LEAVES --- */}
+        {activeHrNav === 'approvals' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div>
+              <h2 className="font-display font-black text-lg text-[#0A2540]">HR Sanction &amp; Approvals ({pendingApprovalsCount})</h2>
+              <p className="text-xs text-slate-500">Leave applications and payment verification queue</p>
+            </div>
+
+            <div className="space-y-3">
+              {leaveRequests.map((req) => (
+                <div key={req.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <strong className="text-xs font-bold text-[#0A2540] block">Arjun Kumar</strong>
+                      <span className="text-[11px] text-slate-500">{req.leaveType} ({req.totalDays} Days)</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      req.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      {req.status}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    "{req.reason}"
+                  </p>
+
+                  {req.status === 'PENDING' && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        onClick={() => approveLeaveRequest(req.id)}
+                        className="py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                      >
+                        Sanction Leave
+                      </button>
+                      <button
+                        onClick={() => rejectLeaveRequest(req.id, 'Shift understaffing')}
+                        className="py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 4: REPORTS & CSV EXPORTS --- */}
+        {activeHrNav === 'reports' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display font-black text-lg text-[#0A2540]">HR Analytics &amp; Reports</h2>
+                <p className="text-xs text-slate-500">Biometric audits &amp; payroll reports</p>
+              </div>
+              <button
+                onClick={exportHrReportCSV}
+                className="py-2 px-3 rounded-xl bg-[#00C9A7] text-[#0A2540] font-bold text-xs flex items-center gap-1.5 shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export CSV</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] text-slate-500 block font-semibold">Monthly Headcount Growth</span>
+                <span className="font-mono-nums font-black text-lg text-[#0A2540]">+8 Joiners</span>
+              </div>
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] text-slate-500 block font-semibold">Biometric Regularity</span>
+                <span className="font-mono-nums font-black text-lg text-[#00A88B]">94.2%</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 5: MORE (ID Cards, Onboarding, Recruitment) --- */}
+        {activeHrNav === 'more' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div>
+              <h2 className="font-display font-black text-lg text-[#0A2540]">ID Cards, Onboarding &amp; Hiring</h2>
+              <p className="text-xs text-slate-500">Employee lifecycle &amp; identity issuance</p>
+            </div>
+
+            {/* ID Card preview */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                <strong className="text-xs font-bold text-[#0A2540]">Digital ID Card Studio</strong>
+                <span className="text-[10px] text-[#00A88B] font-bold">Print Ready</span>
+              </div>
+
+              <div className="w-full max-w-xs mx-auto bg-gradient-to-b from-[#0A2540] via-[#0F3258] to-[#0A2540] text-white rounded-2xl p-4 space-y-3 text-center shadow-lg">
+                <div className="w-14 h-14 rounded-2xl bg-[#00C9A7] text-[#0A2540] font-black text-lg mx-auto flex items-center justify-center">
+                  AK
+                </div>
+                <div>
+                  <h4 className="font-display font-bold text-sm text-white">Arjun Kumar</h4>
+                  <span className="text-[11px] text-[#00C9A7] font-semibold block">Senior Telecaller • TNX-8492</span>
+                </div>
+                <div className="pt-2 border-t border-white/10 flex justify-between text-[10px] text-slate-300">
+                  <span>Sales &amp; Telecalling</span>
+                  <strong className="text-white">O+ Positive</strong>
+                </div>
+              </div>
+
+              <button
+                onClick={() => triggerToast('✓ ID Card Exported as Print-Ready PDF')}
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#0A2540] font-bold text-xs flex items-center justify-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Export Print-Ready PDF ID Card</span>
+              </button>
+            </div>
+
+            {/* Onboarding Checklist */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
+              <strong className="text-xs font-bold text-[#0A2540] block">New Joiner Onboarding Checklist</strong>
+              {onboardingList.map(emp => (
+                <div key={emp.id} className="p-3 bg-slate-50 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <strong className="text-slate-800">{emp.name} ({emp.role})</strong>
+                    <span className="text-[10px] font-bold text-emerald-600">{emp.status}</span>
+                  </div>
+                  <div className="space-y-1 text-[11px] text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>KYC &amp; Educational Documents Verified</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Workstation &amp; CRM Access Created</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* 5 Bottom Navigation Tabs (Matching Image 1 Mockup) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 max-w-lg mx-auto px-2 py-1.5 flex justify-around items-center shadow-lg">
+        {[
+          { id: 'home', label: 'Home', icon: Home },
+          { id: 'employees', label: 'Employees', icon: Users },
+          { id: 'approvals', label: 'Approvals', icon: CheckCircle2, badge: pendingApprovalsCount },
+          { id: 'reports', label: 'Reports', icon: TrendingUp },
+          { id: 'more', label: 'More', icon: MoreHorizontal },
+        ].map((item) => {
+          const Icon = item.icon;
+          const isActive = activeHrNav === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveHrNav(item.id as any)}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative ${
+                isActive ? 'text-[#00C9A7]' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <div className="relative">
+                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.75]'}`} />
+                {item.badge ? (
+                  <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-black absolute -top-1 -right-2 flex items-center justify-center">
+                    {item.badge}
+                  </span>
+                ) : null}
+              </div>
+              <span className={`text-[10px] mt-1 font-medium ${isActive ? 'font-bold text-[#00A88B]' : ''}`}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Bulk Payslip Generation Modal */}
+      {isPayslipGenModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95">
+            <h3 className="font-display font-black text-lg text-[#0A2540]">Generate Monthly Payslips</h3>
+            <p className="text-xs text-slate-500">
+              Calculate basic pay, HRA, incentives, and PF deductions for all 96 employees:
+            </p>
+            <form onSubmit={handleBulkPayrollSubmit} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-600 block mb-1">Month</label>
+                  <select
+                    value={payrollMonth}
+                    onChange={(e) => setPayrollMonth(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  >
+                    {['May', 'June', 'July', 'August'].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-600 block mb-1">Year</label>
+                  <input
+                    type="text"
+                    value={payrollYear}
+                    onChange={(e) => setPayrollYear(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1 text-[11px] text-slate-600">
+                <div className="flex justify-between font-bold text-[#0A2540]">
+                  <span>Total Employees:</span>
+                  <span>96 Active</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Estimated Total Payout:</span>
+                  <span>₹38,40,000</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl bg-[#00C9A7] text-[#0A2540] font-black"
+                >
+                  Publish Payslips
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPayslipGenModalOpen(false)}
+                  className="py-3 px-4 rounded-xl bg-slate-100 text-slate-600 font-bold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Schedule Interview Modal */}
+      {isInterviewModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95">
+            <h3 className="font-display font-black text-lg text-[#0A2540]">Schedule Candidate Interview</h3>
+            <form onSubmit={handleScheduleInterviewSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Candidate Full Name</label>
+                <input
+                  type="text"
+                  value={candName}
+                  onChange={(e) => setCandName(e.target.value)}
+                  placeholder="e.g. Siddharth Rao"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-[#00C9A7]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Role Applied</label>
+                <input
+                  type="text"
+                  value={candRole}
+                  onChange={(e) => setCandRole(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Date &amp; Time</label>
+                <input
+                  type="text"
+                  value={candTime}
+                  onChange={(e) => setCandTime(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl bg-[#00C9A7] text-[#0A2540] font-black"
+                >
+                  Confirm Interview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsInterviewModalOpen(false)}
+                  className="py-3 px-4 rounded-xl bg-slate-100 text-slate-600 font-bold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -60,15 +60,17 @@ export const DevSettingsModal: React.FC = () => {
 
   return (
     <>
-      {/* Floating Dev Button (Bottom Left) */}
-      <div className="fixed bottom-4 left-4 z-50">
+      {/* Floating Circular Dev Button - Positioned on Bottom Left (Opposite the Role Switcher on Bottom Right) */}
+      <div className="fixed bottom-20 left-4 z-40">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          title="Open Developer Settings & Demo Controls"
-          className="flex items-center gap-1.5 bg-[#0A2540] hover:bg-[#0F3258] text-white px-3 py-2 rounded-2xl shadow-2xl border-2 border-[#00C9A7] text-xs font-black active:scale-95 transition-all hover:scale-105"
+          title="Open Developer Settings & Sandbox"
+          className="w-12 h-12 rounded-full bg-[#0A2540] text-amber-400 flex items-center justify-center shadow-xl shadow-black/35 border-2 border-amber-400 active:scale-95 transition-all hover:scale-105 relative"
         >
-          <Zap className="w-4 h-4 text-[#00C9A7] animate-pulse fill-[#00C9A7]" />
-          <span className="font-mono text-[11px] tracking-wide">DEV CONTROLS</span>
+          <Zap className="w-5 h-5 fill-amber-400 text-amber-400 animate-pulse" />
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[#0A2540] font-black text-[8px] flex items-center justify-center">
+            DEV
+          </span>
         </button>
       </div>
 
@@ -80,13 +82,13 @@ export const DevSettingsModal: React.FC = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#00C9A7]/20 text-[#00C9A7] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center">
                   <Sliders className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-display font-black text-base text-white flex items-center gap-2">
                     <span>Developer &amp; Demo Settings</span>
-                    <span className="text-[9px] font-mono font-bold bg-[#00C9A7] text-[#0A2540] px-1.5 py-0.2 rounded">
+                    <span className="text-[9px] font-mono font-bold bg-amber-400 text-[#0A2540] px-1.5 py-0.2 rounded">
                       SANDBOX
                     </span>
                   </h3>
@@ -102,10 +104,10 @@ export const DevSettingsModal: React.FC = () => {
               </button>
             </div>
 
-            {/* Section 1: Role Fast-Switcher */}
+            {/* Section 1: Role Fast-Switcher (Starts at Login page) */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                Active Organizational Role
+                Switch Role (Starts from Login Page)
               </label>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {[
@@ -118,17 +120,18 @@ export const DevSettingsModal: React.FC = () => {
                     key={role.id}
                     onClick={() => {
                       setCurrentRole(role.id as UserRole);
-                      setAuthStep('AUTHENTICATED');
-                      triggerToast(`Switched Role: ${role.label}`);
+                      setAuthStep('LOGIN');
+                      setIsOpen(false);
+                      triggerToast(`Switched to ${role.label} - Opened Login Page`);
                     }}
                     className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
-                      currentRole === role.id && authStep === 'AUTHENTICATED'
+                      currentRole === role.id
                         ? 'bg-[#00C9A7] text-[#0A2540] font-black border-[#00C9A7] shadow-md shadow-[#00C9A7]/25'
                         : 'bg-slate-900/80 border-white/10 text-slate-300 hover:bg-slate-800'
                     }`}
                   >
                     <span className="font-bold text-xs">{role.label}</span>
-                    <span className={`text-[10px] ${currentRole === role.id && authStep === 'AUTHENTICATED' ? 'text-[#0A2540]/80' : 'text-slate-500'}`}>
+                    <span className={`text-[10px] ${currentRole === role.id ? 'text-[#0A2540]/80' : 'text-slate-500'}`}>
                       User: {role.user}
                     </span>
                   </button>
@@ -152,6 +155,7 @@ export const DevSettingsModal: React.FC = () => {
                     key={step.id}
                     onClick={() => {
                       setAuthStep(step.id as AuthStep);
+                      setIsOpen(false);
                       triggerToast(`Navigated to: ${step.label}`);
                     }}
                     className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 transition-all ${
