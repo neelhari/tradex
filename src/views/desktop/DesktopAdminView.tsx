@@ -525,10 +525,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
       )}
 
       {/* Modals */}
-      <ExcelLeadUploadModal 
-        isOpen={useApp().isExcelUploadModalOpen}
-        onClose={() => setIsExcelUploadModalOpen(false)}
-      />
+      <ExcelLeadUploadModal />
 
       <AddEmployeeModal 
         isOpen={isAddUserModalOpen}

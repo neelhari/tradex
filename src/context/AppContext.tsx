@@ -597,7 +597,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setTeamMembers(prev => prev.map(m => {
       if (m.id === profile.id || m.name.toLowerCase() === profile.name.toLowerCase()) {
-        const updated = { ...m, attendanceStatus: 'PRESENT' as const, checkInTime: timeStr, checkInMethod: 'Face ID Biometric' };
+        const updated: TeamMember = { 
+          ...m, 
+          attendanceStatus: 'PRESENT', 
+          checkInTime: timeStr, 
+          checkInMethod: 'Face ID Biometric' 
+        };
         api.updateTeamMember(m.id, updated).catch(console.warn);
         return updated;
       }

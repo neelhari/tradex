@@ -47,6 +47,9 @@ export const AdminDashboardView: React.FC = () => {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isAssignTlModalOpen, setIsAssignTlModalOpen] = useState(false);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [selectedGroupForTl, setSelectedGroupForTl] = useState(teamGroups[0]?.id || '');
+  const [selectedLeaderName, setSelectedLeaderName] = useState(teamMembers[0]?.name || '');
+
   // Dynamic Stats from SQLite database
   const totalUsers = teamMembers.length;
   const activeUsers = teamMembers.filter(m => m.attendanceStatus === 'PRESENT').length;
