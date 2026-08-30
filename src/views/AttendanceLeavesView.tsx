@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useScreenData } from '../hooks/useScreenData';
 import { 
   Calendar, 
   UserCheck, 
@@ -14,7 +15,37 @@ import {
 
 export const AttendanceLeavesView: React.FC = () => {
   const { attendanceLogs, leaveRequests, setIsFaceIdModalOpen, setIsLeaveModalOpen, profile } = useApp();
+
+  useScreenData('attendanceLeaves');
   const [activeSubTab, setActiveSubTab] = useState<'attendance' | 'leaves'>('attendance');
+
+  // Calendar reflects the attendance records stored in SQLite
+  const latestLogDate = attendanceLogs.map((l) => l.date).sort().at(-1);
+  const monthAnchor = latestLogDate ? new Date(`${latestLogDate}T00:00:00`) : new Date();
+  const monthLabel = monthAnchor.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const daysInMonth = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 0).getDate();
+  const leadingBlanks = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth(), 1).getDay();
+  const statusByDay = new Map(attendanceLogs.map((log) => [log.dayNumber, log.status]));
+  const latestDay = monthAnchor.getDate();
+
+  const countOf = (status: string) => attendanceLogs.filter((l) => l.status === status).length;
+  const presentDays = countOf('PRESENT') + countOf('HALF_DAY');
+  const leaveDays = countOf('LEAVE');
+  const absentDays = countOf('ABSENT');
+  const holidayDays = countOf('HOLIDAY');
+
+  const formatLogDate = (iso: string) => {
+    const parsed = new Date(`${iso}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return iso;
+    const today = new Date();
+    const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const pretty = parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (isSameDay(parsed, today)) return `Today, ${pretty}`;
+    if (isSameDay(parsed, yesterday)) return `Yesterday, ${pretty}`;
+    return pretty;
+  };
 
   return (
     <div className="flex flex-col gap-4 pb-28 pt-2 px-3 sm:px-4 max-w-lg mx-auto">
@@ -68,7 +99,7 @@ export const AttendanceLeavesView: React.FC = () => {
           {/* Monthly Calendar View Card */}
           <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm space-y-3">
             <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-              <h4 className="font-display font-black text-base text-[#0A2540]">May 2025</h4>
+              <h4 className="font-display font-black text-base text-[#0A2540]">{monthLabel}</h4>
               <div className="flex items-center gap-1">
                 <button className="p-1 rounded-lg hover:bg-slate-100"><ChevronLeft className="w-4 h-4 text-slate-600" /></button>
                 <button className="p-1 rounded-lg hover:bg-slate-100"><ChevronRight className="w-4 h-4 text-slate-600" /></button>
@@ -82,28 +113,32 @@ export const AttendanceLeavesView: React.FC = () => {
 
             {/* Days Grid with clean vertical separation */}
             <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-mono font-bold">
-              {[...Array(31)].map((_, i) => {
+              {[...Array(leadingBlanks)].map((_, i) => (
+                <div key={`blank-${i}`} />
+              ))}
+              {[...Array(daysInMonth)].map((_, i) => {
                 const day = i + 1;
-                const isToday = day === 28;
-                const isHoliday = day % 7 === 0 || day % 7 === 1;
-                const isLeave = day === 22;
-                
+                const status = statusByDay.get(day);
+                const isLatest = day === latestDay;
+
                 return (
                   <div
                     key={day}
                     className={`h-11 rounded-xl flex flex-col items-center justify-center relative ${
-                      isToday ? 'bg-[#00C9A7] text-[#0A2540] shadow-md shadow-[#00C9A7]/30 font-extrabold' :
-                      isLeave ? 'bg-amber-100 text-amber-900 border border-amber-300' :
-                      isHoliday ? 'bg-slate-50 text-slate-400' :
-                      day < 28 ? 'bg-emerald-50/80 text-emerald-900 border border-emerald-200' :
-                      'text-slate-600'
+                      isLatest ? 'bg-[#00C9A7] text-[#0A2540] shadow-md shadow-[#00C9A7]/30 font-extrabold' :
+                      status === 'LEAVE' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                      status === 'ABSENT' ? 'bg-rose-100 text-rose-900 border border-rose-300' :
+                      status === 'HOLIDAY' ? 'bg-slate-50 text-slate-400' :
+                      status === 'HALF_DAY' ? 'bg-sky-50 text-sky-900 border border-sky-200' :
+                      status === 'PRESENT' ? 'bg-emerald-50/80 text-emerald-900 border border-emerald-200' :
+                      'text-slate-400'
                     }`}
                   >
                     <span className="text-xs leading-none">{day}</span>
-                    {day < 28 && !isHoliday && !isLeave && (
+                    {status === 'PRESENT' && !isLatest && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
                     )}
-                    {isLeave && (
+                    {status === 'LEAVE' && (
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1" />
                     )}
                   </div>
@@ -113,10 +148,10 @@ export const AttendanceLeavesView: React.FC = () => {
 
             {/* Legend */}
             <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-600 pt-3 border-t border-slate-100">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Present (22 Days)</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Leave (1 Day)</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500" /> Absent (0 Days)</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" /> Weekly Off (8 Days)</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Present ({presentDays} Days)</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Leave ({leaveDays} Days)</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500" /> Absent ({absentDays} Days)</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" /> Weekly Off ({holidayDays} Days)</span>
             </div>
           </div>
 
@@ -126,7 +161,7 @@ export const AttendanceLeavesView: React.FC = () => {
             {attendanceLogs.map((log, idx) => (
               <div key={idx} className="nexus-card p-3 bg-white border border-slate-200 flex items-center justify-between text-xs">
                 <div>
-                  <span className="font-bold text-[#0A2540] block">{log.date === '2025-05-28' ? 'Today, 28 May 2025' : log.date === '2025-05-27' ? 'Yesterday, 27 May 2025' : log.date}</span>
+                  <span className="font-bold text-[#0A2540] block">{formatLogDate(log.date)}</span>
                   <span className="text-slate-400 text-[10px] font-mono block mt-0.5">{log.method || 'Weekly Off'}</span>
                 </div>
                 <div className="text-right">
@@ -143,7 +178,7 @@ export const AttendanceLeavesView: React.FC = () => {
           <div className="nexus-card p-4 bg-white border border-slate-200 flex items-center justify-between shadow-sm">
             <div>
               <h4 className="font-display font-bold text-sm text-[#0A2540]">Annual Leave Balance</h4>
-              <p className="text-[11px] text-slate-500 font-medium">14 Days Available for 2025</p>
+              <p className="text-[11px] text-slate-500 font-medium">{profile.totalLeaveBalance} Days Available</p>
             </div>
             <button
               onClick={() => setIsLeaveModalOpen(true)}

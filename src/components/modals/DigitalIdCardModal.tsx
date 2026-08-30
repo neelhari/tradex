@@ -48,9 +48,7 @@ export const DigitalIdCardModal: React.FC = () => {
           {/* Photo & Identity */}
           <div className="flex flex-col items-center text-center my-3">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#00C9A7] to-[#00B4D8] p-1 shadow-lg shadow-[#00C9A7]/30 mb-2">
-              <div className="w-full h-full rounded-xl bg-white flex items-center justify-center text-[#0A2540] font-black text-2xl">
-                AK
-              </div>
+              <div className="w-full h-full rounded-xl bg-white flex items-center justify-center text-[#0A2540] font-black text-2xl">{profile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}</div>
             </div>
             <h4 className="font-display font-extrabold text-base text-white">{profile.name}</h4>
             <p className="text-xs font-semibold text-[#38E1B7]">{profile.roleTitle}</p>

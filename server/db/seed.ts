@@ -81,11 +81,11 @@ export function seedInitialDataIfEmpty() {
 
   // 6. Leave Requests
   const insertLeave = db.prepare(`
-    INSERT INTO leave_requests (id, leaveType, fromDate, toDate, totalDays, reason, status, appliedOn, approvedBy)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO leave_requests (id, employeeName, employeeCode, leaveType, fromDate, toDate, totalDays, reason, status, appliedOn, approvedBy)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  insertLeave.run('leave-1', 'Casual Leave', '22 May 2025', '22 May 2025', 1, 'Family personal commitment in hometown', 'APPROVED', '20 May 2025', 'Ramesh Sharma (Team Leader)');
-  insertLeave.run('leave-2', 'Sick Leave', '05 Jun 2025', '06 Jun 2025', 2, 'Scheduled medical health checkup', 'PENDING', 'Today', null);
+  insertLeave.run('leave-1', 'Arjun Kumar', 'TNX-8492', 'Casual Leave', '22 May 2025', '22 May 2025', 1, 'Family personal commitment in hometown', 'APPROVED', '20 May 2025', 'Ramesh Sharma (Team Leader)');
+  insertLeave.run('leave-2', 'Arjun Kumar', 'TNX-8492', 'Sick Leave', '05 Jun 2025', '06 Jun 2025', 2, 'Scheduled medical health checkup', 'PENDING', 'Today', null);
 
   // 7. Payslips
   const insertPayslip = db.prepare(`

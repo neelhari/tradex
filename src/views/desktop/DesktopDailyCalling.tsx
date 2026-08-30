@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   PhoneCall, 
   Plus, 
@@ -28,6 +29,8 @@ export const DesktopDailyCalling: React.FC = () => {
     triggerToast 
   } = useApp();
 
+  useScreenData('dailyCalling');
+
   const [activeTab, setActiveTab] = useState<'assigned' | 'history'>('assigned');
   const [selectedOutcome, setSelectedOutcome] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,7 +45,7 @@ export const DesktopDailyCalling: React.FC = () => {
   // Filter assigned leads for the active employee
   const myAssignedLeads = assignedLeads.filter(lead => {
     const isMine = lead.assignedToEmployeeId === profile.id || 
-                   lead.assignedToEmployeeName.toLowerCase() === profile.name.toLowerCase() ||
+                   (lead.assignedToEmployeeName ?? '').toLowerCase() === profile.name.toLowerCase() ||
                    lead.assignedToEmployeeId === 'emp-101';
     const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           lead.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -120,7 +123,7 @@ export const DesktopDailyCalling: React.FC = () => {
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Dials Made</span>
             <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{stats.dialsMade}</span>
-            <span className="text-xs text-slate-400 block mt-1 font-semibold">Target: 100 Dials</span>
+            <span className="text-xs text-slate-400 block mt-1 font-semibold">Target: {stats.todayGoalCalls} Dials</span>
           </div>
           <div className="w-11 h-11 rounded-xl bg-[#E6FAF6] text-[#00C9A7] flex items-center justify-center">
             <PhoneCall className="w-5 h-5" />

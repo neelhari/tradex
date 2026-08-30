@@ -4,28 +4,49 @@ import { X, PhoneCall, Check, Clock, Calendar, Sparkles } from 'lucide-react';
 import { CallOutcome } from '../../types';
 
 export const QuickCallLogModal: React.FC = () => {
-  const { isQuickCallModalOpen, setIsQuickCallModalOpen, logNewCall, clients } = useApp();
+  const { isQuickCallModalOpen, setIsQuickCallModalOpen, logNewCall, myLeads: clients } = useApp();
 
-  const [clientName, setClientName] = useState('Apex Global Corp - Vikram Mehta');
-  const [phone, setPhone] = useState('+91 98765 43210');
-  const [outcome, setOutcome] = useState<CallOutcome>('INTERESTED');
+  const [clientName, setClientName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [outcome, setOutcome] = useState<CallOutcome>('CONNECTED');
   const [durationMin, setDurationMin] = useState('3');
-  const [notes, setNotes] = useState('Requested enterprise pricing & WhatsApp brochure.');
-  const [followUpDate, setFollowUpDate] = useState('Tomorrow, 11:00 AM');
+  const [notes, setNotes] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
 
   if (!isQuickCallModalOpen) return null;
+
+  // Picking an existing lead fills the contact details from SQLite
+  const handlePickLead = (leadId: string) => {
+    const lead = clients.find((c) => c.id === leadId);
+    if (!lead) return;
+    setClientName(lead.name);
+    setCompanyName(lead.company);
+    setPhone(lead.phone);
+  };
+
+  const resetForm = () => {
+    setClientName('');
+    setCompanyName('');
+    setPhone('');
+    setNotes('');
+    setFollowUpDate('');
+    setDurationMin('3');
+    setOutcome('CONNECTED');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     logNewCall({
-      clientName: clientName.split(' - ')[1] || clientName,
-      companyName: clientName.split(' - ')[0] || 'Direct Client',
+      clientName,
+      companyName: companyName || 'Direct Client',
       phoneNumber: phone,
       outcome,
       durationSec: parseInt(durationMin || '2') * 60,
       notes,
-      followUpDate: outcome === 'CALLBACK' || outcome === 'INTERESTED' ? followUpDate : undefined,
+      followUpDate: outcome === 'CALLBACK' || outcome === 'INTERESTED' ? followUpDate || undefined : undefined,
     });
+    resetForm();
     setIsQuickCallModalOpen(false);
   };
 
@@ -62,16 +83,57 @@ export const QuickCallLogModal: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Client Selector */}
+          {/* Pick from the live pipeline, or type a new contact */}
+          {clients.length > 0 && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Pick from Pipeline</label>
+              <select
+                defaultValue=""
+                onChange={(e) => handlePickLead(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+              >
+                <option value="">— Select an existing lead —</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} · {c.company}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Client Name</label>
+              <input
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+                placeholder="Contact person"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Company</label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+                placeholder="Company name"
+              />
+            </div>
+          </div>
+
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Client / Lead</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
             <input
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-              placeholder="Client Name or Company"
-              required
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7] font-mono"
+              placeholder="+91 ..."
             />
           </div>
 

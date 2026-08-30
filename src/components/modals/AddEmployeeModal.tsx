@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useListDefault } from '../../hooks/useListDefault';
 import { 
   X, 
   UserPlus, 
@@ -41,8 +42,10 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
   const [position, setPosition] = useState('Senior Telecaller / SDR');
   const [role, setRole] = useState<UserRole>('telecaller');
   const [department, setDepartment] = useState('Sales & Client Acquisition');
-  const [teamGroup, setTeamGroup] = useState(teamGroups[0]?.name || 'Alpha Growth Team');
-  const [teamLeaderName, setTeamLeaderName] = useState(teamGroups[0]?.leaderName || 'Ramesh Sharma');
+  // Filled from the real team list once it loads, so a new employee is never
+  // filed under a hardcoded team/leader that may not exist.
+  const [teamGroup, setTeamGroup] = useState('');
+  const [teamLeaderName, setTeamLeaderName] = useState('');
 
   // 4. Address
   const [address, setAddress] = useState('');
@@ -64,6 +67,14 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
   const [employeeId, setEmployeeId] = useState(`TNX-${Math.floor(8000 + Math.random() * 999)}`);
   const [dateOfJoining, setDateOfJoining] = useState('2025-06-01');
   const [salaryDate, setSalaryDate] = useState('1st of every month');
+
+  useListDefault(teamGroup, setTeamGroup, teamGroups, (g) => g.name);
+
+  // The reporting leader is never typed — it is whoever leads the chosen team.
+  const leaderOfChosenTeam = teamGroups.find((g) => g.name === teamGroup)?.leaderName ?? '';
+  useEffect(() => {
+    setTeamLeaderName(leaderOfChosenTeam);
+  }, [leaderOfChosenTeam]);
 
   if (!isOpen) return null;
 
@@ -310,12 +321,12 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">REPORTING TEAM LEADER</label>
-                <input
-                  type="text"
-                  value={teamLeaderName}
-                  onChange={(e) => setTeamLeaderName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800"
-                />
+                <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-600">
+                  {teamLeaderName || 'Set by the team above'}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Follows whoever leads the selected team. Change it in People → Teams.
+                </p>
               </div>
             </div>
           </div>

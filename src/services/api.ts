@@ -17,36 +17,90 @@ import {
   LeadBatch,
   FaceBiometricProfile,
   OfferLetterData,
-  PaymentVerificationItem
+  PaymentVerificationItem,
+  OfficeSettings
 } from '../types';
 
 const API_BASE = (typeof window !== 'undefined' && window.location.hostname === 'localhost') 
   ? 'http://localhost:5001/api' 
   : '/api';
 
-async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+const TOKEN_KEY = 'tnx_auth_token';
+
+export function getAuthToken(): string | null {
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    });
-
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      throw new Error(errBody.error || `HTTP error! status: ${res.status}`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.warn(`[API Call ${endpoint} Warning]:`, error);
-    throw error;
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
   }
 }
 
+export function setAuthToken(token: string | null): void {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Storage blocked — the session simply will not survive a reload
+  }
+}
+
+/** Thrown for a non-2xx response, carrying the status so callers can branch. */
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
+async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, errBody.error || `Request failed (${res.status})`);
+  }
+
+  return (await res.json()) as T;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'telecaller' | 'team_leader' | 'hr' | 'admin';
+  empCode: string | null;
+  employeeId: string | null;
+}
+
 export const api = {
+  // Auth
+  login: (email: string, password: string) =>
+    request<{ token: string; user: AuthUser }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  me: () => request<{ user: AuthUser }>('/auth/me'),
+  createLogin: (data: { email: string; name: string; role: string; empCode?: string; employeeId?: string }) =>
+    request<{ email: string; temporaryPassword: string }>('/auth/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+
   // Profile
   getProfile: () => request<EmployeeProfile>('/profile'),
   updateProfile: (data: Partial<EmployeeProfile>) => 
@@ -74,7 +128,13 @@ export const api = {
     request<{ success: boolean }>(`/clients/${id}`, { method: 'DELETE' }),
 
   // Attendance
-  getAttendance: () => request<AttendanceRecord[]>('/attendance'),
+  getAttendance: (role?: string) =>
+    request<AttendanceRecord[]>(`/attendance${role ? `?role=${role}` : ''}`),
+  updateAttendance2: (id: string, data: Partial<AttendanceRecord>) =>
+    request<AttendanceRecord>(`/attendance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getOffice: () => request<OfficeSettings>('/attendance/office'),
+  updateOffice: (data: Partial<OfficeSettings>) =>
+    request<OfficeSettings>('/attendance/office', { method: 'PUT', body: JSON.stringify(data) }),
   recordAttendance: (data: AttendanceRecord) => 
     request<AttendanceRecord>('/attendance', { method: 'POST', body: JSON.stringify(data) }),
   updateAttendance: (id: string, data: Partial<AttendanceRecord>) => 
@@ -176,6 +236,17 @@ export const api = {
     request<OfferLetterData>('/offer-letters', { method: 'POST', body: JSON.stringify(data) }),
 
   // Payments
+  // Employee documents
+  getEmployeeDocuments: (employeeId: string) =>
+    request<any[]>(`/employee-documents?employeeId=${employeeId}`),
+  getEmployeeDocument: (id: string) => request<any>(`/employee-documents/${id}`),
+  uploadEmployeeDocument: (data: {
+    employeeId: string; title: string; category: string; fileName: string;
+    mimeType: string; sizeBytes: number; content: string;
+  }) => request<any>('/employee-documents', { method: 'POST', body: JSON.stringify(data) }),
+  deleteEmployeeDocument: (id: string) =>
+    request<{ deleted: string }>(`/employee-documents/${id}`, { method: 'DELETE' }),
+
   getPayments: () => request<PaymentVerificationItem[]>('/payments'),
   createPayment: (data: Omit<PaymentVerificationItem, 'id'> & { id?: string }) => 
     request<PaymentVerificationItem>('/payments', { method: 'POST', body: JSON.stringify(data) }),

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { useScreenData } from '../hooks/useScreenData';
 import { 
   CheckCircle2, 
   Phone, 
@@ -24,11 +25,18 @@ export const TelecallerHomeView: React.FC = () => {
     setActiveTab 
   } = useApp();
 
+  const { isLoading } = useScreenData('telecallerHome');
+
+  // May be undefined while the pipeline loads, or when no leads are assigned yet
   const urgentLead = clients.find(c => c.status === 'Due Today') || clients[0];
-  const goalPercentage = Math.round((stats.dialsMade / stats.todayGoalCalls) * 100);
-  const tgtPercentage = Math.round((stats.monthlySalesAchieved / stats.monthlySalesTarget) * 100);
+  const goalPercentage = Math.round((stats.dialsMade / Math.max(1, stats.todayGoalCalls)) * 100);
+  const tgtPercentage = Math.round((stats.monthlySalesAchieved / Math.max(1, stats.monthlySalesTarget)) * 100);
+
+  const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+  const remainingToTarget = Math.max(0, stats.monthlySalesTarget - stats.monthlySalesAchieved);
 
   const handleInstantCall = () => {
+    if (!urgentLead) return;
     triggerToast(`📞 Dialing ${urgentLead.name} (${urgentLead.phone})...`);
     setTimeout(() => {
       setIsQuickCallModalOpen(true);
@@ -36,6 +44,7 @@ export const TelecallerHomeView: React.FC = () => {
   };
 
   const handleWhatsApp = () => {
+    if (!urgentLead) return;
     triggerToast(`💬 Opening WhatsApp with product demo template for ${urgentLead.name}`);
   };
 
@@ -195,10 +204,10 @@ export const TelecallerHomeView: React.FC = () => {
 
           <div className="flex items-baseline justify-between font-mono-nums text-xs mb-3">
             <span className="font-extrabold text-base text-[#0A2540]">
-              ₹1,45,000
+              {inr(stats.monthlySalesAchieved)}
             </span>
             <span className="text-slate-400 font-semibold text-xs">
-              / ₹2,00,000
+              / {inr(stats.monthlySalesTarget)}
             </span>
           </div>
 
@@ -213,45 +222,54 @@ export const TelecallerHomeView: React.FC = () => {
 
         <div className="bg-slate-50 p-2.5 rounded-xl text-xs text-slate-600 flex justify-between font-medium">
           <span>Remaining to hit incentive:</span>
-          <span className="font-bold font-mono text-[#00A88B]">₹55,000</span>
+          <span className="font-bold font-mono text-[#00A88B]">{inr(remainingToTarget)}</span>
         </div>
       </div>
 
       {/* 5. Urgent Client Follow-up Alert Card */}
-      <div className="nexus-card p-4 bg-gradient-to-br from-[#FFFBEB] via-white to-white border border-amber-300/60 shadow-sm">
-        <div className="flex items-center justify-between mb-2">
-          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-300">
-            <Clock className="w-3 h-3 text-amber-600" />
-            <span>{urgentLead.dueTime || 'Due in 15 mins'}</span>
-          </span>
-          <span className="text-[11px] font-bold text-slate-400">Next Callback Lead</span>
-        </div>
+      {urgentLead ? (
+        <div className="nexus-card p-4 bg-gradient-to-br from-[#FFFBEB] via-white to-white border border-amber-300/60 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-300">
+              <Clock className="w-3 h-3 text-amber-600" />
+              <span>{urgentLead.dueTime || 'Due in 15 mins'}</span>
+            </span>
+            <span className="text-[11px] font-bold text-slate-400">Next Callback Lead</span>
+          </div>
 
-        <div className="mb-3">
-          <h4 className="font-display font-bold text-base text-[#0A2540]">{urgentLead.company}</h4>
-          <p className="text-xs font-semibold text-slate-700">{urgentLead.name}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{urgentLead.requirement}</p>
-        </div>
+          <div className="mb-3">
+            <h4 className="font-display font-bold text-base text-[#0A2540]">{urgentLead.company}</h4>
+            <p className="text-xs font-semibold text-slate-700">{urgentLead.name}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{urgentLead.requirement}</p>
+          </div>
 
-        {/* 1-Tap Action Triggers */}
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <button
-            onClick={handleInstantCall}
-            className="py-2.5 px-3 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-bold text-xs shadow-md shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            <span>Instant Call</span>
-          </button>
+          {/* 1-Tap Action Triggers */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              onClick={handleInstantCall}
+              className="py-2.5 px-3 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-bold text-xs shadow-md shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>Instant Call</span>
+            </button>
 
-          <button
-            onClick={handleWhatsApp}
-            className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
-          >
-            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-            <span>WhatsApp</span>
-          </button>
+            <button
+              onClick={handleWhatsApp}
+              className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>WhatsApp</span>
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm text-center space-y-1">
+          <h4 className="font-display font-bold text-sm text-[#0A2540]">No callbacks due</h4>
+          <p className="text-xs text-slate-500">
+            {isLoading ? 'Loading your pipeline…' : 'Leads assigned to you will appear here.'}
+          </p>
+        </div>
+      )}
 
       {/* 6. Quick Action Floating Buttons */}
       <div className="grid grid-cols-2 gap-2.5">

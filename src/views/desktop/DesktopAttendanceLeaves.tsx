@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   Calendar as CalendarIcon, 
   UserCheck, 
@@ -14,6 +15,37 @@ import {
 
 export const DesktopAttendanceLeaves: React.FC = () => {
   const { profile, attendanceLogs, leaveRequests, setIsFaceIdModalOpen, setIsLeaveModalOpen, triggerToast } = useApp();
+
+  useScreenData('attendanceLeaves');
+
+  // Calendar is driven by the attendance records in SQLite. The displayed month
+  // follows the most recent record so the grid always lines up with real data.
+  const latestLogDate = attendanceLogs
+    .map((l) => l.date)
+    .sort()
+    .at(-1);
+  const monthAnchor = latestLogDate ? new Date(`${latestLogDate}T00:00:00`) : new Date();
+  const monthLabel = monthAnchor.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const daysInMonth = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 0).getDate();
+  const leadingBlanks = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth(), 1).getDay();
+
+  const statusByDay = new Map(attendanceLogs.map((log) => [log.dayNumber, log.status]));
+  const latestDay = latestLogDate ? new Date(`${latestLogDate}T00:00:00`).getDate() : new Date().getDate();
+
+  const countOf = (status: string) => attendanceLogs.filter((l) => l.status === status).length;
+  const presentDays = countOf('PRESENT') + countOf('HALF_DAY');
+  const leaveDays = countOf('LEAVE');
+  const absentDays = countOf('ABSENT');
+  const holidayDays = countOf('HOLIDAY');
+
+  // Leave quotas derived from the employee's balance and their approved requests
+  const usedByType = (type: string) =>
+    leaveRequests
+      .filter((r) => r.leaveType === type && r.status === 'APPROVED')
+      .reduce((sum, r) => sum + r.totalDays, 0);
+  const casualUsed = usedByType('Casual Leave');
+  const sickUsed = usedByType('Sick Leave');
+  const paidUsed = usedByType('Earned / Paid Leave');
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -54,7 +86,7 @@ export const DesktopAttendanceLeaves: React.FC = () => {
         {/* Left: Monthly Calendar Card */}
         <div className="lg:col-span-5 nexus-card p-6 bg-white border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-black text-lg text-[#0A2540]">May 2025 Calendar</h3>
+            <h3 className="font-display font-black text-lg text-[#0A2540]">{monthLabel} Calendar</h3>
             <div className="flex items-center gap-1">
               <button className="p-1.5 rounded-lg hover:bg-slate-100"><ChevronLeft className="w-4 h-4 text-slate-600" /></button>
               <button className="p-1.5 rounded-lg hover:bg-slate-100"><ChevronRight className="w-4 h-4 text-slate-600" /></button>
@@ -68,25 +100,30 @@ export const DesktopAttendanceLeaves: React.FC = () => {
 
           {/* Days Grid */}
           <div className="grid grid-cols-7 gap-2 text-center text-xs font-mono font-bold">
-            {[...Array(31)].map((_, i) => {
+            {[...Array(leadingBlanks)].map((_, i) => (
+              <div key={`blank-${i}`} />
+            ))}
+            {[...Array(daysInMonth)].map((_, i) => {
               const day = i + 1;
-              const isToday = day === 28;
-              const isHoliday = day % 7 === 0 || day % 7 === 1;
-              const isLeave = day === 22;
+              const status = statusByDay.get(day);
+              const isLatest = day === latestDay;
 
               return (
                 <div
                   key={day}
-                  className={`aspect-square rounded-xl flex flex-col items-center justify-center relative cursor-pointer hover:scale-105 transition-all ${
-                    isToday ? 'bg-[#00C9A7] text-[#0A2540] shadow-md shadow-[#00C9A7]/30 font-extrabold' :
-                    isLeave ? 'bg-amber-100 text-amber-900 border border-amber-300' :
-                    isHoliday ? 'bg-slate-50 text-slate-400' :
-                    day < 28 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
-                    'text-slate-600'
+                  title={status ? `${day}: ${status.replace('_', ' ')}` : `${day}: no record`}
+                  className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all ${
+                    isLatest ? 'bg-[#00C9A7] text-[#0A2540] shadow-md shadow-[#00C9A7]/30 font-extrabold' :
+                    status === 'LEAVE' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                    status === 'ABSENT' ? 'bg-rose-100 text-rose-900 border border-rose-300' :
+                    status === 'HOLIDAY' ? 'bg-slate-50 text-slate-400' :
+                    status === 'HALF_DAY' ? 'bg-sky-50 text-sky-800 border border-sky-200' :
+                    status === 'PRESENT' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+                    'text-slate-400'
                   }`}
                 >
                   <span>{day}</span>
-                  {day < 28 && !isHoliday && !isLeave && (
+                  {status === 'PRESENT' && !isLatest && (
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-0.5" />
                   )}
                 </div>
@@ -96,10 +133,10 @@ export const DesktopAttendanceLeaves: React.FC = () => {
 
           {/* Legend */}
           <div className="grid grid-cols-2 gap-2 text-[11px] font-bold text-slate-600 pt-3 border-t border-slate-100">
-            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Present (22 Days)</span>
-            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Approved Leave (1)</span>
-            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Absent (0 Days)</span>
-            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Week Off (8 Days)</span>
+            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Present ({presentDays} Days)</span>
+            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Approved Leave ({leaveDays})</span>
+            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Absent ({absentDays} Days)</span>
+            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Week Off ({holidayDays} Days)</span>
           </div>
         </div>
 
@@ -110,20 +147,20 @@ export const DesktopAttendanceLeaves: React.FC = () => {
           <div className="grid grid-cols-3 gap-4">
             <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm text-center">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Casual Leave</span>
-              <span className="font-mono-nums font-black text-2xl text-[#0A2540] my-1 block">7 / 8</span>
-              <span className="text-[10px] text-emerald-600 font-bold block">1 Used</span>
+              <span className="font-mono-nums font-black text-2xl text-[#0A2540] my-1 block">{casualUsed}</span>
+              <span className="text-[10px] text-emerald-600 font-bold block">Days Approved</span>
             </div>
 
             <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm text-center">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sick Leave</span>
-              <span className="font-mono-nums font-black text-2xl text-sky-600 my-1 block">4 / 4</span>
-              <span className="text-[10px] text-sky-600 font-bold block">Full Quota</span>
+              <span className="font-mono-nums font-black text-2xl text-sky-600 my-1 block">{sickUsed}</span>
+              <span className="text-[10px] text-sky-600 font-bold block">Days Approved</span>
             </div>
 
             <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Paid Leaves</span>
-              <span className="font-mono-nums font-black text-2xl text-[#00A88B] my-1 block">2 / 2</span>
-              <span className="text-[10px] text-[#00A88B] font-bold block">Available</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Balance Remaining</span>
+              <span className="font-mono-nums font-black text-2xl text-[#00A88B] my-1 block">{profile.totalLeaveBalance}</span>
+              <span className="text-[10px] text-[#00A88B] font-bold block">{paidUsed} Paid Used</span>
             </div>
           </div>
 
@@ -131,7 +168,7 @@ export const DesktopAttendanceLeaves: React.FC = () => {
           <div className="nexus-card bg-white border border-slate-200 shadow-sm overflow-hidden p-5 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-black text-base text-[#0A2540]">Leave Applications History</h3>
-              <span className="text-xs text-slate-400 font-medium">Supervisor: Ramesh Sharma</span>
+              <span className="text-xs text-slate-400 font-medium">Supervisor: {profile.teamLeaderName}</span>
             </div>
 
             <div className="overflow-x-auto">

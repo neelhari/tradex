@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   Users, 
   Search, 
@@ -15,7 +16,9 @@ import {
 import { LeadTemperature } from '../../types';
 
 export const DesktopClientsPipeline: React.FC = () => {
-  const { clients, triggerToast, setIsQuickCallModalOpen } = useApp();
+  const { myLeads: clients, triggerToast, setIsQuickCallModalOpen } = useApp();
+
+  useScreenData('clientsPipeline');
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleCall = (client: any) => {

@@ -46,6 +46,17 @@ export interface ClientLead {
 }
 
 export interface AttendanceRecord {
+  id?: string;
+  employeeId?: string;
+  employeeName?: string;
+  /** Photo taken at check-in. Admin only — never sent to other roles. */
+  checkInPhoto?: string;
+  /** Coordinates at check-in. Admin only — never sent to other roles. */
+  checkInLat?: number;
+  checkInLng?: number;
+  /** Metres from the office at check-in. */
+  checkInDistanceM?: number;
+  locationStatus?: 'AT_OFFICE' | 'AWAY' | 'NOT_SHARED' | 'OFFICE_NOT_SET';
   date: string;
   dayNumber: number;
   status: 'PRESENT' | 'ABSENT' | 'LEAVE' | 'HOLIDAY' | 'HALF_DAY';
@@ -57,6 +68,8 @@ export interface AttendanceRecord {
 
 export interface LeaveRequest {
   id: string;
+  employeeName?: string;
+  employeeCode?: string;
   leaveType: 'Casual Leave' | 'Sick Leave' | 'Earned / Paid Leave';
   fromDate: string;
   toDate: string;
@@ -117,6 +130,11 @@ export interface TeamMember {
   salesAchieved: number;
   salesTarget: number;
   conversionRate: number;
+  email?: string;
+  /** Which of the four portals this person may enter. */
+  portal?: UserRole;
+  active?: number;
+  deactivatedOn?: string;
 }
 
 export interface TeamGroup {
@@ -287,4 +305,12 @@ export interface PaymentVerificationItem {
   timestamp: string;
   status: 'PENDING_HR_AUDIT' | 'VERIFIED' | 'REJECTED';
   receiptUrl?: string;
+}
+
+export interface OfficeSettings {
+  id: string;
+  label: string;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMeters: number;
 }

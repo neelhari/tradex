@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   Users, 
   UserCheck, 
@@ -54,6 +55,8 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
     generateBulkPayslips, 
     triggerToast 
   } = useApp();
+
+  useScreenData('hrDashboard');
 
   const [activeSubTab, setActiveSubTab] = useState<string>(currentTab);
   const activeTab = onTabChange ? currentTab : activeSubTab;
@@ -486,7 +489,18 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {teamMembers.map((emp) => (
+                  {teamMembers
+                    .filter((emp) => {
+                      const q = searchQuery.trim().toLowerCase();
+                      if (!q) return true;
+                      return (
+                        emp.name.toLowerCase().includes(q) ||
+                        emp.empCode.toLowerCase().includes(q) ||
+                        emp.role.toLowerCase().includes(q) ||
+                        emp.group.toLowerCase().includes(q)
+                      );
+                    })
+                    .map((emp) => (
                     <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5">
                         <div className="flex items-center gap-3">
@@ -691,7 +705,7 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
               {leaveRequests.map((req) => (
                 <div key={req.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-xs text-[#0A2540] block">Arjun Kumar ({req.leaveType})</span>
+                    <span className="font-bold text-xs text-[#0A2540] block">{req.employeeName || 'Employee'} ({req.leaveType})</span>
                     <span className="text-[11px] text-slate-500">{req.fromDate} to {req.toDate} • Reason: {req.reason}</span>
                   </div>
                   <div className="flex items-center gap-3">

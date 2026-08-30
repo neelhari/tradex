@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useScreenData } from '../hooks/useScreenData';
 import { 
   PhoneCall, 
   Plus, 
@@ -30,6 +31,8 @@ export const DailyCallingView: React.FC = () => {
     triggerToast 
   } = useApp();
 
+  useScreenData('dailyCalling');
+
   const [activeSubTab, setActiveSubTab] = useState<'assigned' | 'history'>('assigned');
   const [selectedOutcome, setSelectedOutcome] = useState<string>('ALL');
   const [search, setSearch] = useState('');
@@ -44,7 +47,7 @@ export const DailyCallingView: React.FC = () => {
   // Filter assigned leads for the active employee (or fallback to all if matching)
   const myAssignedLeads = assignedLeads.filter(lead => {
     const isMine = lead.assignedToEmployeeId === profile.id || 
-                   lead.assignedToEmployeeName.toLowerCase() === profile.name.toLowerCase() ||
+                   (lead.assignedToEmployeeName ?? '').toLowerCase() === profile.name.toLowerCase() ||
                    lead.assignedToEmployeeId === 'emp-101'; // Default demo telecaller
     const matchesSearch = lead.name.toLowerCase().includes(search.toLowerCase()) ||
                           lead.company.toLowerCase().includes(search.toLowerCase()) ||
@@ -111,7 +114,7 @@ export const DailyCallingView: React.FC = () => {
         <div className="nexus-card p-3 text-center bg-white border border-slate-200 shadow-sm">
           <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Total Dials</span>
           <span className="font-mono-nums font-black text-xl text-[#0A2540] my-0.5 block">{stats.dialsMade}</span>
-          <span className="text-[9px] text-slate-400 font-medium block">Target: 100</span>
+          <span className="text-[9px] text-slate-400 font-medium block">Target: {stats.todayGoalCalls}</span>
         </div>
 
         <div className="nexus-card p-3 text-center bg-white border border-slate-200 shadow-sm">

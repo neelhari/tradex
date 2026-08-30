@@ -81,6 +81,8 @@ export function initializeDatabaseSchema() {
     -- 6. Leave Requests
     CREATE TABLE IF NOT EXISTS leave_requests (
       id TEXT PRIMARY KEY,
+      employeeName TEXT,
+      employeeCode TEXT,
       leaveType TEXT NOT NULL,
       fromDate TEXT NOT NULL,
       toDate TEXT NOT NULL,
@@ -299,5 +301,104 @@ export function initializeDatabaseSchema() {
     CREATE INDEX IF NOT EXISTS idx_assigned_leads_emp ON assigned_leads(assignedToEmployeeId);
     CREATE INDEX IF NOT EXISTS idx_team_members_group ON team_members(groupName);
   `);
+
+  runMigrations();
   console.log('[SQLite DB] All 19 database tables initialized successfully.');
+}
+
+// CREATE TABLE IF NOT EXISTS never alters an existing table, so columns added
+// after a database already exists have to be applied separately.
+function runMigrations() {
+  const addColumnIfMissing = (table: string, column: string, definition: string) => {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some((c) => c.name === column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+      console.log(`[SQLite DB] Migration: added ${table}.${column}`);
+    }
+  };
+
+  addColumnIfMissing('leave_requests', 'employeeName', 'TEXT');
+  addColumnIfMissing('leave_requests', 'employeeCode', 'TEXT');
+
+  // An employee who has left is deactivated, never deleted — their attendance,
+  // calls and payslips must stay on record.
+  addColumnIfMissing('team_members', 'active', 'INTEGER NOT NULL DEFAULT 1');
+  addColumnIfMissing('team_members', 'email', 'TEXT');
+  addColumnIfMissing('team_members', 'deactivatedOn', 'TEXT');
+
+  // Attendance is per employee, and each check-in carries proof of who and where.
+  addColumnIfMissing('attendance_records', 'employeeId', 'TEXT');
+  addColumnIfMissing('attendance_records', 'employeeName', 'TEXT');
+  addColumnIfMissing('attendance_records', 'checkInPhoto', 'TEXT');
+  addColumnIfMissing('attendance_records', 'checkInLat', 'REAL');
+  addColumnIfMissing('attendance_records', 'checkInLng', 'REAL');
+  addColumnIfMissing('attendance_records', 'checkInDistanceM', 'REAL');
+  addColumnIfMissing('attendance_records', 'locationStatus', 'TEXT');
+
+  // Which of the four portals a person may enter. `role` is their job title
+  // (free text); `portal` is what the system acts on.
+  addColumnIfMissing('team_members', 'portal', "TEXT NOT NULL DEFAULT 'telecaller'");
+
+  // Existing rows: infer the portal once, from the job title already recorded.
+  const needsPortal = db
+    .prepare("SELECT id, role FROM team_members WHERE portal IS NULL OR portal = ''")
+    .all() as Array<{ id: string; role: string }>;
+  if (needsPortal.length) {
+    const setPortal = db.prepare('UPDATE team_members SET portal = ? WHERE id = ?');
+    for (const row of needsPortal) {
+      const title = (row.role || '').toLowerCase();
+      const portal = title.includes('leader') || title.includes('supervisor')
+        ? 'team_leader'
+        : title.includes('hr') || title.includes('people')
+        ? 'hr'
+        : title.includes('admin')
+        ? 'admin'
+        : 'telecaller';
+      setPortal.run(portal, row.id);
+    }
+    console.log(`[SQLite DB] Migration: set portal on ${needsPortal.length} employee(s)`);
+  }
+
+  // Check-out carries the same proof as check-in.
+  addColumnIfMissing('attendance_records', 'checkOutPhoto', 'TEXT');
+  addColumnIfMissing('attendance_records', 'checkOutLat', 'REAL');
+  addColumnIfMissing('attendance_records', 'checkOutLng', 'REAL');
+  addColumnIfMissing('attendance_records', 'checkOutDistanceM', 'REAL');
+  addColumnIfMissing('attendance_records', 'checkOutLocationStatus', 'TEXT');
+
+  // Individual employee documents — ID proofs, certificates, contracts (scope §11).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS employee_documents (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Other',
+      fileName TEXT NOT NULL,
+      mimeType TEXT,
+      sizeBytes INTEGER,
+      content TEXT NOT NULL,
+      uploadedBy TEXT,
+      uploadedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_employee_documents_emp ON employee_documents(employeeId);
+  `);
+
+  // Where the office is, so a check-in can be judged near or far.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS office_settings (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      latitude REAL,
+      longitude REAL,
+      radiusMeters REAL NOT NULL DEFAULT 200,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  const hasOffice = db.prepare('SELECT COUNT(*) AS c FROM office_settings').get() as { c: number };
+  if (!hasOffice.c) {
+    db.prepare(
+      'INSERT INTO office_settings (id, label, latitude, longitude, radiusMeters) VALUES (?, ?, ?, ?, ?)'
+    ).run('office-main', 'Head Office', null, null, 200);
+    console.log('[SQLite DB] Migration: created office_settings (address not set yet)');
+  }
 }

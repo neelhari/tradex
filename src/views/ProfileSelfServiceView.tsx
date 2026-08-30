@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { useScreenData } from '../hooks/useScreenData';
 import { 
   CreditCard, 
   FileText, 
@@ -20,6 +21,8 @@ import {
 export const ProfileSelfServiceView: React.FC = () => {
   const { profile, payslips, setIsIdCardModalOpen, triggerToast } = useApp();
 
+  useScreenData('profileSelfService');
+
   const handleDownloadPayslip = (month: string, year: number) => {
     triggerToast(`✓ Official Payslip for ${month} ${year} downloaded (PDF)`);
   };
@@ -33,9 +36,7 @@ export const ProfileSelfServiceView: React.FC = () => {
         {/* Top Profile Summary */}
         <div className="flex items-center gap-3.5">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00C9A7] to-[#38E1B7] p-0.5 shadow-md shadow-[#00C9A7]/30 flex-shrink-0">
-            <div className="w-full h-full rounded-[14px] bg-[#0A2540] flex items-center justify-center font-display font-black text-2xl text-[#00C9A7]">
-              AK
-            </div>
+            <div className="w-full h-full rounded-[14px] bg-[#0A2540] flex items-center justify-center font-display font-black text-2xl text-[#00C9A7]">{profile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}</div>
           </div>
 
           <div className="flex-1">

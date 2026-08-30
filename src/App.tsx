@@ -85,16 +85,30 @@ export const App: React.FC = () => {
     setIsFaceIdModalOpen, 
     setIsQuickCallModalOpen, 
     setIsExcelUploadModalOpen,
-    triggerToast 
+    isDataLoading,
+    backendError,
+    invalidateAll,
+    triggerToast
   } = useApp();
 
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isMobileRoleMenuOpen, setIsMobileRoleMenuOpen] = useState(false);
 
+  const backendBanner = backendError ? (
+    <div className="fixed top-0 left-0 right-0 z-[60] bg-rose-600 text-white text-xs font-bold px-4 py-2 text-center shadow-lg">
+      Backend unreachable — showing empty data. {backendError}
+    </div>
+  ) : isDataLoading ? (
+    <div className="fixed top-0 left-0 right-0 z-[60] bg-[#0A2540] text-[#00C9A7] text-xs font-bold px-4 py-1.5 text-center">
+      Loading live data from SQLite…
+    </div>
+  ) : null;
+
   // 1. If currently in the 4-step Authentication / Face ID flow, render the active step
   if (authStep === 'LOGIN' || authStep === 'FACE_SCAN' || authStep === 'ATTENDANCE_SUCCESS') {
     return (
       <div className="relative min-h-screen">
+        {backendBanner}
         {authStep === 'LOGIN' && (
           currentRole === 'team_leader' ? <TeamLeaderLoginView /> :
           currentRole === 'hr' ? <HrLoginView /> :
@@ -143,12 +157,14 @@ export const App: React.FC = () => {
     }
 
     if (currentRole === 'admin') {
+      const awaitingApproval = paymentVerifications.filter(p => p.status === 'PENDING_HR_AUDIT').length;
       return [
-        { id: 'home', label: 'Global Master Control', icon: Crown },
-        { id: 'users', label: 'User & Team Management', icon: Users },
-        { id: 'leads', label: 'Excel Lead Allocation', icon: FileSpreadsheet },
-        { id: 'reports', label: 'System Audit & Logs', icon: TrendingUp },
-        { id: 'security', label: 'Roles & Permissions', icon: Shield },
+        { id: 'home', label: 'Overview', icon: Home },
+        { id: 'people', label: 'People', icon: Users },
+        { id: 'attendance', label: 'Attendance Report', icon: CalendarCheck },
+        { id: 'leads', label: 'Lead Allocation', icon: FileSpreadsheet },
+        { id: 'approvals', label: 'Approvals', icon: CheckCircle2, badge: awaitingApproval },
+        { id: 'reports', label: 'Reports', icon: TrendingUp },
       ];
     }
 
@@ -253,6 +269,8 @@ export const App: React.FC = () => {
   };
 
   const handleRoleSelect = (r: UserRole) => {
+    // Drop cached data so the new portal loads its own resources fresh
+    invalidateAll();
     setCurrentRole(r);
     setActiveTab('home');
     setAuthStep('LOGIN');
@@ -266,7 +284,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-800 selection:bg-[#00C9A7]/20">
-      
+      {backendBanner}
+
       {/* 1. DESKTOP WORKSPACE (Screens >= 1024px) */}
       <div className="hidden lg:flex flex-col min-h-screen">
         

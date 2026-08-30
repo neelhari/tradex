@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   Phone, 
   PhoneCall, 
@@ -18,13 +19,24 @@ import {
 } from 'lucide-react';
 
 export const DesktopTelecallerHome: React.FC = () => {
-  const { profile, stats, clients, callLogs, setIsFaceIdModalOpen, setIsQuickCallModalOpen, triggerToast, setActiveTab } = useApp();
+  const { profile, stats, myLeads: clients, callLogs, setIsFaceIdModalOpen, setIsQuickCallModalOpen, triggerToast, setActiveTab } = useApp();
 
+  const { isLoading } = useScreenData('telecallerHome');
+
+  // May be undefined while the pipeline loads, or when no leads are assigned yet
   const urgentLead = clients.find(c => c.status === 'Due Today') || clients[0];
-  const goalPercentage = Math.round((stats.dialsMade / stats.todayGoalCalls) * 100);
-  const tgtPercentage = Math.round((stats.monthlySalesAchieved / stats.monthlySalesTarget) * 100);
+  const goalPercentage = Math.round((stats.dialsMade / Math.max(1, stats.todayGoalCalls)) * 100);
+  const tgtPercentage = Math.round((stats.monthlySalesAchieved / Math.max(1, stats.monthlySalesTarget)) * 100);
+
+  const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+  const pendingCallbacks = clients.filter(c => c.status === 'Due Today' || c.status === 'Follow-up').length;
+  const dialsRemaining = Math.max(0, stats.todayGoalCalls - stats.dialsMade);
+  const minsRemaining = Math.round((dialsRemaining * stats.averageCallDurationSec) / 60);
+  const estRemaining = `${Math.floor(minsRemaining / 60)}h ${minsRemaining % 60}m`;
+  const avgDuration = `${Math.floor(stats.averageCallDurationSec / 60)}m ${String(stats.averageCallDurationSec % 60).padStart(2, '0')}s`;
 
   const handleInstantCall = () => {
+    if (!urgentLead) return;
     triggerToast(`📞 Dialing ${urgentLead.name} (${urgentLead.phone})...`);
     setTimeout(() => {
       setIsQuickCallModalOpen(true);
@@ -32,6 +44,7 @@ export const DesktopTelecallerHome: React.FC = () => {
   };
 
   const handleWhatsApp = () => {
+    if (!urgentLead) return;
     triggerToast(`💬 Opening WhatsApp with product demo template for ${urgentLead.name}`);
   };
 
@@ -48,7 +61,7 @@ export const DesktopTelecallerHome: React.FC = () => {
             <span className="text-xl">👋</span>
           </div>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Senior Telecaller / SDR • {profile.department} • <strong className="text-emerald-600">● On Duty</strong>
+            {profile.roleTitle} • {profile.department} • <strong className="text-emerald-600">● On Duty</strong>
           </p>
         </div>
 
@@ -121,8 +134,8 @@ export const DesktopTelecallerHome: React.FC = () => {
               Monthly Sales Target (TGT)
             </span>
             <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-xl text-[#00A88B]">₹1,45,000</span>
-              <span className="text-xs font-bold text-slate-400">/ ₹2.00L</span>
+              <span className="font-mono-nums font-black text-xl text-[#00A88B]">{inr(stats.monthlySalesAchieved)}</span>
+              <span className="text-xs font-bold text-slate-400">/ {inr(stats.monthlySalesTarget)}</span>
             </div>
             <span className="text-xs text-[#00A88B] font-extrabold mt-1 block">
               {tgtPercentage}% Target Met
@@ -145,7 +158,7 @@ export const DesktopTelecallerHome: React.FC = () => {
               <span className="text-xs font-bold text-slate-400">Prospects</span>
             </div>
             <span className="text-xs text-amber-600 font-bold mt-1 block">
-              3 Pending Callbacks
+              {pendingCallbacks} Pending Callbacks
             </span>
           </div>
 
@@ -168,7 +181,7 @@ export const DesktopTelecallerHome: React.FC = () => {
                 <p className="text-xs text-slate-500">Real-time dial distribution & conversion breakdown</p>
               </div>
               <span className="text-xs font-bold text-[#00A88B] bg-[#E6FAF6] px-3 py-1 rounded-lg">
-                Daily Quota: 100 Calls
+                Daily Quota: {stats.todayGoalCalls} Calls
               </span>
             </div>
 
@@ -201,7 +214,7 @@ export const DesktopTelecallerHome: React.FC = () => {
                   <span className="font-mono-nums font-black text-xl text-[#0A2540]">
                     {stats.todayGoalCalls - stats.dialsMade} Calls
                   </span>
-                  <span className="text-[11px] text-[#00A88B] font-bold block mt-0.5">Estimated 1h 45m</span>
+                  <span className="text-[11px] text-[#00A88B] font-bold block mt-0.5">Estimated {estRemaining}</span>
                 </div>
               </div>
 
@@ -221,7 +234,7 @@ export const DesktopTelecallerHome: React.FC = () => {
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">Avg Duration</span>
-                  <span className="font-mono-nums font-black text-lg text-[#0A2540]">3m 05s</span>
+                  <span className="font-mono-nums font-black text-lg text-[#0A2540]">{avgDuration}</span>
                 </div>
               </div>
             </div>
@@ -231,7 +244,7 @@ export const DesktopTelecallerHome: React.FC = () => {
           <div className="pt-4 border-t border-slate-100 mt-2">
             <div className="flex justify-between items-center text-xs mb-1.5">
               <span className="font-bold text-slate-700">Monthly Sales Target Milestone (TGT)</span>
-              <span className="font-mono font-extrabold text-[#00A88B]">₹1,45,000 / ₹2,00,000 (72.5%)</span>
+              <span className="font-mono font-extrabold text-[#00A88B]">{inr(stats.monthlySalesAchieved)} / {inr(stats.monthlySalesTarget)} ({tgtPercentage}%)</span>
             </div>
             <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] rounded-full" style={{ width: `${tgtPercentage}%` }} />
@@ -240,6 +253,7 @@ export const DesktopTelecallerHome: React.FC = () => {
         </div>
 
         {/* Right: Urgent Callback Lead Card */}
+        {urgentLead ? (
         <div className="lg:col-span-5 nexus-card p-6 bg-gradient-to-br from-[#FFFBEB] via-white to-white border border-amber-300/70 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -283,6 +297,14 @@ export const DesktopTelecallerHome: React.FC = () => {
             </button>
           </div>
         </div>
+        ) : (
+        <div className="lg:col-span-5 nexus-card p-6 bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-1">
+          <h4 className="font-display font-black text-base text-[#0A2540]">No callbacks due</h4>
+          <p className="text-xs text-slate-500">
+            {isLoading ? 'Loading your pipeline…' : 'Leads assigned to you will appear here.'}
+          </p>
+        </div>
+        )}
 
       </div>
 
