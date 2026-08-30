@@ -23,9 +23,15 @@ import {
   Printer,
   Shield,
   Calendar,
-  Briefcase
+  Briefcase,
+  ScanFace,
+  Award,
+  Sparkles
 } from 'lucide-react';
 import { OnboardingEmployee, ExitEmployee } from '../types';
+import { AddEmployeeModal } from '../components/modals/AddEmployeeModal';
+import { OfferLetterModal } from '../components/modals/OfferLetterModal';
+import { FaceRegistrationModal } from '../components/modals/FaceRegistrationModal';
 
 export const HrDashboardView: React.FC = () => {
   const { 
@@ -36,6 +42,11 @@ export const HrDashboardView: React.FC = () => {
     payslips, 
     leaveRequests,
     paymentVerifications,
+    offerLetters,
+    setSelectedOfferLetter,
+    setIsOfferLetterModalOpen,
+    setIsFaceRegistrationModalOpen,
+    setFaceRegistrationEmployee,
     scheduleInterview,
     updateCandidateStatus,
     toggleOnboardingChecklist,
@@ -50,6 +61,7 @@ export const HrDashboardView: React.FC = () => {
   const [activeHrNav, setActiveHrNav] = useState<'home' | 'employees' | 'approvals' | 'reports' | 'more'>('home');
   
   // Modals
+  const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [isPayslipGenModalOpen, setIsPayslipGenModalOpen] = useState(false);
   const [selectedIdCardEmp, setSelectedIdCardEmp] = useState(teamMembers[0] || null);
@@ -291,14 +303,28 @@ export const HrDashboardView: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Actions Grid (Matching Mockup) */}
+            {/* Quick Actions Grid */}
             <div className="space-y-2">
               <h3 className="font-display font-bold text-sm text-[#0A2540]">
-                Quick Actions
+                Quick Operations
               </h3>
 
               <div className="grid grid-cols-2 gap-2.5">
                 
+                {/* Action 0: Onboard New Employee (Client Priority) */}
+                <button
+                  onClick={() => setIsAddEmployeeModalOpen(true)}
+                  className="bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border-2 border-[#00C9A7]/60 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-sm flex items-center gap-3 text-left transition-all active:scale-95 group"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-[#00C9A7] text-slate-950 flex items-center justify-center font-bold flex-shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-black text-[#0A2540] block">Onboard Employee</strong>
+                    <span className="text-[10px] text-teal-800 font-medium">Create profile & credentials</span>
+                  </div>
+                </button>
+
                 {/* Action 1: Generate Payslips */}
                 <button
                   onClick={() => setIsPayslipGenModalOpen(true)}
@@ -313,17 +339,24 @@ export const HrDashboardView: React.FC = () => {
                   </div>
                 </button>
 
-                {/* Action 2: Issue ID Cards */}
+                {/* Action 2: View Offer Letters */}
                 <button
-                  onClick={() => setActiveHrNav('more')}
-                  className="bg-white border border-slate-200 hover:border-sky-400 rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
+                  onClick={() => {
+                    if (offerLetters.length > 0) {
+                      setSelectedOfferLetter(offerLetters[0]);
+                      setIsOfferLetterModalOpen(true);
+                    } else {
+                      setIsAddEmployeeModalOpen(true);
+                    }
+                  }}
+                  className="bg-white border border-slate-200 hover:border-amber-400 rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0">
-                    <CreditCard className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                    <Award className="w-4 h-4" />
                   </div>
                   <div>
-                    <strong className="text-xs font-bold text-[#0A2540] block">Issue ID Cards</strong>
-                    <span className="text-[10px] text-slate-400">Print-ready PDF with QR</span>
+                    <strong className="text-xs font-bold text-[#0A2540] block">Offer Letters ({offerLetters.length})</strong>
+                    <span className="text-[10px] text-slate-400">Print & PDF contracts</span>
                   </div>
                 </button>
 
@@ -333,7 +366,7 @@ export const HrDashboardView: React.FC = () => {
                   className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
                 >
                   <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                    <UserPlus className="w-4 h-4" />
+                    <Calendar className="w-4 h-4" />
                   </div>
                   <div>
                     <strong className="text-xs font-bold text-[#0A2540] block">Schedule Interview</strong>
@@ -341,20 +374,48 @@ export const HrDashboardView: React.FC = () => {
                   </div>
                 </button>
 
-                {/* Action 4: Onboarding Checklists */}
-                <button
-                  onClick={() => setActiveHrNav('more')}
-                  className="bg-white border border-slate-200 hover:border-emerald-400 rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                    <Layers className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-xs font-bold text-[#0A2540] block">Onboarding &amp; Exit</strong>
-                    <span className="text-[10px] text-slate-400">Joiner &amp; exit clearance</span>
-                  </div>
-                </button>
+              </div>
+            </div>
 
+            {/* Recent Generated Offer Letters List */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-bold text-sm text-[#0A2540] flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-amber-500" />
+                  Official Offer Letters ({offerLetters.length})
+                </h3>
+                <button
+                  onClick={() => setIsAddEmployeeModalOpen(true)}
+                  className="text-[11px] font-bold text-[#00A88B] hover:underline"
+                >
+                  + Generate New
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {offerLetters.map((letter) => (
+                  <div 
+                    key={letter.id} 
+                    onClick={() => {
+                      setSelectedOfferLetter(letter);
+                      setIsOfferLetterModalOpen(true);
+                    }}
+                    className="bg-white p-3 rounded-2xl border border-slate-200 hover:border-amber-400 shadow-xs flex items-center justify-between text-xs cursor-pointer transition-all active:scale-98"
+                  >
+                    <div className="space-y-0.5">
+                      <strong className="font-bold text-[#0A2540] block">{letter.candidateName}</strong>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        {letter.roleTitle} • CTC: <span className="font-bold text-slate-700">₹{letter.annualCtc.toLocaleString('en-IN')}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-slate-400">
+                        {letter.issuedDate}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -510,25 +571,74 @@ export const HrDashboardView: React.FC = () => {
               </button>
             </div>
 
-            {/* Onboarding Checklist */}
+            {/* Onboarding Checklist with Face Enrollment Action */}
             <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
-              <strong className="text-xs font-bold text-[#0A2540] block">New Joiner Onboarding Checklist</strong>
+              <div className="flex justify-between items-center">
+                <strong className="text-xs font-bold text-[#0A2540] block">New Joiner Onboarding & Biometrics</strong>
+                <button
+                  onClick={() => setIsAddEmployeeModalOpen(true)}
+                  className="text-[11px] font-bold text-[#00A88B] hover:underline"
+                >
+                  + Add Employee
+                </button>
+              </div>
+
               {onboardingList.map(emp => (
-                <div key={emp.id} className="p-3 bg-slate-50 rounded-xl space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <strong className="text-slate-800">{emp.name} ({emp.role})</strong>
-                    <span className="text-[10px] font-bold text-emerald-600">{emp.status}</span>
-                  </div>
-                  <div className="space-y-1 text-[11px] text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>KYC &amp; Educational Documents Verified</span>
+                <div key={emp.id} className="p-3 bg-slate-50 rounded-2xl space-y-2 text-xs border border-slate-200">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <strong className="text-slate-900 font-bold block">{emp.name}</strong>
+                      <span className="text-[10px] text-slate-500">{emp.role} • {emp.department}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Workstation &amp; CRM Access Created</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      emp.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}>
+                      {emp.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/80 text-[11px]">
+                    <div 
+                      onClick={() => toggleOnboardingChecklist(emp.id, 'documentsVerified')}
+                      className="flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900"
+                    >
+                      <Check className={`w-3.5 h-3.5 ${emp.checklist.documentsVerified ? 'text-emerald-600 font-bold' : 'text-slate-300'}`} />
+                      <span>KYC Verified</span>
+                    </div>
+
+                    <div 
+                      onClick={() => toggleOnboardingChecklist(emp.id, 'workstationAllocated')}
+                      className="flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900"
+                    >
+                      <Check className={`w-3.5 h-3.5 ${emp.checklist.workstationAllocated ? 'text-emerald-600 font-bold' : 'text-slate-300'}`} />
+                      <span>CRM Access</span>
                     </div>
                   </div>
+
+                  {/* Face Biometric Enrollment Trigger Button */}
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 flex items-center gap-1 font-medium">
+                      <ScanFace className="w-3.5 h-3.5 text-teal-600" />
+                      Face Biometric Status:
+                    </span>
+
+                    {emp.checklist.biometricEnrolled ? (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Enrolled
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setFaceRegistrationEmployee({ id: emp.id, name: emp.name });
+                          setIsFaceRegistrationModalOpen(true);
+                        }}
+                        className="px-2.5 py-1 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95"
+                      >
+                        <ScanFace className="w-3 h-3" /> Enroll Face
+                      </button>
+                    )}
+                  </div>
+
                 </div>
               ))}
             </div>
@@ -538,7 +648,7 @@ export const HrDashboardView: React.FC = () => {
       </main>
 
       {/* 5 Bottom Navigation Tabs (Matching Image 1 Mockup) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 max-w-lg mx-auto px-2 py-1.5 flex justify-around items-center shadow-lg">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 max-w-lg mx-auto px-2 py-1.5 flex justify-around items-center shadow-lg">
         {[
           { id: 'home', label: 'Home', icon: Home },
           { id: 'employees', label: 'Employees', icon: Users },
@@ -571,6 +681,18 @@ export const HrDashboardView: React.FC = () => {
           );
         })}
       </nav>
+
+      {/* Add Employee Modal */}
+      <AddEmployeeModal
+        isOpen={isAddEmployeeModalOpen}
+        onClose={() => setIsAddEmployeeModalOpen(false)}
+      />
+
+      {/* Offer Letter Document Viewer & Printer Modal */}
+      <OfferLetterModal />
+
+      {/* Face Biometric Registration Modal */}
+      <FaceRegistrationModal />
 
       {/* Bulk Payslip Generation Modal */}
       {isPayslipGenModalOpen && (
@@ -697,3 +819,4 @@ export const HrDashboardView: React.FC = () => {
     </div>
   );
 };
+

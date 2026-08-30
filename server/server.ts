@@ -1,0 +1,87 @@
+import express from 'express';
+import cors from 'cors';
+import { initializeDatabaseSchema } from './db/schema.js';
+import { seedInitialDataIfEmpty } from './db/seed.js';
+
+// Route imports
+import profileRoutes from './routes/profile.js';
+import statsRoutes from './routes/stats.js';
+import callLogsRoutes from './routes/callLogs.js';
+import clientsRoutes from './routes/clients.js';
+import attendanceRoutes from './routes/attendance.js';
+import leavesRoutes from './routes/leaves.js';
+import payslipsRoutes from './routes/payslips.js';
+import teamMembersRoutes from './routes/teamMembers.js';
+import teamGroupsRoutes from './routes/teamGroups.js';
+import teamTasksRoutes from './routes/teamTasks.js';
+import teamMeetingsRoutes from './routes/teamMeetings.js';
+import interviewsRoutes from './routes/interviews.js';
+import onboardingRoutes from './routes/onboarding.js';
+import exitEmployeesRoutes from './routes/exitEmployees.js';
+import assignedLeadsRoutes from './routes/assignedLeads.js';
+import leadBatchesRoutes from './routes/leadBatches.js';
+import biometricsRoutes from './routes/biometrics.js';
+import offerLettersRoutes from './routes/offerLetters.js';
+import paymentsRoutes from './routes/payments.js';
+
+// Initialize SQLite DB
+initializeDatabaseSchema();
+seedInitialDataIfEmpty();
+
+const app = express();
+const PORT = process.env.PORT || 5001;
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Health Check
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    service: 'Trade Nexus SQLite Backend',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// API Routes
+app.use('/api/profile', profileRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/call-logs', callLogsRoutes);
+app.use('/api/clients', clientsRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/leaves', leavesRoutes);
+app.use('/api/payslips', payslipsRoutes);
+app.use('/api/team-members', teamMembersRoutes);
+app.use('/api/team-groups', teamGroupsRoutes);
+app.use('/api/team-tasks', teamTasksRoutes);
+app.use('/api/team-meetings', teamMeetingsRoutes);
+app.use('/api/interviews', interviewsRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/exit-employees', exitEmployeesRoutes);
+app.use('/api/assigned-leads', assignedLeadsRoutes);
+app.use('/api/lead-batches', leadBatchesRoutes);
+app.use('/api/biometrics', biometricsRoutes);
+app.use('/api/offer-letters', offerLettersRoutes);
+app.use('/api/payments', paymentsRoutes);
+
+// Global Error Handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[Server Error]', err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error'
+  });
+});
+
+// Start Server
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`\n==================================================`);
+    console.log(`🚀 Trade Nexus SQLite Server running on http://localhost:${PORT}`);
+    console.log(`📊 Connected to SQLite local database.`);
+    console.log(`==================================================\n`);
+  });
+}
+
+export default app;

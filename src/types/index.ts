@@ -198,6 +198,84 @@ export interface ExitEmployee {
   };
 }
 
+export interface AssignedLead {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  company: string;
+  city?: string;
+  assignedToEmployeeId: string;
+  assignedToEmployeeName: string;
+  batchId: string;
+  assignedDate: string;
+  status: 'PENDING' | 'CONNECTED' | 'INTERESTED' | 'CALLBACK' | 'NOT_INTERESTED' | 'CONVERTED';
+  notes: string;
+  callCount: number;
+  lastCallTimestamp?: string;
+  dealValue?: number;
+  followUpDate?: string;
+}
+
+export interface LeadBatch {
+  id: string;
+  fileName: string;
+  uploadedAt: string;
+  totalLeads: number;
+  assignedToEmployeeName: string;
+  assignedToEmployeeId: string;
+}
+
+export interface FaceBiometricProfile {
+  employeeId: string;
+  employeeName: string;
+  registeredPhoto: string; // Base64 data URL
+  registeredAt: string;
+  status: 'REGISTERED' | 'NOT_REGISTERED';
+}
+
+export interface OfferLetterData {
+  id: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone: string;
+  roleTitle: string;
+  department: string;
+  annualCtc: number;
+  monthlyGross: number;
+  joiningDate: string;
+  reportingManager: string;
+  location: string;
+  issuedDate: string;
+}
+
+export interface NewEmployeeInput {
+  firstName: string;
+  lastName: string;
+  name: string; // Combined full name
+  email: string;
+  phone: string;
+  role: UserRole;
+  roleTitle: string;
+  department: string;
+  teamGroup: string;
+  teamLeaderName?: string;
+  address: string;
+  employeeType: 'Full Time' | 'Intern' | 'Contract';
+  salary: number;
+  basicSalary?: number;
+  hra?: number;
+  specialAllowance?: number;
+  panDocumentName?: string;
+  aadhaarDocumentName?: string;
+  bankName: string;
+  bankAccountNumber: string;
+  bankIfscCode: string;
+  empCode: string;
+  joiningDate: string;
+  salaryDate: string;
+}
+
 export interface PaymentVerificationItem {
   id: string;
   leadName: string;
@@ -210,5 +288,3 @@ export interface PaymentVerificationItem {
   status: 'PENDING_HR_AUDIT' | 'VERIFIED' | 'REJECTED';
   receiptUrl?: string;
 }
-
-

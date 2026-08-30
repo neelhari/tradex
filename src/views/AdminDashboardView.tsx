@@ -21,12 +21,25 @@ import {
   Building,
   UserCheck2,
   Sliders,
-  Crown
+  Crown,
+  FileSpreadsheet,
+  PhoneCall,
+  Sparkles
 } from 'lucide-react';
 import { UserRole } from '../types';
+import { ExcelLeadUploadModal } from '../components/modals/ExcelLeadUploadModal';
+import { AddEmployeeModal } from '../components/modals/AddEmployeeModal';
 
 export const AdminDashboardView: React.FC = () => {
-  const { teamMembers, teamGroups, triggerToast } = useApp();
+  const { 
+    teamMembers, 
+    teamGroups, 
+    leadBatches, 
+    assignedLeads, 
+    setIsExcelUploadModalOpen, 
+    assignTeamLeaderToGroup, 
+    triggerToast 
+  } = useApp();
 
   const [activeAdminNav, setActiveAdminNav] = useState<'home' | 'users' | 'teams' | 'reports' | 'more'>('home');
   
@@ -34,27 +47,11 @@ export const AdminDashboardView: React.FC = () => {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isAssignTlModalOpen, setIsAssignTlModalOpen] = useState(false);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-
-  // Form states
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState<UserRole>('telecaller');
-  const [newUserTeam, setNewUserTeam] = useState('Alpha Growth Team');
-
-  // Stats matching reference mockup
-  const totalUsers = 128;
-  const activeUsers = 112;
-  const totalTeams = 8;
-  const totalRoles = 6;
-
-  const handleAddUserSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUserName.trim()) return;
-    triggerToast(`✓ New User Created: ${newUserName} (${newUserRole.toUpperCase()})`);
-    setNewUserName('');
-    setNewUserEmail('');
-    setIsAddUserModalOpen(false);
-  };
+  // Dynamic Stats from SQLite database
+  const totalUsers = teamMembers.length;
+  const activeUsers = teamMembers.filter(m => m.attendanceStatus === 'PRESENT').length;
+  const totalTeams = teamGroups.length;
+  const totalRoles = 4; // Telecaller, Team Leader, HR, Admin
 
   const exportGlobalAuditCSV = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -190,15 +187,35 @@ export const AdminDashboardView: React.FC = () => {
               </div>
             </div>
 
-            {/* User Management Section (4 List Rows Matching Image Mockup) */}
+            {/* User Management Section */}
             <div className="space-y-2">
               <h3 className="font-display font-bold text-sm text-[#0A2540]">
-                User Management
+                User & Lead Management
               </h3>
 
               <div className="space-y-2.5">
                 
-                {/* Row 1: Manage Users */}
+                {/* Row 0: Excel Lead Import & Allocation (Client Priority) */}
+                <div 
+                  onClick={() => setIsExcelUploadModalOpen(true)}
+                  className="bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-teal-500/5 border-2 border-[#00C9A7]/60 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-sm flex items-center justify-between cursor-pointer active:scale-98 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#00C9A7] text-slate-950 flex items-center justify-center flex-shrink-0 shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-display font-black text-xs text-[#0A2540]">Excel Lead Import & Allocation</h4>
+                        <span className="text-[9px] bg-teal-600 text-white font-mono px-1.5 py-0.5 rounded-full uppercase font-bold">New</span>
+                      </div>
+                      <span className="text-[10px] text-slate-600 font-medium">Upload .xlsx/.csv & assign lead batches to telecallers</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[#00A88B]" />
+                </div>
+
+                {/* Row 1: Manage Users / Onboard Employee */}
                 <div 
                   onClick={() => setIsAddUserModalOpen(true)}
                   className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs flex items-center justify-between cursor-pointer active:scale-98 transition-all"
@@ -208,8 +225,8 @@ export const AdminDashboardView: React.FC = () => {
                       <UserPlus className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-display font-bold text-xs text-[#0A2540]">Manage Users</h4>
-                      <span className="text-[10px] text-slate-500">Create, update or deactivate users</span>
+                      <h4 className="font-display font-bold text-xs text-[#0A2540]">Onboard New Employee</h4>
+                      <span className="text-[10px] text-slate-500">Create profile, set salary & generate Offer Letter</span>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -226,7 +243,7 @@ export const AdminDashboardView: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-display font-bold text-xs text-[#0A2540]">Assign Teams</h4>
-                      <span className="text-[10px] text-slate-500">Assign employees to teams</span>
+                      <span className="text-[10px] text-slate-500">Assign employees to squads & groups</span>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -243,7 +260,7 @@ export const AdminDashboardView: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-display font-bold text-xs text-[#0A2540]">Assign Team Leaders</h4>
-                      <span className="text-[10px] text-slate-500">Manage team leaders</span>
+                      <span className="text-[10px] text-slate-500">Map team leaders to 10-member employee squads</span>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -266,6 +283,47 @@ export const AdminDashboardView: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </div>
 
+              </div>
+            </div>
+
+            {/* Active Allocated Batches Overview */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-bold text-sm text-[#0A2540] flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-teal-600" />
+                  Allocated Lead Batches ({leadBatches.length})
+                </h3>
+                <button
+                  onClick={() => setIsExcelUploadModalOpen(true)}
+                  className="text-[11px] font-bold text-[#00A88B] hover:underline"
+                >
+                  + Upload Batch
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {leadBatches.slice(0, 4).map((batch) => {
+                  const batchLeads = assignedLeads.filter(l => l.batchId === batch.id);
+                  const connected = batchLeads.filter(l => l.status !== 'PENDING').length;
+                  return (
+                    <div key={batch.id} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between text-xs">
+                      <div className="space-y-0.5">
+                        <strong className="font-bold text-[#0A2540] block">{batch.fileName}</strong>
+                        <p className="text-[11px] text-slate-500">
+                          Assigned to: <span className="font-bold text-teal-700">{batch.assignedToEmployeeName}</span> • {batch.uploadedAt}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[11px] font-mono font-bold bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded-lg block">
+                          {batch.totalLeads} Leads
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-mono">
+                          {connected}/{batch.totalLeads} Called
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -395,8 +453,8 @@ export const AdminDashboardView: React.FC = () => {
 
       </main>
 
-      {/* 5 Bottom Navigation Tabs (Matching Image Mockup) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 max-w-lg mx-auto px-2 py-1.5 flex justify-around items-center shadow-lg">
+      {/* 5 Bottom Navigation Tabs */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 max-w-lg mx-auto px-2 py-1.5 flex justify-around items-center shadow-lg">
         {[
           { id: 'home', label: 'Home', icon: Home },
           { id: 'users', label: 'Users', icon: Users },
@@ -423,83 +481,14 @@ export const AdminDashboardView: React.FC = () => {
         })}
       </nav>
 
-      {/* Add User Modal */}
-      {isAddUserModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95">
-            <h3 className="font-display font-black text-lg text-[#0A2540]">Create System User</h3>
-            <form onSubmit={handleAddUserSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-600 block mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="e.g. Rahul Sen"
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-[#00C9A7]"
-                  required
-                />
-              </div>
+      {/* Add Employee Onboarding Modal */}
+      <AddEmployeeModal
+        isOpen={isAddUserModalOpen}
+        onClose={() => setIsAddUserModalOpen(false)}
+      />
 
-              <div>
-                <label className="font-bold text-slate-600 block mb-1">Email Address</label>
-                <input
-                  type="email"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="e.g. rahul.sen@tradenexus.io"
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-bold text-slate-600 block mb-1">Assigned Role</label>
-                  <select
-                    value={newUserRole}
-                    onChange={(e) => setNewUserRole(e.target.value as any)}
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
-                  >
-                    <option value="telecaller">Telecaller / SDR</option>
-                    <option value="team_leader">Team Leader</option>
-                    <option value="hr">HR Administrator</option>
-                    <option value="admin">Super Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-slate-600 block mb-1">Assign Team</label>
-                  <select
-                    value={newUserTeam}
-                    onChange={(e) => setNewUserTeam(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
-                  >
-                    <option value="Alpha Growth Team">Alpha Growth</option>
-                    <option value="Inbound Qualifiers">Inbound Qualifiers</option>
-                    <option value="Retention Squad">Retention Squad</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-xl bg-[#00C9A7] text-[#0A2540] font-black"
-                >
-                  Create User
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsAddUserModalOpen(false)}
-                  className="py-3 px-4 rounded-xl bg-slate-100 text-slate-600 font-bold"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Excel Lead Upload & Allocation Modal */}
+      <ExcelLeadUploadModal />
 
       {/* Role Management Modal */}
       {isRoleModalOpen && (
@@ -530,26 +519,60 @@ export const AdminDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* Assign Team Leader Modal */}
+      {/* Interactive Assign Team Leader Modal */}
       {isAssignTlModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95">
-            <h3 className="font-display font-black text-lg text-[#0A2540]">Assign Team Leader</h3>
-            <p className="text-xs text-slate-500">Designate supervisor authority over campaign squads:</p>
-            <div className="space-y-2 text-xs">
-              <select className="w-full p-2.5 rounded-xl border border-slate-200">
-                <option>Ramesh Sharma (Alpha Growth Team)</option>
-                <option>Priya Nair (Enterprise Closers)</option>
-                <option>Vikram Malhotra (Inbound Operations)</option>
-              </select>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <UserCheck2 className="w-4 h-4" />
+              </div>
+              <h3 className="font-display font-black text-lg text-[#0A2540]">Assign Team Leader</h3>
             </div>
-            <div className="flex gap-2">
+            <p className="text-xs text-slate-500">Map an employee as Team Leader to oversee calling operations:</p>
+            
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Select Squad / Group</label>
+                <select 
+                  value={selectedGroupForTl} 
+                  onChange={(e) => setSelectedGroupForTl(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 font-semibold"
+                >
+                  {teamGroups.map((grp) => (
+                    <option key={grp.id} value={grp.id}>
+                      {grp.name} (Current TL: {grp.leaderName})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Select Team Leader</label>
+                <select 
+                  value={selectedLeaderName}
+                  onChange={(e) => setSelectedLeaderName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 font-semibold"
+                >
+                  {teamMembers.map((m) => (
+                    <option key={m.id} value={m.name}>
+                      {m.name} — {m.role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
               <button
                 onClick={() => {
+                  const targetGrp = teamGroups.find(g => g.id === selectedGroupForTl) || teamGroups[0];
+                  if (targetGrp && selectedLeaderName) {
+                    assignTeamLeaderToGroup(targetGrp.id, selectedLeaderName);
+                  }
                   setIsAssignTlModalOpen(false);
-                  triggerToast('✓ Team Leader assignment updated');
                 }}
-                className="flex-1 py-3 rounded-xl bg-[#00C9A7] text-[#0A2540] font-black text-xs"
+                className="flex-1 py-3 rounded-xl bg-[#00C9A7] text-[#0A2540] font-black text-xs shadow-md shadow-teal-500/20"
               >
                 Confirm Assignment
               </button>
@@ -567,3 +590,4 @@ export const AdminDashboardView: React.FC = () => {
     </div>
   );
 };
+

@@ -13,7 +13,11 @@ import {
   CandidateInterview,
   OnboardingEmployee,
   ExitEmployee,
-  PaymentVerificationItem
+  PaymentVerificationItem,
+  AssignedLead,
+  LeadBatch,
+  FaceBiometricProfile,
+  OfferLetterData
 } from '../types';
 
 export const INITIAL_PROFILE: EmployeeProfile = {
@@ -536,6 +540,165 @@ export const INITIAL_PAYMENTS: PaymentVerificationItem[] = [
     paymentMode: 'Corporate Net Banking',
     timestamp: 'Yesterday, 04:15 PM',
     status: 'VERIFIED',
+  }
+];
+
+export const INITIAL_ASSIGNED_LEADS: AssignedLead[] = [
+  {
+    id: 'asg-1',
+    name: 'Suresh Raina',
+    company: 'Prime Global Logistics',
+    phone: '+91 98451 11223',
+    email: 'suresh.r@primeglobal.com',
+    city: 'Mumbai',
+    assignedToEmployeeId: 'emp-101',
+    assignedToEmployeeName: 'Arjun Kumar',
+    batchId: 'batch-1',
+    assignedDate: 'Today',
+    status: 'PENDING',
+    notes: 'Imported from B2B Logistics Database',
+    callCount: 0,
+  },
+  {
+    id: 'asg-2',
+    name: 'Meera Nambiar',
+    company: 'FinEdge Advisory Corp',
+    phone: '+91 97312 33445',
+    email: 'meera@finedge.in',
+    city: 'Bengaluru',
+    assignedToEmployeeId: 'emp-101',
+    assignedToEmployeeName: 'Arjun Kumar',
+    batchId: 'batch-1',
+    assignedDate: 'Today',
+    status: 'INTERESTED',
+    notes: 'Interested in Premium SaaS plan. Send quote by 3 PM.',
+    callCount: 1,
+    lastCallTimestamp: '10:45 AM',
+    dealValue: 75000,
+  },
+  {
+    id: 'asg-3',
+    name: 'Kavita Sharma',
+    company: 'Apex Retailers Hub',
+    phone: '+91 99001 88776',
+    email: 'kavita@apexretail.com',
+    city: 'Delhi NCR',
+    assignedToEmployeeId: 'emp-101',
+    assignedToEmployeeName: 'Arjun Kumar',
+    batchId: 'batch-1',
+    assignedDate: 'Today',
+    status: 'CALLBACK',
+    notes: 'Requested callback after 4:00 PM today.',
+    callCount: 1,
+    lastCallTimestamp: '11:15 AM',
+    followUpDate: 'Today, 04:00 PM',
+  },
+  {
+    id: 'asg-4',
+    name: 'Rohan Deshmukh',
+    company: 'OmniTrade Solutions',
+    phone: '+91 96112 44556',
+    email: 'rohan.d@omnitrade.in',
+    city: 'Pune',
+    assignedToEmployeeId: 'emp-102',
+    assignedToEmployeeName: 'Nikhil Sharma',
+    batchId: 'batch-2',
+    assignedDate: 'Today',
+    status: 'PENDING',
+    notes: 'Allocated batch for Nikhil',
+    callCount: 0,
+  },
+  {
+    id: 'asg-5',
+    name: 'Deepak Chawla',
+    company: 'Zenith Logistics Tech',
+    phone: '+91 98223 99881',
+    email: 'deepak@zenith.com',
+    city: 'Hyderabad',
+    assignedToEmployeeId: 'emp-102',
+    assignedToEmployeeName: 'Nikhil Sharma',
+    batchId: 'batch-2',
+    assignedDate: 'Today',
+    status: 'CONNECTED',
+    notes: 'Spoke with CFO. Exploring multi-user license.',
+    callCount: 1,
+    lastCallTimestamp: '09:50 AM',
+  },
+  {
+    id: 'asg-6',
+    name: 'Alok Aggarwal',
+    company: 'Bharat Export Corp',
+    phone: '+91 97441 22334',
+    email: 'alok@bharatexport.com',
+    city: 'Surat',
+    assignedToEmployeeId: 'emp-103',
+    assignedToEmployeeName: 'Kailash Verma',
+    batchId: 'batch-3',
+    assignedDate: 'Today',
+    status: 'PENDING',
+    notes: 'Batch for Kailash',
+    callCount: 0,
+  }
+];
+
+export const INITIAL_LEAD_BATCHES: LeadBatch[] = [
+  {
+    id: 'batch-1',
+    fileName: 'B2B_Q3_HighValue_Leads.xlsx',
+    uploadedAt: 'Today, 09:00 AM',
+    totalLeads: 50,
+    assignedToEmployeeName: 'Arjun Kumar',
+    assignedToEmployeeId: 'emp-101',
+  },
+  {
+    id: 'batch-2',
+    fileName: 'Tech_Enterprises_South.csv',
+    uploadedAt: 'Today, 09:15 AM',
+    totalLeads: 100,
+    assignedToEmployeeName: 'Nikhil Sharma',
+    assignedToEmployeeId: 'emp-102',
+  },
+  {
+    id: 'batch-3',
+    fileName: 'Logistics_Manufacturing_Batch4.xlsx',
+    uploadedAt: 'Today, 09:30 AM',
+    totalLeads: 75,
+    assignedToEmployeeName: 'Kailash Verma',
+    assignedToEmployeeId: 'emp-103',
+  }
+];
+
+export const INITIAL_FACE_PROFILES: FaceBiometricProfile[] = [
+  {
+    employeeId: 'emp-101',
+    employeeName: 'Arjun Kumar',
+    registeredPhoto: '',
+    registeredAt: '12 Jan 2024',
+    status: 'REGISTERED',
+  },
+  {
+    employeeId: 'emp-102',
+    employeeName: 'Nikhil Sharma',
+    registeredPhoto: '',
+    registeredAt: '01 Feb 2024',
+    status: 'REGISTERED',
+  }
+];
+
+export const INITIAL_OFFER_LETTERS: OfferLetterData[] = [
+  {
+    id: 'off-1',
+    candidateName: 'Srihari Nair',
+    candidateEmail: 'srihari.n@gmail.com',
+    candidatePhone: '+91 98450 67890',
+    roleTitle: 'Telecaller Executive',
+    department: 'Sales & Client Acquisition',
+    annualCtc: 360000,
+    monthlyGross: 30000,
+    joiningDate: '01 Jun 2025',
+    reportingManager: 'Ramesh Sharma (Team Leader)',
+    location: 'Bengaluru Corporate HQ',
+    issuedDate: '28 May 2025',
   }
 ];
 

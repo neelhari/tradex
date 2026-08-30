@@ -69,16 +69,16 @@ export const TeamLeaderDashboardView: React.FC = () => {
   const [rejectingLeaveId, setRejectingLeaveId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  // Computations
-  const totalTeamStrength = 12;
-  const presentCount = 10;
-  const onLeaveCount = 2;
-  const totalActivities = 128;
-  const totalSales = 125600;
-  const totalCollections = 98300;
-  const targetAchieved = 1245000;
-  const targetTotal = 1720000;
-  const targetPercentage = Math.round((targetAchieved / targetTotal) * 100);
+  // Dynamic Live Computations from Active Team State
+  const totalTeamStrength = teamMembers.length;
+  const presentCount = teamMembers.filter(m => m.attendanceStatus === 'PRESENT').length;
+  const onLeaveCount = teamMembers.filter(m => m.attendanceStatus === 'ON_LEAVE').length;
+  const totalActivities = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
+  const totalSales = teamMembers.reduce((sum, m) => sum + (m.salesAchieved || 0), 0);
+  const totalCollections = Math.round(totalSales * 0.85);
+  const targetAchieved = totalSales;
+  const targetTotal = teamMembers.reduce((sum, m) => sum + (m.salesTarget || 200000), 0);
+  const targetPercentage = Math.min(100, Math.round((targetAchieved / Math.max(1, targetTotal)) * 100));
 
   const pendingLeaves = leaveRequests.filter(r => r.status === 'PENDING');
 
@@ -647,7 +647,7 @@ export const TeamLeaderDashboardView: React.FC = () => {
       </main>
 
       {/* 5 Bottom Navigation Tabs (Matching Light Theme) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 max-w-lg mx-auto px-2 py-1.5 flex justify-around items-center shadow-lg">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 max-w-lg mx-auto px-2 py-1.5 flex justify-around items-center shadow-lg">
         {[
           { id: 'home', label: 'Home', icon: Home },
           { id: 'team', label: 'Team', icon: Users },

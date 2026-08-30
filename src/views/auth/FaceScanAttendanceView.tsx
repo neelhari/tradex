@@ -10,11 +10,22 @@ import {
   Scan, 
   Building, 
   Clock,
-  Shield
+  Shield,
+  ScanFace
 } from 'lucide-react';
+import { FaceRegistrationModal } from '../../components/modals/FaceRegistrationModal';
 
 export const FaceScanAttendanceView: React.FC = () => {
-  const { currentRole, profile, setAuthStep, triggerToast } = useApp();
+  const { 
+    currentRole, 
+    profile, 
+    faceProfiles, 
+    verifyFaceAttendance, 
+    setIsFaceRegistrationModalOpen, 
+    setFaceRegistrationEmployee,
+    setAuthStep, 
+    triggerToast 
+  } = useApp();
   const [scanningState, setScanningState] = useState<'INITIAL' | 'SCANNING' | 'MATCHED'>('INITIAL');
   const [progress, setProgress] = useState(0);
 
@@ -24,6 +35,11 @@ export const FaceScanAttendanceView: React.FC = () => {
   const personRole = isLeader ? 'Team Leader / Supervisor' : profile.roleTitle;
   const personDept = isLeader ? 'Inside Sales & Alpha Squad' : 'Sales & Telecalling';
   const personTime = isLeader ? '08:45 AM' : '09:12 AM';
+
+  const isEnrolled = faceProfiles.some(p => 
+    p.employeeName.toLowerCase() === personName.toLowerCase() || 
+    p.employeeId === profile.id
+  );
 
   const startFaceScan = () => {
     setScanningState('SCANNING');
@@ -37,19 +53,20 @@ export const FaceScanAttendanceView: React.FC = () => {
           if (prev >= 100) {
             clearInterval(interval);
             setScanningState('MATCHED');
-            triggerToast(`✓ Face Match 99.6% Verified: ${personName}`);
+            verifyFaceAttendance();
+            triggerToast(`✓ Face Match 99.8% Verified: ${personName}`);
             setTimeout(() => {
               setAuthStep('ATTENDANCE_SUCCESS');
             }, 1000);
             return 100;
           }
-          return prev + 20;
+          return prev + 25;
         });
-      }, 150);
+      }, 140);
 
       return () => clearInterval(interval);
     }
-  }, [scanningState, setAuthStep, triggerToast, personName]);
+  }, [scanningState, setAuthStep, triggerToast, personName, verifyFaceAttendance]);
 
   return (
     <div className="min-h-screen bg-[#07131F] text-white flex flex-col justify-between max-w-md mx-auto relative overflow-hidden font-sans p-5">
