@@ -4,13 +4,27 @@ import db from '../db/connection.js';
 const router = Router();
 
 // GET /api/stats
-router.get('/', (req: Request, res: Response) => {
+// Targets belong to Admin, so the daily call goal and monthly sales target are
+// taken from the employee's roster row rather than a separate copy that would
+// never hear about an Admin edit.
+router.get('/', (_req: Request, res: Response) => {
   try {
-    const stats = db.prepare('SELECT * FROM telecaller_stats LIMIT 1').get();
+    const stats = db.prepare('SELECT * FROM telecaller_stats LIMIT 1').get() as any;
     if (!stats) {
       return res.status(404).json({ error: 'Stats not found' });
     }
-    return res.status(200).json(stats);
+
+    const profile = db.prepare('SELECT empCode FROM employee_profiles LIMIT 1').get() as any;
+    const roster = profile
+      ? (db.prepare('SELECT * FROM team_members WHERE empCode = ?').get(profile.empCode) as any)
+      : null;
+
+    return res.status(200).json({
+      ...stats,
+      todayGoalCalls: roster?.goalCalls ?? stats.todayGoalCalls,
+      monthlySalesTarget: roster?.salesTarget ?? stats.monthlySalesTarget,
+      monthlySalesAchieved: roster?.salesAchieved ?? stats.monthlySalesAchieved,
+    });
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });
   }

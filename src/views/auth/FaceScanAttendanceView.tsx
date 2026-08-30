@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   Camera, 
   CheckCircle2, 
@@ -26,6 +27,8 @@ export const FaceScanAttendanceView: React.FC = () => {
     setAuthStep, 
     triggerToast 
   } = useApp();
+
+  useScreenData('faceScan');
   const [scanningState, setScanningState] = useState<'INITIAL' | 'SCANNING' | 'MATCHED'>('INITIAL');
   const [progress, setProgress] = useState(0);
 

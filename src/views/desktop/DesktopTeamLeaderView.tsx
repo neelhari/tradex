@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useListDefault } from '../../hooks/useListDefault';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   Users, 
   CheckCircle2, 
@@ -49,6 +51,8 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
     triggerToast 
   } = useApp();
 
+  useScreenData('teamLeaderDashboard');
+
   const [activeSubTab, setActiveSubTab] = useState<string>(currentTab);
   const activeTab = onTabChange ? currentTab : activeSubTab;
   const setTab = onTabChange || setActiveSubTab;
@@ -61,11 +65,13 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [selectedLeadForReassign, setSelectedLeadForReassign] = useState<string | null>(null);
-  const [newAssignee, setNewAssignee] = useState(teamMembers[0]?.name || '');
+  const [newAssignee, setNewAssignee] = useState('');
 
   // Form states
   const [taskTitle, setTaskTitle] = useState('');
-  const [taskAssignee, setTaskAssignee] = useState(teamMembers[0]?.name || '');
+  const [taskAssignee, setTaskAssignee] = useState('');
+  useListDefault(taskAssignee, setTaskAssignee, teamMembers, (m) => m.name);
+  useListDefault(newAssignee, setNewAssignee, teamMembers, (m) => m.name);
   const [taskPriority, setTaskPriority] = useState<'HIGH' | 'MEDIUM' | 'NORMAL'>('HIGH');
   const [taskDueDate, setTaskDueDate] = useState('Today, 06:00 PM');
 
@@ -157,7 +163,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
             <span className="text-xl">👋</span>
           </div>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Team Leader • <span className="text-[#00A88B] font-bold">Alpha Growth Team</span> • <strong className="text-emerald-600">● 6 Active Telecallers</strong>
+            Team Leader • <span className="text-[#00A88B] font-bold">Alpha Growth Team</span> • <strong className="text-emerald-600">● {presentCount} Active Telecallers</strong>
           </p>
         </div>
 
@@ -400,11 +406,11 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                         <span className="text-[10px] font-extrabold text-[#00A88B] bg-[#E6FAF6] px-2 py-0.5 rounded-md uppercase">
                           {mtg.type}
                         </span>
-                        <span className="text-[10px] font-mono text-slate-400">{mtg.dateTime.split('•')[0]}</span>
+                        <span className="text-[10px] font-mono text-slate-400">{(mtg.dateTime ?? '').split('•')[0]}</span>
                       </div>
                       <h5 className="font-bold text-xs text-[#0A2540]">{mtg.title}</h5>
                       <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" /> {mtg.dateTime.split('•')[1] || mtg.dateTime}
+                        <Clock className="w-3 h-3 text-slate-400" /> {(mtg.dateTime ?? '').split('•')[1] || mtg.dateTime}
                       </p>
                     </div>
                   ))}
@@ -435,7 +441,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                       <div key={req.id} className="p-3 bg-rose-50/50 border border-rose-100 rounded-2xl space-y-2">
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-bold text-xs text-slate-800 block">Arjun Kumar</span>
+                            <span className="font-bold text-xs text-slate-800 block">{req.employeeName || 'Employee'}</span>
                             <span className="text-[10px] text-rose-700 font-semibold">{req.leaveType} • {req.totalDays} Day(s)</span>
                           </div>
                           <span className="text-[10px] text-slate-400 font-mono">{req.appliedOn}</span>
@@ -590,7 +596,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 >
                   <div className="space-y-1.5 max-w-xl">
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-sm text-[#0A2540]">Arjun Kumar (TNX-8492)</span>
+                      <span className="font-bold text-sm text-[#0A2540]">{req.employeeName || 'Employee'} ({req.employeeCode || '—'})</span>
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
                         req.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
                         req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :

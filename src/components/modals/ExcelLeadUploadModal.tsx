@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useListDefault } from '../../hooks/useListDefault';
 import { 
   X, 
   UploadCloud, 
@@ -18,71 +19,96 @@ export const ExcelLeadUploadModal: React.FC = () => {
     importAndAssignLeads 
   } = useApp();
 
-  const telecallers = teamMembers.filter(m => 
-    m.role.toLowerCase().includes('telecaller') || 
-    m.role.toLowerCase().includes('sales') ||
-    m.role.toLowerCase().includes('executive')
+  // Leads are allocated to callers; fall back to the full roster if no role
+  // happens to match, so the feature is never blocked by role naming.
+  const matchingCallers = teamMembers.filter((m) =>
+    ['telecaller', 'sales', 'executive'].some((term) => (m.role ?? '').toLowerCase().includes(term))
   );
+  const telecallers = matchingCallers.length ? matchingCallers : teamMembers;
 
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState(telecallers[0]?.id || 'emp-102');
-  const [fileName, setFileName] = useState('TradeNexus_Q3_Inbound_Leads.xlsx');
+  // Selected once the roster loads; the list arrives after first render.
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [fileName, setFileName] = useState('');
   const [pastedData, setPastedData] = useState('');
+  const [parseError, setParseError] = useState<string | null>(null);
 
-  // Pre-loaded sample leads for realistic immediate import
-  const [parsedLeads, setParsedLeads] = useState<Array<{ name: string; phone: string; company: string; city: string; email: string }>>([
-    { name: 'Nikhil Kashyap', phone: '+91 98450 11990', company: 'Kashyap Exports Ltd', city: 'Mumbai', email: 'nikhil@kashyapexports.in' },
-    { name: 'Rajendra Joshi', phone: '+91 97123 44556', company: 'Joshi Auto Ancillaries', city: 'Pune', email: 'r.joshi@joshiauto.com' },
-    { name: 'Aakash Verma', phone: '+91 99002 33112', company: 'Apex Infotech Hub', city: 'Bengaluru', email: 'aakash@apexinfo.io' },
-    { name: 'Sunita Mehra', phone: '+91 96554 22118', company: 'BlueSky Warehousing', city: 'Delhi NCR', email: 'sunita@blueskyware.com' },
-    { name: 'Gaurav Singhal', phone: '+91 98331 77665', company: 'Singhal Commodities', city: 'Ahmedabad', email: 'gaurav@singhalgroup.com' },
-    { name: 'Pooja Deshmukh', phone: '+91 97220 88991', company: 'Horizon Renewable Energy', city: 'Hyderabad', email: 'pooja.d@horizonenergy.com' },
-  ]);
+  // Populated only from a file the user picks or rows they paste — never seeded.
+  const [parsedLeads, setParsedLeads] = useState<Array<{ name: string; phone: string; company: string; city: string; email: string }>>([]);
+
+  useListDefault(selectedEmployeeId, setSelectedEmployeeId, telecallers, (m) => m.id);
 
   if (!isExcelUploadModalOpen) return null;
 
+  // Rows are name, phone, company, city, email — separated by comma, tab or pipe.
+  const parseRows = (text: string) => {
+    const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
+    if (!lines.length) return [];
+
+    // Drop a header row if the first cell is clearly a column name
+    const firstCell = lines[0].split(/[,\t|]/)[0].trim().toLowerCase();
+    const rows = ['name', 'lead name', 'contact', 'contact name'].includes(firstCell)
+      ? lines.slice(1)
+      : lines;
+
+    return rows
+      .map((line) => {
+        const [name, phone, company, city, email] = line.split(/[,\t|]/).map((p) => p.trim());
+        return { name, phone: phone || '', company: company || '', city: city || '', email: email || '' };
+      })
+      .filter((r) => r.name);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
-      // Generate synthetic parsed records from filename if custom file
-      const newItems = Array.from({ length: 8 }).map((_, idx) => ({
-        name: `Lead Contact #${idx + 1}`,
-        phone: `+91 98${Math.floor(10000000 + Math.random() * 89999999)}`,
-        company: `${file.name.replace(/\.[^/.]+$/, '')} Enterprise ${idx + 1}`,
-        city: ['Mumbai', 'Bengaluru', 'Delhi NCR', 'Hyderabad', 'Chennai', 'Pune'][idx % 6],
-        email: `lead${idx + 1}@${file.name.toLowerCase().replace(/[^a-z]/g, '')}.com`,
-      }));
-      setParsedLeads(newItems);
+    if (!file) return;
+
+    setFileName(file.name);
+    setParseError(null);
+
+    if (/\.xlsx?$/i.test(file.name)) {
+      setParsedLeads([]);
+      setParseError(
+        'Binary .xls/.xlsx files cannot be read in the browser. Save the sheet as CSV, or paste the rows below.'
+      );
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rows = parseRows(String(reader.result ?? ''));
+      setParsedLeads(rows);
+      if (!rows.length) {
+        setParseError('No usable rows found. Expected: name, phone, company, city, email');
+      }
+    };
+    reader.onerror = () => setParseError('Could not read that file.');
+    reader.readAsText(file);
   };
 
   const handleParseCustomText = () => {
     if (!pastedData.trim()) return;
-    const lines = pastedData.trim().split('\n');
-    const records = lines.map((line, idx) => {
-      const parts = line.split(/[,\t|]/).map(p => p.trim());
-      return {
-        name: parts[0] || `Lead Contact ${idx + 1}`,
-        phone: parts[1] || `+91 98${Math.floor(10000000 + Math.random() * 89999999)}`,
-        company: parts[2] || 'Direct Enterprise Import',
-        city: parts[3] || 'Pan-India',
-        email: parts[4] || `contact${idx + 1}@enterprise.in`,
-      };
-    });
-    if (records.length > 0) {
-      setParsedLeads(records);
-      setFileName(`Custom_Import_${records.length}_Leads.csv`);
-      setPastedData('');
+    const records = parseRows(pastedData);
+    if (!records.length) {
+      setParseError('No usable rows found. Expected: name, phone, company, city, email');
+      return;
     }
+    setParsedLeads(records);
+    setFileName(`Pasted_Import_${records.length}_Leads.csv`);
+    setPastedData('');
+    setParseError(null);
   };
 
+  const targetEmp = teamMembers.find((m) => m.id === selectedEmployeeId);
+  const canAllocate = parsedLeads.length > 0 && !!targetEmp;
+
   const handleImportAndAllocate = () => {
-    const targetEmp = teamMembers.find(m => m.id === selectedEmployeeId) || telecallers[0] || { id: 'emp-102', name: 'Nikhil Sharma' };
-    importAndAssignLeads(fileName, targetEmp.id, targetEmp.name, parsedLeads);
+    if (!canAllocate || !targetEmp) return;
+    importAndAssignLeads(fileName || 'Manual_Import.csv', targetEmp.id, targetEmp.name, parsedLeads);
+    setParsedLeads([]);
+    setFileName('');
     setIsExcelUploadModalOpen(false);
   };
 
-  const selectedTargetEmp = teamMembers.find(m => m.id === selectedEmployeeId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
@@ -127,14 +153,14 @@ export const ExcelLeadUploadModal: React.FC = () => {
               onChange={(e) => setSelectedEmployeeId(e.target.value)}
               className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
-              {teamMembers.map((m) => (
+              {telecallers.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name} — {m.role} ({m.group})
                 </option>
               ))}
             </select>
             <p className="text-[11px] text-slate-500">
-              Only <strong className="text-slate-800">{selectedTargetEmp?.name || 'Selected Telecaller'}</strong> will see this allocated batch in their calling queue.
+              Only <strong className="text-slate-800">{targetEmp?.name || 'the selected telecaller'}</strong> will see this allocated batch in their calling queue.
             </p>
           </div>
 
@@ -189,9 +215,21 @@ export const ExcelLeadUploadModal: React.FC = () => {
                 3. Preview Batch ({parsedLeads.length} Leads)
               </span>
               <span className="text-[11px] font-medium text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md font-mono">
-                {fileName}
+                {fileName || 'No file selected'}
               </span>
             </div>
+
+            {parseError && (
+              <p className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+                {parseError}
+              </p>
+            )}
+
+            {!parsedLeads.length && !parseError && (
+              <p className="text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                Choose a CSV file or paste rows to preview the batch. Expected columns: name, phone, company, city, email.
+              </p>
+            )}
 
             <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-48 overflow-y-auto bg-white">
               <table className="w-full text-left text-[11px]">
@@ -221,7 +259,7 @@ export const ExcelLeadUploadModal: React.FC = () => {
           <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl text-amber-800 text-[11px]">
             <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
             <span>
-              <strong>Confidentiality Rule:</strong> Caller numbers remain strictly assigned to {selectedTargetEmp?.name || 'the telecaller'} and live call statuses will stream to TL & Admin.
+              <strong>Confidentiality Rule:</strong> Caller numbers remain strictly assigned to {targetEmp?.name || 'the telecaller'} and live call statuses will stream to TL & Admin.
             </span>
           </div>
 
@@ -240,10 +278,13 @@ export const ExcelLeadUploadModal: React.FC = () => {
           <button
             type="button"
             onClick={handleImportAndAllocate}
-            className="flex-1 max-w-xs flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold shadow-lg shadow-teal-600/20 transition-all text-xs"
+            disabled={!canAllocate}
+            className="flex-1 max-w-xs flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed disabled:shadow-none text-white font-bold shadow-lg shadow-teal-600/20 transition-all text-xs"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Allocate {parsedLeads.length} Leads to {selectedTargetEmp?.name.split(' ')[0] || 'Telecaller'}
+            {canAllocate
+              ? `Allocate ${parsedLeads.length} Leads to ${targetEmp?.name.split(' ')[0]}`
+              : 'Add leads to allocate'}
           </button>
         </div>
 

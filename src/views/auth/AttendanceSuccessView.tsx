@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   CheckCircle2, 
   ArrowRight, 
@@ -14,6 +15,8 @@ import {
 
 export const AttendanceSuccessView: React.FC = () => {
   const { currentRole, profile, setAuthStep } = useApp();
+
+  useScreenData('attendanceSuccess');
   const [countdown, setCountdown] = useState(3);
 
   const isLeader = currentRole === 'team_leader';

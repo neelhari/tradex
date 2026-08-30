@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useListDefault } from '../hooks/useListDefault';
+import { useScreenData } from '../hooks/useScreenData';
 import { 
   Bell, 
   Users, 
@@ -43,6 +45,8 @@ export const TeamLeaderDashboardView: React.FC = () => {
     triggerToast 
   } = useApp();
 
+  useScreenData('teamLeaderDashboard');
+
   const [activeTab, setActiveTab] = useState<'home' | 'team' | 'approvals' | 'reports' | 'more'>('home');
   const [attendanceFilter, setAttendanceFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'ON_LEAVE'>('ALL');
   
@@ -51,11 +55,13 @@ export const TeamLeaderDashboardView: React.FC = () => {
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
   const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [selectedLeadForReassign, setSelectedLeadForReassign] = useState<string | null>(null);
-  const [newAssignee, setNewAssignee] = useState(teamMembers[0]?.name || '');
+  const [newAssignee, setNewAssignee] = useState('');
 
   // Form states
   const [taskTitle, setTaskTitle] = useState('');
-  const [taskAssignee, setTaskAssignee] = useState(teamMembers[0]?.name || '');
+  const [taskAssignee, setTaskAssignee] = useState('');
+  useListDefault(taskAssignee, setTaskAssignee, teamMembers, (m) => m.name);
+  useListDefault(newAssignee, setNewAssignee, teamMembers, (m) => m.name);
   const [taskPriority, setTaskPriority] = useState<'HIGH' | 'MEDIUM' | 'NORMAL'>('HIGH');
   const [taskDueDate, setTaskDueDate] = useState('Today, 06:00 PM');
 
@@ -81,6 +87,14 @@ export const TeamLeaderDashboardView: React.FC = () => {
   const targetPercentage = Math.min(100, Math.round((targetAchieved / Math.max(1, targetTotal)) * 100));
 
   const pendingLeaves = leaveRequests.filter(r => r.status === 'PENDING');
+
+  const avgDialsPerAgent = (totalActivities / Math.max(1, teamMembers.length)).toFixed(1);
+  const avgConversion = (
+    teamMembers.reduce((sum, m) => sum + (m.conversionRate || 0), 0) / Math.max(1, teamMembers.length)
+  ).toFixed(1);
+
+  // Copy before sorting so the shared context array is not mutated during render
+  const membersByDials = [...teamMembers].sort((a, b) => b.dialsToday - a.dialsToday);
 
   const handleCreateTaskSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -480,7 +494,7 @@ export const TeamLeaderDashboardView: React.FC = () => {
                 <div key={req.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <strong className="text-xs font-bold text-[#0A2540] block">Arjun Kumar</strong>
+                      <strong className="text-xs font-bold text-[#0A2540] block">{req.employeeName || 'Employee'}</strong>
                       <span className="text-[11px] text-slate-500">{req.leaveType} ({req.totalDays} Days)</span>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -544,17 +558,17 @@ export const TeamLeaderDashboardView: React.FC = () => {
             <div className="grid grid-cols-2 gap-2.5">
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[10px] text-slate-500 block font-semibold">Average Dials / Agent</span>
-                <span className="font-mono-nums font-black text-lg text-[#0A2540]">52.3 Calls</span>
+                <span className="font-mono-nums font-black text-lg text-[#0A2540]">{avgDialsPerAgent} Calls</span>
               </div>
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[10px] text-slate-500 block font-semibold">Average Conversion</span>
-                <span className="font-mono-nums font-black text-lg text-[#00A88B]">15.8%</span>
+                <span className="font-mono-nums font-black text-lg text-[#00A88B]">{avgConversion}%</span>
               </div>
             </div>
 
             {/* Leaderboard list */}
             <div className="space-y-2">
-              {teamMembers.sort((a, b) => b.dialsToday - a.dialsToday).map((m, i) => (
+              {membersByDials.map((m, i) => (
                 <div key={m.id} className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5">
                     <span className="font-mono font-bold text-slate-400 w-5">#{i + 1}</span>

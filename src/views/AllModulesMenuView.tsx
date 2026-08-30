@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { useScreenData } from '../hooks/useScreenData';
 import { 
   UserCheck, 
   PhoneCall, 
@@ -16,6 +17,8 @@ import { NavTab } from '../types';
 
 export const AllModulesMenuView: React.FC = () => {
   const { profile, setActiveTab, triggerToast } = useApp();
+
+  useScreenData('modulesMenu');
 
   const modules = [
     { title: 'Attendance Management', subtitle: 'Face ID logs, check-in history & calendar', icon: UserCheck, tab: 'leaves' as NavTab },
@@ -35,9 +38,7 @@ export const AllModulesMenuView: React.FC = () => {
       <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#00C9A7] to-[#0A2540] p-0.5">
-            <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center font-bold text-base text-[#0A2540]">
-              AK
-            </div>
+            <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center font-bold text-base text-[#0A2540]">{profile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}</div>
           </div>
           <div>
             <h3 className="font-display font-bold text-base text-[#0A2540]">{profile.name}</h3>

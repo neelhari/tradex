@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useScreenData } from '../hooks/useScreenData';
 import { 
   Users, 
   Search, 
@@ -16,7 +17,9 @@ import {
 import { LeadTemperature } from '../types';
 
 export const ClientsPipelineView: React.FC = () => {
-  const { clients, triggerToast, setIsQuickCallModalOpen } = useApp();
+  const { myLeads: clients, triggerToast, setIsQuickCallModalOpen } = useApp();
+
+  useScreenData('clientsPipeline');
   const [activeTab, setActiveTab] = useState<'ALL' | 'Due Today' | 'HOT' | 'Converted'>('ALL');
   const [search, setSearch] = useState('');
 

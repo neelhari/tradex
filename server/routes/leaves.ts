@@ -16,15 +16,23 @@ router.get('/', (req: Request, res: Response) => {
 // POST /api/leaves
 router.post('/', (req: Request, res: Response) => {
   try {
-    const { id, leaveType, fromDate, toDate, totalDays, reason, status, appliedOn, approvedBy } = req.body;
+    const { id, employeeName, employeeCode, leaveType, fromDate, toDate, totalDays, reason, status, appliedOn, approvedBy } = req.body;
     const leaveId = id || `leave-${Date.now()}`;
     const days = totalDays ? Number(totalDays) : 1;
 
+    // Fall back to the profile on record so a request always names an applicant
+    const owner = db
+      .prepare('SELECT name, empCode FROM employee_profiles LIMIT 1')
+      .get() as { name?: string; empCode?: string } | undefined;
+
     db.prepare(`
-      INSERT INTO leave_requests (id, leaveType, fromDate, toDate, totalDays, reason, status, appliedOn, approvedBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO leave_requests (id, employeeName, employeeCode, leaveType, fromDate, toDate, totalDays, reason, status, appliedOn, approvedBy)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      leaveId, leaveType || 'Casual Leave', fromDate, toDate, days,
+      leaveId,
+      employeeName || owner?.name || 'Unknown Employee',
+      employeeCode || owner?.empCode || '',
+      leaveType || 'Casual Leave', fromDate, toDate, days,
       reason || '', status || 'PENDING', appliedOn || 'Today', approvedBy || null
     );
 
@@ -52,11 +60,12 @@ router.put('/:id', (req: Request, res: Response) => {
 
     const merged = { ...existing, ...req.body };
     db.prepare(`
-      UPDATE leave_requests 
-      SET leaveType = ?, fromDate = ?, toDate = ?, totalDays = ?, reason = ?, 
+      UPDATE leave_requests
+      SET employeeName = ?, employeeCode = ?, leaveType = ?, fromDate = ?, toDate = ?, totalDays = ?, reason = ?,
           status = ?, appliedOn = ?, approvedBy = ?
       WHERE id = ?
     `).run(
+      merged.employeeName ?? null, merged.employeeCode ?? null,
       merged.leaveType, merged.fromDate, merged.toDate, merged.totalDays,
       merged.reason, merged.status, merged.appliedOn, merged.approvedBy, id
     );

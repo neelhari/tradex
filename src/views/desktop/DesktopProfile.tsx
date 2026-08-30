@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScreenData } from '../../hooks/useScreenData';
 import { 
   CreditCard, 
   Download, 
@@ -14,6 +15,8 @@ import {
 
 export const DesktopProfile: React.FC = () => {
   const { profile, payslips, setIsIdCardModalOpen, triggerToast } = useApp();
+
+  useScreenData('profileSelfService');
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -47,9 +50,7 @@ export const DesktopProfile: React.FC = () => {
           <div className="nexus-card p-6 bg-gradient-to-b from-[#0A2540] to-[#0F3258] text-white shadow-lg space-y-4">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00C9A7] to-[#38E1B7] p-0.5 shadow-md flex-shrink-0">
-                <div className="w-full h-full rounded-[14px] bg-[#0A2540] flex items-center justify-center font-display font-black text-2xl text-[#00C9A7]">
-                  AK
-                </div>
+                <div className="w-full h-full rounded-[14px] bg-[#0A2540] flex items-center justify-center font-display font-black text-2xl text-[#00C9A7]">{profile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}</div>
               </div>
               <div>
                 <h3 className="font-display font-black text-xl text-white">{profile.name}</h3>

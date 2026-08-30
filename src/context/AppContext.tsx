@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { 
   UserRole, 
   AuthStep,
@@ -25,28 +25,15 @@ import {
   OfferLetterData,
   NewEmployeeInput
 } from '../types';
-import { 
-  INITIAL_PROFILE, 
-  INITIAL_TELECALLER_STATS, 
-  INITIAL_CALL_LOGS, 
-  INITIAL_CLIENT_LEADS, 
-  INITIAL_ATTENDANCE_LOGS, 
-  INITIAL_LEAVE_REQUESTS, 
-  INITIAL_PAYSLIPS,
-  INITIAL_TEAM_MEMBERS,
-  INITIAL_TEAM_GROUPS,
-  INITIAL_TEAM_TASKS,
-  INITIAL_TEAM_MEETINGS,
-  INITIAL_CANDIDATES,
-  INITIAL_ONBOARDING,
-  INITIAL_EXIT_LIST,
-  INITIAL_PAYMENTS,
-  INITIAL_ASSIGNED_LEADS,
-  INITIAL_LEAD_BATCHES,
-  INITIAL_FACE_PROFILES,
-  INITIAL_OFFER_LETTERS
-} from '../data/mockData';
 import { api } from '../services/api';
+import {
+  ALL_RESOURCE_KEYS,
+  EMPTY_PROFILE,
+  EMPTY_STATS,
+  RESOURCE_FETCHERS,
+  ResourceKey,
+  ResourceStatus,
+} from '../data/resources';
 
 interface AppContextType {
   currentRole: UserRole;
@@ -66,6 +53,8 @@ interface AppContextType {
   
   // Dynamic Lead Management
   assignedLeads: AssignedLead[];
+  /** The signed-in employee's own assigned leads, in the shape the pipeline screens expect. */
+  myLeads: ClientLead[];
   leadBatches: LeadBatch[];
   importAndAssignLeads: (
     fileName: string, 
@@ -93,6 +82,10 @@ interface AppContextType {
   isOfferLetterModalOpen: boolean;
   setIsOfferLetterModalOpen: (open: boolean) => void;
   createNewEmployee: (data: NewEmployeeInput) => void;
+  /** Change an employee's details, role or team. */
+  updateEmployee: (id: string, changes: Partial<TeamMember>) => Promise<void>;
+  /** Switch an employee off without deleting their history, or switch them back on. */
+  setEmployeeActive: (id: string, active: boolean) => Promise<void>;
   generateOfferLetter: (data: Omit<OfferLetterData, 'id' | 'issuedDate'>) => void;
 
   // Team Leader Module State
@@ -103,6 +96,8 @@ interface AppContextType {
   approveLeaveRequest: (id: string) => void;
   rejectLeaveRequest: (id: string, reason: string) => void;
   reassignLead: (leadId: string, newAssigneeName: string) => void;
+  /** Move a telecaller's whole batch of assigned leads to someone else. */
+  reassignLeadsBetween: (fromEmployeeId: string, toEmployeeId: string) => Promise<void>;
   createTeamGroup: (data: { name: string; description: string; leaderName: string; monthlyTarget: number; color: string }) => void;
   assignTeamLeaderToGroup: (groupId: string, leaderName: string) => void;
   createTeamTask: (data: { title: string; assignedTo: string; group?: string; dueDate: string; priority: 'HIGH' | 'MEDIUM' | 'NORMAL' }) => void;
@@ -144,6 +139,14 @@ interface AppContextType {
   selectedPayslip: PayslipItem | null;
   setSelectedPayslip: (payslip: PayslipItem | null) => void;
   
+  // Backend connection status & on-demand loading
+  isDataLoading: boolean;
+  backendError: string | null;
+  resourceStatus: Record<ResourceKey, ResourceStatus>;
+  loadResources: (keys: readonly ResourceKey[], options?: { force?: boolean }) => Promise<void>;
+  refreshResources: (keys: readonly ResourceKey[]) => Promise<void>;
+  invalidateAll: () => void;
+
   // Quick Actions & Simulation
   activeToast: string | null;
   triggerToast: (msg: string) => void;
@@ -165,106 +168,74 @@ interface AppContextType {
   }) => void;
   simulateFaceIdCheckIn: () => void;
   simulateFaceIdCheckOut: () => void;
+  /** Records a real check-in with the photo and position captured on the device. */
+  recordCheckIn: (data: {
+    photo: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  }) => Promise<void>;
+  /** Records the end of the day, with the same proof as check-in. */
+  recordCheckOut: (data: {
+    photo: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  }) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
-    return (localStorage.getItem('tnx_currentRole') as UserRole) || 'telecaller';
+    // Browsers with site data blocked throw on access rather than returning null
+    try {
+      return (localStorage.getItem('tnx_currentRole') as UserRole) || 'telecaller';
+    } catch {
+      return 'telecaller';
+    }
   });
   const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [deviceMode, setDeviceMode] = useState<'mobile' | 'desktop'>('mobile');
   const [authStep, setAuthStep] = useState<AuthStep>('LOGIN');
 
-  const [profile, setProfile] = useState<EmployeeProfile>(() => {
-    const saved = localStorage.getItem('tnx_profile');
-    return saved ? JSON.parse(saved) : INITIAL_PROFILE;
-  });
-  const [stats, setStats] = useState<TelecallerStats>(() => {
-    const saved = localStorage.getItem('tnx_stats');
-    return saved ? JSON.parse(saved) : INITIAL_TELECALLER_STATS;
-  });
-  const [callLogs, setCallLogs] = useState<CallLogItem[]>(() => {
-    const saved = localStorage.getItem('tnx_callLogs');
-    return saved ? JSON.parse(saved) : INITIAL_CALL_LOGS;
-  });
-  const [clients, setClients] = useState<ClientLead[]>(() => {
-    const saved = localStorage.getItem('tnx_clients');
-    return saved ? JSON.parse(saved) : INITIAL_CLIENT_LEADS;
-  });
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(() => {
-    const saved = localStorage.getItem('tnx_attendanceLogs');
-    return saved ? JSON.parse(saved) : INITIAL_ATTENDANCE_LOGS;
-  });
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => {
-    const saved = localStorage.getItem('tnx_leaveRequests');
-    return saved ? JSON.parse(saved) : INITIAL_LEAVE_REQUESTS;
-  });
-  const [payslips, setPayslips] = useState<PayslipItem[]>(() => {
-    const saved = localStorage.getItem('tnx_payslips');
-    return saved ? JSON.parse(saved) : INITIAL_PAYSLIPS;
-  });
+  // All domain data comes from the SQLite backend. Lists start empty and are
+  // filled on demand by the resource loader below, so an unreachable API shows
+  // as empty screens rather than silently falling back to mock records.
+  // profile/stats keep their shape as a blank skeleton because the whole UI
+  // reads their fields directly; both are replaced by the API response.
+  const [profile, setProfile] = useState<EmployeeProfile>(EMPTY_PROFILE);
+  const [stats, setStats] = useState<TelecallerStats>(EMPTY_STATS);
+  const [callLogs, setCallLogs] = useState<CallLogItem[]>([]);
+  const [clients, setClients] = useState<ClientLead[]>([]);
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [payslips, setPayslips] = useState<PayslipItem[]>([]);
 
   // Dynamic Lead Management State
-  const [assignedLeads, setAssignedLeads] = useState<AssignedLead[]>(() => {
-    const saved = localStorage.getItem('tnx_assignedLeads');
-    return saved ? JSON.parse(saved) : INITIAL_ASSIGNED_LEADS;
-  });
-  const [leadBatches, setLeadBatches] = useState<LeadBatch[]>(() => {
-    const saved = localStorage.getItem('tnx_leadBatches');
-    return saved ? JSON.parse(saved) : INITIAL_LEAD_BATCHES;
-  });
+  const [assignedLeads, setAssignedLeads] = useState<AssignedLead[]>([]);
+  const [leadBatches, setLeadBatches] = useState<LeadBatch[]>([]);
 
   // Face Biometric State
-  const [faceProfiles, setFaceProfiles] = useState<FaceBiometricProfile[]>(() => {
-    const saved = localStorage.getItem('tnx_faceProfiles');
-    return saved ? JSON.parse(saved) : INITIAL_FACE_PROFILES;
-  });
+  const [faceProfiles, setFaceProfiles] = useState<FaceBiometricProfile[]>([]);
 
   // Offer Letters State
-  const [offerLetters, setOfferLetters] = useState<OfferLetterData[]>(() => {
-    const saved = localStorage.getItem('tnx_offerLetters');
-    return saved ? JSON.parse(saved) : INITIAL_OFFER_LETTERS;
-  });
+  const [offerLetters, setOfferLetters] = useState<OfferLetterData[]>([]);
   const [selectedOfferLetter, setSelectedOfferLetter] = useState<OfferLetterData | null>(null);
   const [isOfferLetterModalOpen, setIsOfferLetterModalOpen] = useState(false);
 
   // Team Leader Module State
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => {
-    const saved = localStorage.getItem('tnx_teamMembers');
-    return saved ? JSON.parse(saved) : INITIAL_TEAM_MEMBERS;
-  });
-  const [teamGroups, setTeamGroups] = useState<TeamGroup[]>(() => {
-    const saved = localStorage.getItem('tnx_teamGroups');
-    return saved ? JSON.parse(saved) : INITIAL_TEAM_GROUPS;
-  });
-  const [teamTasks, setTeamTasks] = useState<TeamTask[]>(() => {
-    const saved = localStorage.getItem('tnx_teamTasks');
-    return saved ? JSON.parse(saved) : INITIAL_TEAM_TASKS;
-  });
-  const [teamMeetings, setTeamMeetings] = useState<TeamMeeting[]>(() => {
-    const saved = localStorage.getItem('tnx_teamMeetings');
-    return saved ? JSON.parse(saved) : INITIAL_TEAM_MEETINGS;
-  });
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamGroups, setTeamGroups] = useState<TeamGroup[]>([]);
+  const [teamTasks, setTeamTasks] = useState<TeamTask[]>([]);
+  const [teamMeetings, setTeamMeetings] = useState<TeamMeeting[]>([]);
 
   // HR Module State
-  const [candidates, setCandidates] = useState<CandidateInterview[]>(() => {
-    const saved = localStorage.getItem('tnx_candidates');
-    return saved ? JSON.parse(saved) : INITIAL_CANDIDATES;
-  });
-  const [onboardingList, setOnboardingList] = useState<OnboardingEmployee[]>(() => {
-    const saved = localStorage.getItem('tnx_onboardingList');
-    return saved ? JSON.parse(saved) : INITIAL_ONBOARDING;
-  });
-  const [exitList, setExitList] = useState<ExitEmployee[]>(() => {
-    const saved = localStorage.getItem('tnx_exitList');
-    return saved ? JSON.parse(saved) : INITIAL_EXIT_LIST;
-  });
-  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerificationItem[]>(() => {
-    const saved = localStorage.getItem('tnx_paymentVerifications');
-    return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
-  });
+  const [candidates, setCandidates] = useState<CandidateInterview[]>([]);
+  const [onboardingList, setOnboardingList] = useState<OnboardingEmployee[]>([]);
+  const [exitList, setExitList] = useState<ExitEmployee[]>([]);
+  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerificationItem[]>([]);
+
+  // Backend connection state, surfaced in the UI so a failed load is visible.
+  const [backendError, setBackendError] = useState<string | null>(null);
 
   // Modals & UI State
   const [isFaceIdModalOpen, setIsFaceIdModalOpen] = useState(false);
@@ -277,96 +248,119 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedPayslip, setSelectedPayslip] = useState<PayslipItem | null>(null);
   const [activeToast, setActiveToast] = useState<string | null>(null);
 
-  // Sync to backend SQLite on mount
-  useEffect(() => {
-    const loadFromDatabase = async () => {
-      try {
-        const [
-          profRes, statsRes, callsRes, clientsRes, attRes, leavesRes,
-          paysRes, tmRes, grpRes, tasksRes, mtgRes, candsRes,
-          onbRes, exitRes, asgRes, batchesRes, faceRes, offRes, payRes
-        ] = await Promise.allSettled([
-          api.getProfile(),
-          api.getStats(),
-          api.getCallLogs(),
-          api.getClients(),
-          api.getAttendance(),
-          api.getLeaves(),
-          api.getPayslips(),
-          api.getTeamMembers(),
-          api.getTeamGroups(),
-          api.getTeamTasks(),
-          api.getTeamMeetings(),
-          api.getInterviews(),
-          api.getOnboarding(),
-          api.getExitEmployees(),
-          api.getAssignedLeads(),
-          api.getLeadBatches(),
-          api.getBiometrics(),
-          api.getOfferLetters(),
-          api.getPayments(),
-        ]);
+  // --- On-demand resource loading -----------------------------------------
+  // Nothing is fetched on mount. Screens declare what they need via
+  // useScreenData(), and each resource is fetched at most once per session
+  // (until something invalidates it). Concurrent requests for the same
+  // resource share one in-flight promise.
 
-        if (profRes.status === 'fulfilled' && profRes.value) setProfile(profRes.value);
-        if (statsRes.status === 'fulfilled' && statsRes.value) setStats(statsRes.value);
-        if (callsRes.status === 'fulfilled' && callsRes.value) setCallLogs(callsRes.value);
-        if (clientsRes.status === 'fulfilled' && clientsRes.value) setClients(clientsRes.value);
-        if (attRes.status === 'fulfilled' && attRes.value) setAttendanceLogs(attRes.value);
-        if (leavesRes.status === 'fulfilled' && leavesRes.value) setLeaveRequests(leavesRes.value);
-        if (paysRes.status === 'fulfilled' && paysRes.value) setPayslips(paysRes.value);
-        if (tmRes.status === 'fulfilled' && tmRes.value) setTeamMembers(tmRes.value);
-        if (grpRes.status === 'fulfilled' && grpRes.value) setTeamGroups(grpRes.value);
-        if (tasksRes.status === 'fulfilled' && tasksRes.value) setTeamTasks(tasksRes.value);
-        if (mtgRes.status === 'fulfilled' && mtgRes.value) setTeamMeetings(mtgRes.value);
-        if (candsRes.status === 'fulfilled' && candsRes.value) setCandidates(candsRes.value);
-        if (onbRes.status === 'fulfilled' && onbRes.value) setOnboardingList(onbRes.value);
-        if (exitRes.status === 'fulfilled' && exitRes.value) setExitList(exitRes.value);
-        if (asgRes.status === 'fulfilled' && asgRes.value) setAssignedLeads(asgRes.value);
-        if (batchesRes.status === 'fulfilled' && batchesRes.value) setLeadBatches(batchesRes.value);
-        if (faceRes.status === 'fulfilled' && faceRes.value) setFaceProfiles(faceRes.value);
-        if (offRes.status === 'fulfilled' && offRes.value) setOfferLetters(offRes.value);
-        if (payRes.status === 'fulfilled' && payRes.value) setPaymentVerifications(payRes.value);
-      } catch (err) {
-        console.warn('Could not connect to SQLite backend initially, using cached/mock state:', err);
-      }
-    };
+  const setters = useRef<Record<ResourceKey, (value: any) => void>>({
+    profile: setProfile,
+    stats: setStats,
+    callLogs: setCallLogs,
+    clients: setClients,
+    attendanceLogs: setAttendanceLogs,
+    leaveRequests: setLeaveRequests,
+    payslips: setPayslips,
+    teamMembers: setTeamMembers,
+    teamGroups: setTeamGroups,
+    teamTasks: setTeamTasks,
+    teamMeetings: setTeamMeetings,
+    candidates: setCandidates,
+    onboardingList: setOnboardingList,
+    exitList: setExitList,
+    assignedLeads: setAssignedLeads,
+    leadBatches: setLeadBatches,
+    faceProfiles: setFaceProfiles,
+    offerLetters: setOfferLetters,
+    paymentVerifications: setPaymentVerifications,
+  });
 
-    loadFromDatabase();
+  const [resourceStatus, setResourceStatus] = useState<Record<ResourceKey, ResourceStatus>>(
+    () => Object.fromEntries(ALL_RESOURCE_KEYS.map((k) => [k, 'idle'])) as Record<ResourceKey, ResourceStatus>
+  );
+
+  // Mirrors resourceStatus so load decisions never depend on a stale closure.
+  const statusRef = useRef(resourceStatus);
+  const inFlight = useRef(new Map<ResourceKey, Promise<void>>());
+
+  const markStatus = useCallback((key: ResourceKey, status: ResourceStatus) => {
+    statusRef.current = { ...statusRef.current, [key]: status };
+    setResourceStatus((prev) => (prev[key] === status ? prev : { ...prev, [key]: status }));
   }, []);
 
-  // Sync to localStorage
+  const fetchResource = useCallback(
+    (key: ResourceKey): Promise<void> => {
+      const existing = inFlight.current.get(key);
+      if (existing) return existing;
+
+      markStatus(key, 'loading');
+
+      const request = RESOURCE_FETCHERS[key]()
+        .then((value) => {
+          if (value !== undefined && value !== null) setters.current[key](value);
+          markStatus(key, 'loaded');
+          setBackendError(null);
+        })
+        .catch((err) => {
+          markStatus(key, 'error');
+          setBackendError(
+            `Could not load "${key}" from the API on port 5001. Start it with: npm run server (${String(err)})`
+          );
+        })
+        .finally(() => {
+          inFlight.current.delete(key);
+        });
+
+      inFlight.current.set(key, request);
+      return request;
+    },
+    [markStatus]
+  );
+
+  /** Fetch the given resources unless they are already loaded or in flight. */
+  const loadResources = useCallback(
+    (keys: readonly ResourceKey[], options?: { force?: boolean }) => {
+      const pending = keys.filter((key) =>
+        options?.force ? true : statusRef.current[key] === 'idle' || statusRef.current[key] === 'error'
+      );
+      if (!pending.length) return Promise.resolve();
+      if (options?.force) pending.forEach((key) => inFlight.current.delete(key));
+      return Promise.all(pending.map(fetchResource)).then(() => undefined);
+    },
+    [fetchResource]
+  );
+
+  /** Re-fetch resources that have already been loaded (used after mutations). */
+  const refreshResources = useCallback(
+    (keys: readonly ResourceKey[]) => loadResources(keys, { force: true }),
+    [loadResources]
+  );
+
+  const isDataLoading = ALL_RESOURCE_KEYS.some((k) => resourceStatus[k] === 'loading');
+
+  // Only the selected portal is remembered locally; domain data is never cached
+  // so the screens always reflect what is actually in SQLite.
   useEffect(() => {
     try {
       localStorage.setItem('tnx_currentRole', currentRole);
-      localStorage.setItem('tnx_profile', JSON.stringify(profile));
-      localStorage.setItem('tnx_stats', JSON.stringify(stats));
-      localStorage.setItem('tnx_callLogs', JSON.stringify(callLogs));
-      localStorage.setItem('tnx_clients', JSON.stringify(clients));
-      localStorage.setItem('tnx_attendanceLogs', JSON.stringify(attendanceLogs));
-      localStorage.setItem('tnx_leaveRequests', JSON.stringify(leaveRequests));
-      localStorage.setItem('tnx_payslips', JSON.stringify(payslips));
-      localStorage.setItem('tnx_assignedLeads', JSON.stringify(assignedLeads));
-      localStorage.setItem('tnx_leadBatches', JSON.stringify(leadBatches));
-      localStorage.setItem('tnx_faceProfiles', JSON.stringify(faceProfiles));
-      localStorage.setItem('tnx_offerLetters', JSON.stringify(offerLetters));
-      localStorage.setItem('tnx_teamMembers', JSON.stringify(teamMembers));
-      localStorage.setItem('tnx_teamGroups', JSON.stringify(teamGroups));
-      localStorage.setItem('tnx_teamTasks', JSON.stringify(teamTasks));
-      localStorage.setItem('tnx_teamMeetings', JSON.stringify(teamMeetings));
-      localStorage.setItem('tnx_candidates', JSON.stringify(candidates));
-      localStorage.setItem('tnx_onboardingList', JSON.stringify(onboardingList));
-      localStorage.setItem('tnx_exitList', JSON.stringify(exitList));
-      localStorage.setItem('tnx_paymentVerifications', JSON.stringify(paymentVerifications));
     } catch {
-      // Ignore quota storage errors in preview
+      // Ignore storage errors (private windows, blocked site data)
     }
-  }, [
-    currentRole, profile, stats, callLogs, clients, attendanceLogs, leaveRequests, 
-    payslips, assignedLeads, leadBatches, faceProfiles, offerLetters, teamMembers, 
-    teamGroups, teamTasks, teamMeetings, candidates, onboardingList, exitList, paymentVerifications
-  ]);
+  }, [currentRole]);
+
+  /** Drop every cached resource so the next screen re-fetches from the API. */
+  const invalidateAll = useCallback(() => {
+    inFlight.current.clear();
+    const reset = Object.fromEntries(
+      ALL_RESOURCE_KEYS.map((k) => [k, 'idle'])
+    ) as Record<ResourceKey, ResourceStatus>;
+    statusRef.current = reset;
+    setResourceStatus(reset);
+  }, []);
 
   const logout = () => {
+    invalidateAll();
     setAuthStep('LOGIN');
     triggerToast('Logged out. Please login to continue.');
   };
@@ -479,7 +473,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       // Update Team Member record for TL and HR live visibility
       setTeamMembers(prev => prev.map(m => {
-        if (m.name.toLowerCase() === targetLead?.assignedToEmployeeName.toLowerCase() || m.id === targetLead?.assignedToEmployeeId) {
+        if (m.name.toLowerCase() === (targetLead?.assignedToEmployeeName ?? '').toLowerCase() || m.id === targetLead?.assignedToEmployeeId) {
           const newDials = m.dialsToday + 1;
           const newConnected = status !== 'NOT_INTERESTED' ? m.connected + 1 : m.connected;
           const newInterested = (status === 'INTERESTED' || status === 'CONVERTED') ? m.interested + 1 : m.interested;
@@ -597,12 +591,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setTeamMembers(prev => prev.map(m => {
       if (m.id === profile.id || m.name.toLowerCase() === profile.name.toLowerCase()) {
-        const updated: TeamMember = { 
-          ...m, 
-          attendanceStatus: 'PRESENT', 
-          checkInTime: timeStr, 
-          checkInMethod: 'Face ID Biometric' 
-        };
+        const updated = { ...m, attendanceStatus: 'PRESENT' as const, checkInTime: timeStr, checkInMethod: 'Face ID Biometric' as const };
         api.updateTeamMember(m.id, updated).catch(console.warn);
         return updated;
       }
@@ -617,6 +606,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Employee Creation & Onboarding (HR & Admin)
+  const updateEmployee = async (id: string, changes: Partial<TeamMember>) => {
+    let updated: TeamMember | undefined;
+    setTeamMembers((prev) =>
+      prev.map((m) => {
+        if (m.id !== id) return m;
+        updated = { ...m, ...changes };
+        return updated;
+      })
+    );
+
+    if (!updated) return;
+    triggerToast(`\u2713 ${updated.name} updated`);
+
+    try {
+      await api.updateTeamMember(id, updated);
+    } catch (err) {
+      console.warn('Employee update failed:', err);
+      triggerToast('\u2717 Could not save those changes');
+    }
+  };
+
+  const setEmployeeActive = async (id: string, active: boolean) => {
+    const today = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+    const changes: Partial<TeamMember> = {
+      active: active ? 1 : 0,
+      deactivatedOn: active ? undefined : today,
+    };
+
+    let name = '';
+    setTeamMembers((prev) =>
+      prev.map((m) => {
+        if (m.id !== id) return m;
+        name = m.name;
+        return { ...m, ...changes };
+      })
+    );
+
+    triggerToast(active ? `\u2713 ${name} reactivated` : `\u2713 ${name} deactivated`);
+
+    try {
+      await api.updateTeamMember(id, changes as Partial<TeamMember>);
+    } catch (err) {
+      console.warn('Employee status change failed:', err);
+    }
+  };
+
   const createNewEmployee = async (data: NewEmployeeInput) => {
     const empCode = data.empCode || `TNX-${Math.floor(8000 + Math.random() * 999)}`;
     const empId = `emp-${Date.now()}`;
@@ -642,6 +679,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       salesAchieved: 0,
       salesTarget: 200000,
       conversionRate: 0,
+      portal: data.role,
+      email: data.email,
+      active: 1,
     };
     setTeamMembers(prev => [newMember, ...prev]);
 
@@ -763,6 +803,74 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return c;
     }));
     triggerToast(`✓ Lead successfully reassigned to ${newAssigneeName}`);
+  };
+
+  // Leads that Admin allocated to this employee. Admin writes them to
+  // assigned_leads; the pipeline screens were built around ClientLead, so they
+  // are mapped across rather than duplicating the screens.
+  const todayIso = new Date().toISOString().split('T')[0];
+  const myLeads: ClientLead[] = assignedLeads
+    .filter((l) => l.assignedToEmployeeId === profile.id || l.assignedToEmployeeName === profile.name)
+    .map((l) => {
+      const dueToday = !!l.followUpDate && l.followUpDate.slice(0, 10) === todayIso;
+      return {
+        id: l.id,
+        name: l.name,
+        company: l.company,
+        phone: l.phone,
+        email: l.email || '',
+        temperature:
+          l.status === 'CONVERTED' ? 'CONVERTED'
+          : l.status === 'INTERESTED' ? 'HOT'
+          : l.status === 'CALLBACK' ? 'WARM'
+          : l.status === 'NOT_INTERESTED' ? 'COLD'
+          : 'WARM',
+        status:
+          l.status === 'CONVERTED' ? 'Converted'
+          : dueToday ? 'Due Today'
+          : l.status === 'CALLBACK' ? 'Follow-up'
+          : 'Pending',
+        dueTime: l.followUpDate,
+        dealValue: l.dealValue ?? 0,
+        requirement: l.notes || `Assigned ${l.assignedDate}`,
+        lastContacted: l.lastCallTimestamp || 'Not called yet',
+      };
+    });
+
+  const reassignLeadsBetween = async (fromEmployeeId: string, toEmployeeId: string) => {
+    const target = teamMembers.find((m) => m.id === toEmployeeId);
+    if (!target) return;
+
+    const moving = assignedLeads.filter((l) => l.assignedToEmployeeId === fromEmployeeId);
+    if (!moving.length) {
+      triggerToast('That telecaller has no leads to move.');
+      return;
+    }
+
+    setAssignedLeads((prev) =>
+      prev.map((l) =>
+        l.assignedToEmployeeId === fromEmployeeId
+          ? { ...l, assignedToEmployeeId: target.id, assignedToEmployeeName: target.name }
+          : l
+      )
+    );
+
+    triggerToast(`\u2713 ${moving.length} lead${moving.length === 1 ? '' : 's'} moved to ${target.name}`);
+
+    try {
+      await Promise.all(
+        moving.map((l) =>
+          api.updateAssignedLead(l.id, {
+            ...l,
+            assignedToEmployeeId: target.id,
+            assignedToEmployeeName: target.name,
+          })
+        )
+      );
+    } catch (err) {
+      console.warn('Lead reassignment failed:', err);
+      triggerToast('\u2717 Some leads could not be moved');
+    }
   };
 
   const createTeamGroup = async (data: { name: string; description: string; leaderName: string; monthlyTarget: number; color: string }) => {
@@ -1004,6 +1112,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }) => {
     const newLeave: LeaveRequest = {
       id: `lv-${Date.now()}`,
+      employeeName: profile.name,
+      employeeCode: profile.empCode,
       leaveType: data.leaveType,
       fromDate: data.fromDate,
       toDate: data.toDate,
@@ -1029,6 +1139,96 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ]);
     } catch (err) {
       console.warn('API leave submit error:', err);
+    }
+  };
+
+  const recordCheckIn = async (data: {
+    photo: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  }) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const today = now.toISOString().split('T')[0];
+
+    const updatedProfile: EmployeeProfile = {
+      ...profile,
+      faceIdStatus: 'VERIFIED_PRESENT',
+      checkInTime: timeStr,
+    };
+    setProfile(updatedProfile);
+
+    setAttendanceLogs((prev) => [
+      {
+        id: `att-${today}-${profile.id}`,
+        employeeId: profile.id,
+        employeeName: profile.name,
+        date: today,
+        dayNumber: now.getDate(),
+        status: 'PRESENT',
+        checkIn: timeStr,
+        workHours: 'In Progress',
+        method: 'Face ID Biometric',
+        checkInPhoto: data.photo ?? undefined,
+        checkInLat: data.latitude ?? undefined,
+        checkInLng: data.longitude ?? undefined,
+        locationStatus: data.latitude == null ? 'NOT_SHARED' : undefined,
+      },
+      ...prev.filter((item) => item.dayNumber !== now.getDate()),
+    ]);
+
+    triggerToast(`\u2713 Checked in at ${timeStr}`);
+
+    try {
+      await api.recordAttendance({
+        id: `att-${today}-${profile.id}`,
+        employeeId: profile.id,
+        employeeName: profile.name,
+        date: today,
+        dayNumber: now.getDate(),
+        status: 'PRESENT',
+        checkIn: timeStr,
+        workHours: 'In Progress',
+        method: 'Face ID Biometric',
+        checkInPhoto: data.photo,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      } as any);
+      await api.updateProfile(updatedProfile);
+    } catch (err) {
+      console.warn('Check-in save failed:', err);
+    }
+  };
+
+  const recordCheckOut = async (data: {
+    photo: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  }) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const today = now.toISOString().split('T')[0];
+    const recordId = `att-${today}-${profile.id}`;
+
+    const updatedProfile: EmployeeProfile = { ...profile, faceIdStatus: 'ON_BREAK' };
+    setProfile(updatedProfile);
+
+    setAttendanceLogs((prev) =>
+      prev.map((a) => (a.id === recordId ? { ...a, checkOut: timeStr } : a))
+    );
+
+    triggerToast(`\u2713 Checked out at ${timeStr}`);
+
+    try {
+      await api.updateAttendance2(recordId, {
+        checkOut: timeStr,
+        checkOutPhoto: data.photo,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      } as any);
+      await api.updateProfile(updatedProfile);
+    } catch (err) {
+      console.warn('Check-out save failed:', err);
     }
   };
 
@@ -1073,6 +1273,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         leaveRequests,
         payslips,
         assignedLeads,
+        myLeads,
         leadBatches,
         importAndAssignLeads,
         updateAssignedLeadStatus,
@@ -1085,6 +1286,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isOfferLetterModalOpen,
         setIsOfferLetterModalOpen,
         createNewEmployee,
+        updateEmployee,
+        setEmployeeActive,
         generateOfferLetter,
         teamMembers,
         teamGroups,
@@ -1097,6 +1300,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         approveLeaveRequest,
         rejectLeaveRequest,
         reassignLead,
+        reassignLeadsBetween,
         createTeamGroup,
         assignTeamLeaderToGroup,
         createTeamTask,
@@ -1127,12 +1331,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsIdCardModalOpen,
         selectedPayslip,
         setSelectedPayslip,
+        isDataLoading,
+        backendError,
+        resourceStatus,
+        loadResources,
+        refreshResources,
+        invalidateAll,
         activeToast,
         triggerToast,
         logNewCall,
         submitLeaveRequest,
         simulateFaceIdCheckIn,
         simulateFaceIdCheckOut,
+        recordCheckIn,
+        recordCheckOut,
       }}
     >
       {children}

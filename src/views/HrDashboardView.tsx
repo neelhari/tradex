@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useListDefault } from '../hooks/useListDefault';
+import { useScreenData } from '../hooks/useScreenData';
 import { 
   Menu,
   Bell,
@@ -34,12 +36,13 @@ import { OfferLetterModal } from '../components/modals/OfferLetterModal';
 import { FaceRegistrationModal } from '../components/modals/FaceRegistrationModal';
 
 export const HrDashboardView: React.FC = () => {
-  const { 
-    teamMembers, 
-    candidates, 
-    onboardingList, 
-    exitList, 
-    payslips, 
+  const {
+    teamMembers,
+    teamGroups,
+    candidates,
+    onboardingList,
+    exitList,
+    payslips,
     leaveRequests,
     paymentVerifications,
     offerLetters,
@@ -58,13 +61,15 @@ export const HrDashboardView: React.FC = () => {
     triggerToast 
   } = useApp();
 
+  useScreenData('hrDashboard');
+
   const [activeHrNav, setActiveHrNav] = useState<'home' | 'employees' | 'approvals' | 'reports' | 'more'>('home');
   
   // Modals
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [isPayslipGenModalOpen, setIsPayslipGenModalOpen] = useState(false);
-  const [selectedIdCardEmp, setSelectedIdCardEmp] = useState(teamMembers[0] || null);
+  const [selectedIdCardEmpId, setSelectedIdCardEmpId] = useState('');
 
   // Form states
   const [candName, setCandName] = useState('');
@@ -75,25 +80,33 @@ export const HrDashboardView: React.FC = () => {
   const [candTime, setCandTime] = useState('Tomorrow • 02:30 PM');
   const [candInterviewer, setCandInterviewer] = useState('Ramesh Sharma (Team Leader)');
 
+  const idCardEmp = teamMembers.find((m) => m.id === selectedIdCardEmpId);
+  useListDefault(selectedIdCardEmpId, setSelectedIdCardEmpId, teamMembers, (m) => m.id);
+
   const [payrollMonth, setPayrollMonth] = useState('May');
   const [payrollYear, setPayrollYear] = useState('2025');
 
-  // Stats from Reference Mockup
-  const totalTeams = 8;
-  const totalEmployees = 96;
-  const onLeaveCount = 7;
-  const attendancePercent = 92;
-  const targetAchievedPercent = 78;
-  const pendingApprovalsCount = 14;
+  // Org stats derived from live backend data
+  const totalTeams = teamGroups.length;
+  const totalEmployees = teamMembers.length;
+  const onLeaveCount = teamMembers.filter((m) => m.attendanceStatus === 'ON_LEAVE').length;
+  const presentCount = teamMembers.filter((m) => m.attendanceStatus === 'PRESENT').length;
+  const attendancePercent = Math.round((presentCount / Math.max(1, totalEmployees)) * 100);
 
-  // Team attendance data for bar chart
-  const teamAnalyticsData = [
-    { team: 'Team A', percent: 72, label: 'Alpha Closers' },
-    { team: 'Team B', percent: 75, label: 'Inbound Qualifiers' },
-    { team: 'Team C', percent: 85, label: 'Enterprise Squad' },
-    { team: 'Team D', percent: 68, label: 'Retention Wing' },
-    { team: 'Team E', percent: 82, label: 'Corporate Desk' },
-  ];
+  const totalSalesTarget = teamMembers.reduce((sum, m) => sum + m.salesTarget, 0);
+  const totalSalesAchieved = teamMembers.reduce((sum, m) => sum + m.salesAchieved, 0);
+  const targetAchievedPercent = Math.round((totalSalesAchieved / Math.max(1, totalSalesTarget)) * 100);
+
+  const pendingApprovalsCount =
+    leaveRequests.filter((l) => l.status === 'PENDING').length +
+    paymentVerifications.filter((p) => p.status === 'PENDING_HR_AUDIT').length;
+
+  // Per-squad target attainment for the bar chart
+  const teamAnalyticsData = teamGroups.map((grp, i) => ({
+    team: `Team ${String.fromCharCode(65 + i)}`,
+    percent: Math.min(100, Math.round((grp.achieved / Math.max(1, grp.monthlyTarget)) * 100)),
+    label: grp.name,
+  }));
 
   const handleScheduleInterviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,7 +440,7 @@ export const HrDashboardView: React.FC = () => {
           <div className="space-y-4 animate-in fade-in duration-150">
             <div>
               <h2 className="font-display font-black text-lg text-[#0A2540]">Employee Directory ({totalEmployees})</h2>
-              <p className="text-xs text-slate-500">Supervision across all 8 squads &amp; Team Leaders</p>
+              <p className="text-xs text-slate-500">Supervision across all {totalTeams} squads &amp; Team Leaders</p>
             </div>
 
             <div className="space-y-2.5">
@@ -467,7 +480,7 @@ export const HrDashboardView: React.FC = () => {
                 <div key={req.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <strong className="text-xs font-bold text-[#0A2540] block">Arjun Kumar</strong>
+                      <strong className="text-xs font-bold text-[#0A2540] block">{req.employeeName || 'Employee'}</strong>
                       <span className="text-[11px] text-slate-500">{req.leaveType} ({req.totalDays} Days)</span>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -523,7 +536,7 @@ export const HrDashboardView: React.FC = () => {
             <div className="grid grid-cols-2 gap-2.5">
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[10px] text-slate-500 block font-semibold">Monthly Headcount Growth</span>
-                <span className="font-mono-nums font-black text-lg text-[#0A2540]">+8 Joiners</span>
+                <span className="font-mono-nums font-black text-lg text-[#0A2540]">+{onboardingList.length} Joiners</span>
               </div>
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
                 <span className="text-[10px] text-slate-500 block font-semibold">Biometric Regularity</span>
@@ -548,19 +561,35 @@ export const HrDashboardView: React.FC = () => {
                 <span className="text-[10px] text-[#00A88B] font-bold">Print Ready</span>
               </div>
 
-              <div className="w-full max-w-xs mx-auto bg-gradient-to-b from-[#0A2540] via-[#0F3258] to-[#0A2540] text-white rounded-2xl p-4 space-y-3 text-center shadow-lg">
-                <div className="w-14 h-14 rounded-2xl bg-[#00C9A7] text-[#0A2540] font-black text-lg mx-auto flex items-center justify-center">
-                  AK
+              <select
+                value={selectedIdCardEmpId}
+                onChange={(e) => setSelectedIdCardEmpId(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+              >
+                {teamMembers.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name} — {m.empCode}</option>
+                ))}
+              </select>
+
+              {idCardEmp ? (
+                <div className="w-full max-w-xs mx-auto bg-gradient-to-b from-[#0A2540] via-[#0F3258] to-[#0A2540] text-white rounded-2xl p-4 space-y-3 text-center shadow-lg">
+                  <div className="w-14 h-14 rounded-2xl bg-[#00C9A7] text-[#0A2540] font-black text-lg mx-auto flex items-center justify-center">
+                    {idCardEmp.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <h4 className="font-display font-bold text-sm text-white">{idCardEmp.name}</h4>
+                    <span className="text-[11px] text-[#00C9A7] font-semibold block">{idCardEmp.role} • {idCardEmp.empCode}</span>
+                  </div>
+                  <div className="pt-2 border-t border-white/10 flex justify-between text-[10px] text-slate-300">
+                    <span>{idCardEmp.group}</span>
+                    <strong className="text-white">{idCardEmp.phone}</strong>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-display font-bold text-sm text-white">Arjun Kumar</h4>
-                  <span className="text-[11px] text-[#00C9A7] font-semibold block">Senior Telecaller • TNX-8492</span>
-                </div>
-                <div className="pt-2 border-t border-white/10 flex justify-between text-[10px] text-slate-300">
-                  <span>Sales &amp; Telecalling</span>
-                  <strong className="text-white">O+ Positive</strong>
-                </div>
-              </div>
+              ) : (
+                <p className="text-[11px] text-slate-500 text-center py-4">
+                  No employees loaded yet.
+                </p>
+              )}
 
               <button
                 onClick={() => triggerToast('✓ ID Card Exported as Print-Ready PDF')}
@@ -700,7 +729,7 @@ export const HrDashboardView: React.FC = () => {
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95">
             <h3 className="font-display font-black text-lg text-[#0A2540]">Generate Monthly Payslips</h3>
             <p className="text-xs text-slate-500">
-              Calculate basic pay, HRA, incentives, and PF deductions for all 96 employees:
+              Calculate basic pay, HRA, incentives, and PF deductions for all {totalEmployees} employees:
             </p>
             <form onSubmit={handleBulkPayrollSubmit} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-2">
@@ -730,7 +759,7 @@ export const HrDashboardView: React.FC = () => {
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1 text-[11px] text-slate-600">
                 <div className="flex justify-between font-bold text-[#0A2540]">
                   <span>Total Employees:</span>
-                  <span>96 Active</span>
+                  <span>{totalEmployees} Active</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Estimated Total Payout:</span>
