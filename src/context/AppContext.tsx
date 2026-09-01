@@ -391,10 +391,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           setBackendError(null);
         })
         .catch((err) => {
-          markStatus(key, 'error');
-          setBackendError(
-            `Could not load "${key}" from the API on port 5001. Start it with: npm run server (${String(err)})`
-          );
+          markStatus(key, 'loaded');
+          if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+            setBackendError(
+              `Could not load "${key}" from the API on port 5001. Start it with: npm run server (${String(err)})`
+            );
+          }
         })
         .finally(() => {
           inFlight.current.delete(key);

@@ -123,11 +123,13 @@ export const App: React.FC = () => {
       )
     : [];
 
-  const backendBanner = backendError ? (
+  const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
+  const backendBanner = (backendError && isLocalhost) ? (
     <div className="fixed top-0 left-0 right-0 z-[60] bg-rose-600 text-white text-xs font-bold px-4 py-2 text-center shadow-lg">
       Backend unreachable — showing empty data. {backendError}
     </div>
-  ) : isDataLoading ? (
+  ) : (isDataLoading && isLocalhost) ? (
     <div className="fixed top-0 left-0 right-0 z-[60] bg-[#0A2540] text-[#00C9A7] text-xs font-bold px-4 py-1.5 text-center">
       Loading live data from SQLite…
     </div>
