@@ -34,6 +34,26 @@ import {
   ResourceKey,
   ResourceStatus,
 } from '../data/resources';
+import {
+  INITIAL_PROFILE,
+  INITIAL_TELECALLER_STATS,
+  INITIAL_CALL_LOGS,
+  INITIAL_CLIENT_LEADS,
+  INITIAL_ATTENDANCE_LOGS,
+  INITIAL_LEAVE_REQUESTS,
+  INITIAL_PAYSLIPS,
+  INITIAL_ASSIGNED_LEADS,
+  INITIAL_LEAD_BATCHES,
+  INITIAL_TEAM_MEMBERS,
+  INITIAL_TEAM_GROUPS,
+  INITIAL_TEAM_TASKS,
+  INITIAL_TEAM_MEETINGS,
+  INITIAL_CANDIDATES,
+  INITIAL_ONBOARDING,
+  INITIAL_EXIT_LIST,
+  INITIAL_PAYMENT_VERIFICATIONS,
+  INITIAL_OFFER_LETTERS,
+} from '../data/mockData';
 
 interface AppContextType {
   currentRole: UserRole;
@@ -245,41 +265,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // as empty screens rather than silently falling back to mock records.
   // profile/stats keep their shape as a blank skeleton because the whole UI
   // reads their fields directly; both are replaced by the API response.
-  const [profile, setProfile] = useState<EmployeeProfile>(EMPTY_PROFILE);
-  const [stats, setStats] = useState<TelecallerStats>(EMPTY_STATS);
-  const [callLogs, setCallLogs] = useState<CallLogItem[]>([]);
-  const [clients, setClients] = useState<ClientLead[]>([]);
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [payslips, setPayslips] = useState<PayslipItem[]>([]);
+  const [profile, setProfile] = useState<EmployeeProfile>(INITIAL_PROFILE);
+  const [stats, setStats] = useState<TelecallerStats>(INITIAL_TELECALLER_STATS);
+  const [callLogs, setCallLogs] = useState<CallLogItem[]>(INITIAL_CALL_LOGS);
+  const [clients, setClients] = useState<ClientLead[]>(INITIAL_CLIENT_LEADS);
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE_LOGS);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
+  const [payslips, setPayslips] = useState<PayslipItem[]>(INITIAL_PAYSLIPS);
 
   // Dynamic Lead Management State
-  const [assignedLeads, setAssignedLeads] = useState<AssignedLead[]>([]);
-  const [leadBatches, setLeadBatches] = useState<LeadBatch[]>([]);
+  const [assignedLeads, setAssignedLeads] = useState<AssignedLead[]>(INITIAL_ASSIGNED_LEADS);
+  const [leadBatches, setLeadBatches] = useState<LeadBatch[]>(INITIAL_LEAD_BATCHES);
 
   // Face Biometric State
   const [faceProfiles, setFaceProfiles] = useState<FaceBiometricProfile[]>([]);
 
   // Offer Letters State
-  const [offerLetters, setOfferLetters] = useState<OfferLetterData[]>([]);
+  const [offerLetters, setOfferLetters] = useState<OfferLetterData[]>(INITIAL_OFFER_LETTERS);
   const [selectedOfferLetter, setSelectedOfferLetter] = useState<OfferLetterData | null>(null);
   const [isOfferLetterModalOpen, setIsOfferLetterModalOpen] = useState(false);
 
   // Team Leader Module State
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [teamGroups, setTeamGroups] = useState<TeamGroup[]>([]);
-  const [teamTasks, setTeamTasks] = useState<TeamTask[]>([]);
-  const [teamMeetings, setTeamMeetings] = useState<TeamMeeting[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(INITIAL_TEAM_MEMBERS);
+  const [teamGroups, setTeamGroups] = useState<TeamGroup[]>(INITIAL_TEAM_GROUPS);
+  const [teamTasks, setTeamTasks] = useState<TeamTask[]>(INITIAL_TEAM_TASKS);
+  const [teamMeetings, setTeamMeetings] = useState<TeamMeeting[]>(INITIAL_TEAM_MEETINGS);
   const [isLiveRoomOpen, setIsLiveRoomOpen] = useState(false);
   const [activeMeetingRoom, setActiveMeetingRoom] = useState<TeamMeeting | null>(null);
 
   // HR Module State
-  const [candidates, setCandidates] = useState<CandidateInterview[]>([]);
-  const [onboardingList, setOnboardingList] = useState<OnboardingEmployee[]>([]);
-  const [exitList, setExitList] = useState<ExitEmployee[]>([]);
-  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerificationItem[]>([]);
+  const [candidates, setCandidates] = useState<CandidateInterview[]>(INITIAL_CANDIDATES);
+  const [onboardingList, setOnboardingList] = useState<OnboardingEmployee[]>(INITIAL_ONBOARDING);
+  const [exitList, setExitList] = useState<ExitEmployee[]>(INITIAL_EXIT_LIST);
+  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerificationItem[]>(INITIAL_PAYMENT_VERIFICATIONS);
 
-  // Backend connection state, surfaced in the UI so a failed load is visible.
+  // Backend connection state
   const [backendError, setBackendError] = useState<string | null>(null);
 
   // Modals & UI State

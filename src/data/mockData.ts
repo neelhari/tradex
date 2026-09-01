@@ -788,4 +788,29 @@ export const INITIAL_OFFER_LETTERS: OfferLetterData[] = [
   }
 ];
 
+export const INITIAL_PAYMENT_VERIFICATIONS: PaymentVerificationItem[] = [
+  {
+    id: 'pay-1',
+    leadName: 'Rajesh Singhania',
+    companyName: 'Singhania Logistics Ltd',
+    telecallerName: 'Arjun Kumar',
+    dealAmount: 85000,
+    utrNumber: 'HDFC948295820491',
+    paymentMode: 'NEFT / RTGS',
+    timestamp: 'Today, 11:45 AM',
+    status: 'PENDING_HR_AUDIT',
+  },
+  {
+    id: 'pay-2',
+    leadName: 'Vikram Mehta',
+    companyName: 'Mehta Global Logistics',
+    telecallerName: 'Priya Nair',
+    dealAmount: 120000,
+    utrNumber: 'ICIC849204928104',
+    paymentMode: 'Corporate Net Banking',
+    timestamp: 'Yesterday, 04:15 PM',
+    status: 'VERIFIED',
+  }
+];
+
 
