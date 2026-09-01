@@ -28,7 +28,7 @@ interface Props {
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 export const PORTAL_LABEL: Record<UserRole, string> = {
-  telecaller: 'Telecaller',
+  telecaller: 'Employee',
   team_leader: 'Team Leader',
   hr: 'HR',
   admin: 'Admin',

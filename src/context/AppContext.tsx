@@ -69,6 +69,9 @@ interface AppContextType {
     dealValue?: number, 
     followUpDate?: string
   ) => void;
+  activeCallingLead: AssignedLead | null;
+  setActiveCallingLead: (lead: AssignedLead | null) => void;
+  openCallModalForLead: (lead: AssignedLead) => void;
 
   // Face Recognition Biometric System
   faceProfiles: FaceBiometricProfile[];
@@ -96,13 +99,31 @@ interface AppContextType {
   approveLeaveRequest: (id: string) => void;
   rejectLeaveRequest: (id: string, reason: string) => void;
   reassignLead: (leadId: string, newAssigneeName: string) => void;
-  /** Move a telecaller's whole batch of assigned leads to someone else. */
-  reassignLeadsBetween: (fromEmployeeId: string, toEmployeeId: string) => Promise<void>;
-  createTeamGroup: (data: { name: string; description: string; leaderName: string; monthlyTarget: number; color: string }) => void;
+  /** Move a telecaller's leads to someone else, optionally limited to a count. */
+  reassignLeadsBetween: (fromEmployeeId: string, toEmployeeId: string, limit?: number) => Promise<void>;
+  createTeamGroup: (data: { name: string; description: string; leaderName: string; monthlyTarget: number; color: string }, memberIds?: string[]) => void;
   assignTeamLeaderToGroup: (groupId: string, leaderName: string) => void;
   createTeamTask: (data: { title: string; assignedTo: string; group?: string; dueDate: string; priority: 'HIGH' | 'MEDIUM' | 'NORMAL' }) => void;
   toggleTaskStatus: (taskId: string) => void;
-  scheduleTeamMeeting: (data: { title: string; dateTime: string; type: TeamMeeting['type']; location: string; agenda: string }) => void;
+  scheduleTeamMeeting: (data: { 
+    title: string; 
+    dateTime: string; 
+    type: string; 
+    location?: string; 
+    agenda: string; 
+    status?: 'LIVE' | 'UPCOMING' | 'COMPLETED'; 
+    meetingLink?: string; 
+    invitedMemberName?: string;
+    attendeesCount?: number;
+  }) => void;
+  updateTeamMeeting: (id: string, updates: Partial<TeamMeeting>) => void;
+  deleteTeamMeeting: (id: string) => void;
+  isLiveRoomOpen: boolean;
+  setIsLiveRoomOpen: (open: boolean) => void;
+  activeMeetingRoom: TeamMeeting | null;
+  setActiveMeetingRoom: (meeting: TeamMeeting | null) => void;
+  joinMeeting: (meeting: TeamMeeting) => void;
+  leaveMeeting: () => void;
   
   // HR Module State
   candidates: CandidateInterview[];
@@ -124,6 +145,10 @@ interface AppContextType {
   // Modals & Drawers
   isFaceIdModalOpen: boolean;
   setIsFaceIdModalOpen: (open: boolean) => void;
+  faceIdModalMode: 'CHECK_IN' | 'CHECK_OUT';
+  setFaceIdModalMode: (mode: 'CHECK_IN' | 'CHECK_OUT') => void;
+  openPunchIn: () => void;
+  openPunchOut: () => void;
   isFaceRegistrationModalOpen: boolean;
   setIsFaceRegistrationModalOpen: (open: boolean) => void;
   faceRegistrationEmployee: { id: string; name: string } | null;
@@ -138,6 +163,12 @@ interface AppContextType {
   setIsIdCardModalOpen: (open: boolean) => void;
   selectedPayslip: PayslipItem | null;
   setSelectedPayslip: (payslip: PayslipItem | null) => void;
+  isPayslipModalOpen: boolean;
+  setIsPayslipModalOpen: (open: boolean) => void;
+  isRecentPayslipsModalOpen: boolean;
+  setIsRecentPayslipsModalOpen: (open: boolean) => void;
+  openPayslipModal: (payslip: PayslipItem) => void;
+  openOfferLetterModal: () => void;
   
   // Backend connection status & on-demand loading
   isDataLoading: boolean;
@@ -193,9 +224,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return 'telecaller';
     }
   });
-  const [activeTab, setActiveTab] = useState<NavTab>('home');
-  const [deviceMode, setDeviceMode] = useState<'mobile' | 'desktop'>('mobile');
-  const [authStep, setAuthStep] = useState<AuthStep>('LOGIN');
+  const [activeTab, setActiveTab] = useState<NavTab>(() => {
+    try {
+      return (localStorage.getItem('tnx_activeTab') as NavTab) || 'home';
+    } catch {
+      return 'home';
+    }
+  });
+  const [deviceMode, setDeviceMode] = useState<'mobile' | 'desktop'>('desktop');
+  const [authStep, setAuthStep] = useState<AuthStep>(() => {
+    try {
+      return (localStorage.getItem('tnx_authStep') as AuthStep) || 'AUTHENTICATED';
+    } catch {
+      return 'AUTHENTICATED';
+    }
+  });
 
   // All domain data comes from the SQLite backend. Lists start empty and are
   // filled on demand by the resource loader below, so an unreachable API shows
@@ -227,6 +270,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [teamGroups, setTeamGroups] = useState<TeamGroup[]>([]);
   const [teamTasks, setTeamTasks] = useState<TeamTask[]>([]);
   const [teamMeetings, setTeamMeetings] = useState<TeamMeeting[]>([]);
+  const [isLiveRoomOpen, setIsLiveRoomOpen] = useState(false);
+  const [activeMeetingRoom, setActiveMeetingRoom] = useState<TeamMeeting | null>(null);
 
   // HR Module State
   const [candidates, setCandidates] = useState<CandidateInterview[]>([]);
@@ -239,13 +284,56 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Modals & UI State
   const [isFaceIdModalOpen, setIsFaceIdModalOpen] = useState(false);
-  const [isFaceRegistrationModalOpen, setIsFaceRegistrationModalOpen] = useState(false);
+  const [faceIdModalMode, setFaceIdModalMode] = useState<'CHECK_IN' | 'CHECK_OUT'>('CHECK_IN');
+
+  const openPunchIn = () => {
+    setFaceIdModalMode('CHECK_IN');
+    setIsFaceIdModalOpen(true);
+  };
+
+  const openPunchOut = () => {
+    setFaceIdModalMode('CHECK_OUT');
+    setIsFaceIdModalOpen(true);
+  };
+  const [isFaceRegistrationModalOpen, setIsFaceRegistrationModalOpen] = useState<boolean>(false);
   const [faceRegistrationEmployee, setFaceRegistrationEmployee] = useState<{ id: string; name: string } | null>(null);
+  const [activeCallingLead, setActiveCallingLead] = useState<AssignedLead | null>(null);
+
+  const openCallModalForLead = (lead: AssignedLead) => {
+    setActiveCallingLead(lead);
+    setIsQuickCallModalOpen(true);
+  };
   const [isExcelUploadModalOpen, setIsExcelUploadModalOpen] = useState(false);
   const [isQuickCallModalOpen, setIsQuickCallModalOpen] = useState(false);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isIdCardModalOpen, setIsIdCardModalOpen] = useState(false);
   const [selectedPayslip, setSelectedPayslip] = useState<PayslipItem | null>(null);
+  const [isPayslipModalOpen, setIsPayslipModalOpen] = useState(false);
+  const [isRecentPayslipsModalOpen, setIsRecentPayslipsModalOpen] = useState(false);
+
+  const openPayslipModal = (payslip: PayslipItem) => {
+    setSelectedPayslip(payslip);
+    setIsPayslipModalOpen(true);
+  };
+
+  const openOfferLetterModal = () => {
+    const matched = offerLetters.find(o => o.candidateName.toLowerCase() === profile.name.toLowerCase()) || {
+      id: `off-${profile.empCode}`,
+      candidateName: profile.name,
+      candidateEmail: profile.email || `${profile.name.toLowerCase().replace(' ', '.')}@tradenexus.com`,
+      candidatePhone: profile.phone || '+91 98765 43210',
+      roleTitle: profile.roleTitle || 'Telecaller Executive',
+      department: profile.department || 'Client Acquisition',
+      annualCtc: 360000,
+      monthlyGross: 30000,
+      joiningDate: profile.joinDate || '12 Jan 2024',
+      reportingManager: profile.teamLeaderName || 'Ramesh Sharma (Team Leader)',
+      location: 'Bengaluru Corporate HQ',
+      issuedDate: profile.joinDate || '12 Jan 2024',
+    };
+    setSelectedOfferLetter(matched);
+    setIsOfferLetterModalOpen(true);
+  };
   const [activeToast, setActiveToast] = useState<string | null>(null);
 
   // --- On-demand resource loading -----------------------------------------
@@ -349,6 +437,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [currentRole]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_authStep', authStep);
+    } catch {}
+  }, [authStep]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_activeTab', activeTab);
+    } catch {}
+  }, [activeTab]);
+
   /** Drop every cached resource so the next screen re-fetches from the API. */
   const invalidateAll = useCallback(() => {
     inFlight.current.clear();
@@ -361,6 +461,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const logout = () => {
     invalidateAll();
+    try {
+      localStorage.setItem('tnx_authStep', 'LOGIN');
+    } catch {}
     setAuthStep('LOGIN');
     triggerToast('Logged out. Please login to continue.');
   };
@@ -837,25 +940,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       };
     });
 
-  const reassignLeadsBetween = async (fromEmployeeId: string, toEmployeeId: string) => {
+  const reassignLeadsBetween = async (fromEmployeeId: string, toEmployeeId: string, limit?: number) => {
+    const fromMember = teamMembers.find((m) => m.id === fromEmployeeId);
     const target = teamMembers.find((m) => m.id === toEmployeeId);
     if (!target) return;
 
-    const moving = assignedLeads.filter((l) => l.assignedToEmployeeId === fromEmployeeId);
+    let moving = assignedLeads.filter((l) => 
+      l.assignedToEmployeeId === fromEmployeeId ||
+      (fromMember && l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === fromMember.name.toLowerCase())
+    );
     if (!moving.length) {
       triggerToast('That telecaller has no leads to move.');
       return;
     }
 
+    if (limit && limit > 0 && limit < moving.length) {
+      moving = moving.slice(0, limit);
+    }
+
+    const movingIds = new Set(moving.map((l) => l.id));
+
     setAssignedLeads((prev) =>
-      prev.map((l) =>
-        l.assignedToEmployeeId === fromEmployeeId
+      prev.map((l) => {
+        const isMoving = movingIds.has(l.id);
+        return isMoving
           ? { ...l, assignedToEmployeeId: target.id, assignedToEmployeeName: target.name }
-          : l
-      )
+          : l;
+      })
     );
 
-    triggerToast(`\u2713 ${moving.length} lead${moving.length === 1 ? '' : 's'} moved to ${target.name}`);
+    triggerToast(`✓ ${moving.length} lead${moving.length === 1 ? '' : 's'} moved to ${target.name}`);
 
     try {
       await Promise.all(
@@ -869,23 +983,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
     } catch (err) {
       console.warn('Lead reassignment failed:', err);
-      triggerToast('\u2717 Some leads could not be moved');
+      triggerToast('✗ Some leads could not be moved');
     }
   };
 
-  const createTeamGroup = async (data: { name: string; description: string; leaderName: string; monthlyTarget: number; color: string }) => {
+  const createTeamGroup = async (
+    data: { name: string; description: string; leaderName: string; monthlyTarget: number; color: string },
+    memberIds?: string[]
+  ) => {
     const newGroup: TeamGroup = {
       id: `grp-${Date.now()}`,
       name: data.name,
       description: data.description,
       leaderName: data.leaderName,
-      memberCount: 1,
+      memberCount: memberIds?.length || 0,
       monthlyTarget: data.monthlyTarget,
       achieved: 0,
       color: data.color || '#00C9A7',
     };
     setTeamGroups(prev => [...prev, newGroup]);
-    triggerToast(`✓ Team group "${data.name}" created successfully`);
+
+    if (memberIds && memberIds.length > 0) {
+      setTeamMembers(prev =>
+        prev.map(m => memberIds.includes(m.id) ? { ...m, group: data.name } : m)
+      );
+      for (const mId of memberIds) {
+        const mem = teamMembers.find(m => m.id === mId);
+        if (mem) {
+          api.updateTeamMember(mId, { ...mem, group: data.name }).catch(console.warn);
+        }
+      }
+    }
+
+    triggerToast(`✓ Team squad "${data.name}" created with ${memberIds?.length || 0} members`);
 
     try {
       await api.createTeamGroup(newGroup);
@@ -927,24 +1057,76 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     triggerToast('✓ Task status updated');
   };
 
-  const scheduleTeamMeeting = async (data: { title: string; dateTime: string; type: TeamMeeting['type']; location: string; agenda: string }) => {
+  const scheduleTeamMeeting = async (data: { 
+    title: string; 
+    dateTime: string; 
+    type: string; 
+    location?: string; 
+    agenda: string; 
+    status?: 'LIVE' | 'UPCOMING' | 'COMPLETED'; 
+    meetingLink?: string; 
+    invitedMemberName?: string;
+    attendeesCount?: number;
+  }) => {
+    const meetingId = `mtg-${Date.now()}`;
     const newMtg: TeamMeeting = {
-      id: `mtg-${Date.now()}`,
+      id: meetingId,
       title: data.title,
-      dateTime: data.dateTime,
-      type: data.type,
-      location: data.location,
-      attendeesCount: teamMembers.length,
-      agenda: data.agenda,
+      dateTime: data.dateTime || 'Today',
+      type: data.type || 'Team Discussion',
+      location: data.location || 'In-App Video Room',
+      attendeesCount: data.attendeesCount ?? (data.invitedMemberName ? 2 : teamMembers.length),
+      agenda: data.agenda || '',
+      status: data.status || 'UPCOMING',
+      meetingLink: data.meetingLink || `https://meet.tradenexus.io/room/${meetingId}`,
+      invitedMemberName: data.invitedMemberName,
     };
     setTeamMeetings(prev => [newMtg, ...prev]);
-    triggerToast(`✓ Team meeting "${data.title}" scheduled & invites dispatched`);
+    triggerToast(`✓ Meeting "${data.title}" scheduled`);
 
     try {
       await api.createTeamMeeting(newMtg);
     } catch (err) {
       console.warn('API create meeting error:', err);
     }
+  };
+
+  const updateTeamMeeting = async (id: string, updates: Partial<TeamMeeting>) => {
+    setTeamMeetings(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+    try {
+      await api.updateTeamMeeting(id, updates);
+    } catch (err) {
+      console.warn('API update meeting error:', err);
+    }
+  };
+
+  const deleteTeamMeeting = async (id: string) => {
+    setTeamMeetings(prev => prev.filter(m => m.id !== id));
+    triggerToast('✓ Meeting cancelled');
+    try {
+      await api.deleteTeamMeeting(id);
+    } catch (err) {
+      console.warn('API delete meeting error:', err);
+    }
+  };
+
+  const joinMeeting = (mtg: TeamMeeting) => {
+    setActiveMeetingRoom(mtg);
+    setIsLiveRoomOpen(true);
+    if (mtg.status !== 'LIVE' && currentRole === 'team_leader') {
+      updateTeamMeeting(mtg.id, { status: 'LIVE' });
+    }
+  };
+
+  const leaveMeeting = () => {
+    if (currentRole === 'team_leader' && activeMeetingRoom) {
+      updateTeamMeeting(activeMeetingRoom.id, { status: 'COMPLETED' });
+      triggerToast('✓ Meeting concluded and saved');
+    } else {
+      triggerToast('Left video meeting room');
+    }
+    setIsLiveRoomOpen(false);
+    setActiveMeetingRoom(null);
   };
 
   // HR Actions
@@ -1045,7 +1227,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       generatedDate: `01 ${month} ${year}`,
       status: 'PAID',
     };
-    setPayslips(prev => [newPayslip, ...prev]);
+    const monthOrder: Record<string, number> = {
+      january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3,
+      april: 4, apr: 4, may: 5, june: 6, jun: 6, july: 7, jul: 7,
+      august: 8, aug: 8, september: 9, sep: 9, october: 10, oct: 10,
+      november: 11, nov: 11, december: 12, dec: 12
+    };
+    setPayslips(prev => {
+      const filtered = prev.filter(p => !(p.month.toLowerCase() === month.toLowerCase() && p.year === (parseInt(year, 10) || 2025)));
+      const combined = [newPayslip, ...filtered];
+      combined.sort((a, b) => {
+        if (b.year !== a.year) return b.year - a.year;
+        const aM = monthOrder[a.month.toLowerCase()] || 0;
+        const bM = monthOrder[b.month.toLowerCase()] || 0;
+        return bM - aM;
+      });
+      return combined;
+    });
     triggerToast(`✓ Generated ${month} ${year} payslips for all active employees!`);
 
     try {
@@ -1210,7 +1408,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const today = now.toISOString().split('T')[0];
     const recordId = `att-${today}-${profile.id}`;
 
-    const updatedProfile: EmployeeProfile = { ...profile, faceIdStatus: 'ON_BREAK' };
+    const updatedProfile: EmployeeProfile = { 
+      ...profile, 
+      faceIdStatus: 'ON_BREAK',
+      checkOutTime: timeStr 
+    };
     setProfile(updatedProfile);
 
     setAttendanceLogs((prev) =>
@@ -1306,6 +1508,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createTeamTask,
         toggleTaskStatus,
         scheduleTeamMeeting,
+        updateTeamMeeting,
+        deleteTeamMeeting,
+        isLiveRoomOpen,
+        setIsLiveRoomOpen,
+        activeMeetingRoom,
+        setActiveMeetingRoom,
+        joinMeeting,
+        leaveMeeting,
         scheduleInterview,
         updateCandidateStatus,
         toggleOnboardingChecklist,
@@ -1317,6 +1527,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         logout,
         isFaceIdModalOpen,
         setIsFaceIdModalOpen,
+        faceIdModalMode,
+        setFaceIdModalMode,
+        openPunchIn,
+        openPunchOut,
         isFaceRegistrationModalOpen,
         setIsFaceRegistrationModalOpen,
         faceRegistrationEmployee,
@@ -1325,12 +1539,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsExcelUploadModalOpen,
         isQuickCallModalOpen,
         setIsQuickCallModalOpen,
+        activeCallingLead,
+        setActiveCallingLead,
+        openCallModalForLead,
         isLeaveModalOpen,
         setIsLeaveModalOpen,
         isIdCardModalOpen,
         setIsIdCardModalOpen,
         selectedPayslip,
         setSelectedPayslip,
+        isPayslipModalOpen,
+        setIsPayslipModalOpen,
+        isRecentPayslipsModalOpen,
+        setIsRecentPayslipsModalOpen,
+        openPayslipModal,
+        openOfferLetterModal,
         isDataLoading,
         backendError,
         resourceStatus,

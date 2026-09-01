@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { api, setAuthToken } from '../../services/api';
 import { 
   Mail, 
   Smartphone, 
@@ -15,23 +16,30 @@ import {
 export const EmployeeLoginView: React.FC = () => {
   const { setAuthStep, triggerToast } = useApp();
   
-  const [activeLoginType, setActiveLoginType] = useState<'gmail' | 'mobile' | 'password'>('gmail');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [activeLoginType, setActiveLoginType] = useState<'gmail' | 'mobile' | 'password'>('password');
+  const [email, setEmail] = useState('arjun@tradenexus.com');
+  const [password, setPassword] = useState('telecaller123');
   const [showPassword, setShowPassword] = useState(false);
   const [mobileNumber, setMobileNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Instant Google Login -> Step 2
-  const handleGoogleLogin = () => {
+  // Quick 1-Click Login for Demo -> Step 2
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
-    triggerToast('✓ Authenticating Arjun Kumar (Senior Telecaller)...');
-    setTimeout(() => {
+    try {
+      const res = await api.login('arjun@tradenexus.com', 'telecaller123');
+      setAuthToken(res.token);
+      triggerToast(`✓ Authenticated ${res.user.name} (Senior Telecaller)`);
+      setTimeout(() => {
+        setIsLoading(false);
+        setAuthStep('FACE_SCAN');
+      }, 300);
+    } catch (err: any) {
       setIsLoading(false);
-      setAuthStep('FACE_SCAN');
-    }, 300);
+      triggerToast(`❌ ${err.message || 'Login failed'}`);
+    }
   };
 
   // Mobile OTP Login -> Step 2
@@ -41,25 +49,43 @@ export const EmployeeLoginView: React.FC = () => {
     triggerToast(`✓ 6-digit OTP sent to ${mobileNumber || '+91 98450 12345'}`);
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    triggerToast('✓ OTP Verified! Proceeding to Biometric Face ID...');
-    setTimeout(() => {
+    try {
+      const res = await api.login('arjun@tradenexus.com', 'telecaller123');
+      setAuthToken(res.token);
+      triggerToast('✓ OTP Verified! Proceeding to Biometric Face ID...');
+      setTimeout(() => {
+        setIsLoading(false);
+        setAuthStep('FACE_SCAN');
+      }, 300);
+    } catch {
       setIsLoading(false);
       setAuthStep('FACE_SCAN');
-    }, 300);
+    }
   };
 
-  // Standard Email & Password Submit -> Step 2
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  // Standard Email & Password Submit -> Backend API Login -> Step 2
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      triggerToast('Please enter your email/employee code and password');
+      return;
+    }
     setIsLoading(true);
-    triggerToast('✓ Telecaller credentials verified! Proceeding to Face Recognition...');
-    setTimeout(() => {
+    try {
+      const res = await api.login(email.trim(), password);
+      setAuthToken(res.token);
+      triggerToast(`✓ Welcome, ${res.user.name}! Credentials verified.`);
+      setTimeout(() => {
+        setIsLoading(false);
+        setAuthStep('FACE_SCAN');
+      }, 300);
+    } catch (err: any) {
       setIsLoading(false);
-      setAuthStep('FACE_SCAN');
-    }, 300);
+      triggerToast(`❌ ${err.message || 'Invalid credentials. Use arjun@tradenexus.com / telecaller123'}`);
+    }
   };
 
   return (

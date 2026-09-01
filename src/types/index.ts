@@ -29,6 +29,7 @@ export interface CallLogItem {
   outcome: CallOutcome;
   notes: string;
   followUpDate?: string;
+  employeeId?: string;
 }
 
 export interface ClientLead {
@@ -109,6 +110,7 @@ export interface EmployeeProfile {
   bloodGroup: string;
   faceIdStatus: 'VERIFIED_PRESENT' | 'ON_BREAK' | 'NOT_CHECKED_IN';
   checkInTime: string;
+  checkOutTime?: string;
   totalLeaveBalance: number;
 }
 
@@ -122,6 +124,7 @@ export interface TeamMember {
   phone: string;
   attendanceStatus: 'PRESENT' | 'LATE' | 'ON_LEAVE' | 'ABSENT';
   checkInTime?: string;
+  checkOutTime?: string;
   checkInMethod?: 'Face ID Biometric' | 'Geo-tagged';
   dialsToday: number;
   goalCalls: number;
@@ -162,10 +165,13 @@ export interface TeamMeeting {
   id: string;
   title: string;
   dateTime: string;
-  type: 'Team Standup' | 'Sales Pipeline Review' | 'Product Training' | '1-on-1 Coaching';
+  type: string;
   location: string;
   attendeesCount: number;
   agenda: string;
+  status?: 'LIVE' | 'UPCOMING' | 'COMPLETED';
+  meetingLink?: string;
+  invitedMemberName?: string;
 }
 
 export interface CandidateInterview {
@@ -227,7 +233,7 @@ export interface AssignedLead {
   assignedToEmployeeName: string;
   batchId: string;
   assignedDate: string;
-  status: 'PENDING' | 'CONNECTED' | 'INTERESTED' | 'CALLBACK' | 'NOT_INTERESTED' | 'CONVERTED';
+  status: 'PENDING' | 'CONNECTED' | 'INTERESTED' | 'CALLBACK' | 'NOT_INTERESTED' | 'CONVERTED' | 'BUSY';
   notes: string;
   callCount: number;
   lastCallTimestamp?: string;

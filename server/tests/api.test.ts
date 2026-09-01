@@ -19,7 +19,8 @@ async function makeRequest(
   port: number,
   method: string,
   path: string,
-  body?: any
+  body?: any,
+  headers?: Record<string, string>
 ): Promise<{ status: number; data: any }> {
   return new Promise((resolve, reject) => {
     const jsonBody = body ? JSON.stringify(body) : undefined;
@@ -32,6 +33,7 @@ async function makeRequest(
         headers: {
           'Content-Type': 'application/json',
           ...(jsonBody ? { 'Content-Length': Buffer.byteLength(jsonBody) } : {}),
+          ...headers,
         },
       },
       (res) => {
@@ -60,10 +62,11 @@ async function runTest(
   method: string,
   endpoint: string,
   expectedStatus: number[],
-  body?: any
+  body?: any,
+  headers?: Record<string, string>
 ): Promise<any> {
   try {
-    const res = await makeRequest(port, method, endpoint, body);
+    const res = await makeRequest(port, method, endpoint, body, headers);
     const passed = expectedStatus.includes(res.status);
     results.push({
       name,
@@ -366,6 +369,21 @@ async function startTestSuite() {
     await runTest(TEST_PORT, 'PUT Payment Verification (HR Approve)', 'PUT', `/api/payments/${createdPay?.id || `pay-test-${uid}`}`, [200], {
       status: 'VERIFIED',
     });
+
+    // 20. Auth & Session Management (Login & Token Verification)
+    const loginRes = await runTest(TEST_PORT, 'POST Auth Login (Telecaller)', 'POST', '/api/auth/login', [200], {
+      email: 'arjun@tradenexus.com',
+      password: 'telecaller123',
+    });
+
+    if (loginRes?.token) {
+      await runTest(TEST_PORT, 'GET Auth Me (Session Validation)', 'GET', '/api/auth/me', [200], undefined, {
+        Authorization: `Bearer ${loginRes.token}`,
+      });
+    }
+
+    // 21. Shift State Persistence (Today Status)
+    await runTest(TEST_PORT, 'GET Attendance Today Shift Status', 'GET', '/api/attendance/today?employeeId=emp-101', [200]);
 
   } finally {
     server.close();

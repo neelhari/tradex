@@ -78,15 +78,15 @@ export const DevSettingsModal: React.FC = () => {
 
   return (
     <>
-      {/* Floating Circular Dev Button - Positioned on Bottom Left (Opposite the Role Switcher on Bottom Right) */}
-      <div className="fixed bottom-20 left-4 z-40">
+      {/* Floating Circular Dev Button - Positioned on Bottom Right (Next to Device Switcher) */}
+      <div className="fixed bottom-4 right-24 z-40">
         <button
           onClick={() => setIsOpen(!isOpen)}
           title="Open Developer Settings & Sandbox"
-          className="w-12 h-12 rounded-full bg-[#0A2540] text-amber-400 flex items-center justify-center shadow-xl shadow-black/35 border-2 border-amber-400 active:scale-95 transition-all hover:scale-105 relative"
+          className="w-10 h-10 rounded-full bg-[#0A2540] text-amber-400 flex items-center justify-center shadow-xl shadow-black/35 border-2 border-amber-400 active:scale-95 transition-all hover:scale-105 relative"
         >
-          <Zap className="w-5 h-5 fill-amber-400 text-amber-400 animate-pulse" />
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[#0A2540] font-black text-[8px] flex items-center justify-center">
+          <Zap className="w-4 h-4 fill-amber-400 text-amber-400 animate-pulse" />
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[#0A2540] font-black text-[7px] flex items-center justify-center">
             DEV
           </span>
         </button>

@@ -147,29 +147,42 @@ export const AttendanceLeavesView: React.FC = () => {
             </div>
 
             {/* Legend */}
-            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-600 pt-3 border-t border-slate-100">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Present ({presentDays} Days)</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Leave ({leaveDays} Days)</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500" /> Absent ({absentDays} Days)</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" /> Weekly Off ({holidayDays} Days)</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold text-slate-600 pt-3 border-t border-slate-100">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Present</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Leave</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500" /> Absent</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" /> Weekly Off</span>
             </div>
           </div>
 
           {/* Attendance Log Stream */}
           <div className="space-y-2">
-            <h4 className="font-display font-bold text-xs text-slate-500 px-1">Recent Daily Logs</h4>
-            {attendanceLogs.map((log, idx) => (
-              <div key={idx} className="nexus-card p-3 bg-white border border-slate-200 flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-[#0A2540] block">{formatLogDate(log.date)}</span>
-                  <span className="text-slate-400 text-[10px] font-mono block mt-0.5">{log.method || 'Weekly Off'}</span>
+            <div className="flex items-center justify-between px-1">
+              <h4 className="font-display font-bold text-xs text-slate-500">Recent Daily Logs</h4>
+              <span className="text-[10px] text-slate-400 font-mono">Synced</span>
+            </div>
+            {attendanceLogs
+              .filter((log, idx, arr) => arr.findIndex((x) => x.date === log.date) === idx)
+              .map((log, idx) => (
+                <div key={idx} className="nexus-card p-3 bg-white border border-slate-200 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-[#0A2540] block">{formatLogDate(log.date)}</span>
+                    <span className="text-slate-400 text-[10px] font-mono block mt-0.5">{log.method || 'Weekly Off'}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className={`font-bold block ${
+                      log.status === 'PRESENT' ? 'text-emerald-700' : log.status === 'LEAVE' ? 'text-amber-700' : 'text-slate-500'
+                    }`}>
+                      {log.workHours ? `${log.workHours} Worked` : log.status === 'LEAVE' ? 'On Leave' : 'Holiday'}
+                    </span>
+                    {log.checkIn && (
+                      <span className="text-[10px] font-mono text-slate-400 block">
+                        {log.checkIn}{log.checkOut ? ` - ${log.checkOut}` : ''}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="font-bold text-emerald-700 block">{log.workHours ? `${log.workHours} Worked` : 'Holiday'}</span>
-                  {log.checkIn && <span className="text-[10px] font-mono text-slate-400 block">{log.checkIn} - {log.checkOut}</span>}
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       ) : (

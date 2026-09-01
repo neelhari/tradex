@@ -294,16 +294,31 @@ export function initializeDatabaseSchema() {
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- 20. User Accounts & Credentials
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      passwordHash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'telecaller',
+      empCode TEXT,
+      employeeId TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Indices for optimal lookup speeds
     CREATE INDEX IF NOT EXISTS idx_call_logs_timestamp ON call_logs(timestamp);
     CREATE INDEX IF NOT EXISTS idx_client_leads_status ON client_leads(status);
     CREATE INDEX IF NOT EXISTS idx_attendance_records_date ON attendance_records(date);
     CREATE INDEX IF NOT EXISTS idx_assigned_leads_emp ON assigned_leads(assignedToEmployeeId);
     CREATE INDEX IF NOT EXISTS idx_team_members_group ON team_members(groupName);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_emp_code ON users(empCode);
   `);
 
   runMigrations();
-  console.log('[SQLite DB] All 19 database tables initialized successfully.');
+  console.log('[SQLite DB] All 20 database tables initialized successfully.');
 }
 
 // CREATE TABLE IF NOT EXISTS never alters an existing table, so columns added
@@ -334,6 +349,9 @@ function runMigrations() {
   addColumnIfMissing('attendance_records', 'checkInLng', 'REAL');
   addColumnIfMissing('attendance_records', 'checkInDistanceM', 'REAL');
   addColumnIfMissing('attendance_records', 'locationStatus', 'TEXT');
+
+  // Call logs per employee
+  addColumnIfMissing('call_logs', 'employeeId', 'TEXT');
 
   // Which of the four portals a person may enter. `role` is their job title
   // (free text); `portal` is what the system acts on.

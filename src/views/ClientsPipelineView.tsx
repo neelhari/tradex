@@ -5,158 +5,257 @@ import {
   Users, 
   Search, 
   Phone, 
-  MessageCircle, 
-  Plus, 
-  Flame, 
+  PhoneCall,
   Clock, 
   CheckCircle2, 
-  ChevronRight,
-  TrendingUp,
-  X
+  Award,
+  X,
+  PhoneForwarded,
+  PhoneOff,
+  ThumbsDown,
+  Layers
 } from 'lucide-react';
-import { LeadTemperature } from '../types';
+import { AssignedLead } from '../types';
 
 export const ClientsPipelineView: React.FC = () => {
-  const { myLeads: clients, triggerToast, setIsQuickCallModalOpen } = useApp();
+  const { 
+    assignedLeads, 
+    profile, 
+    openCallModalForLead, 
+    triggerToast 
+  } = useApp();
 
   useScreenData('clientsPipeline');
-  const [activeTab, setActiveTab] = useState<'ALL' | 'Due Today' | 'HOT' | 'Converted'>('ALL');
+  const [activeTab, setActiveTab] = useState<'TO_CALL' | 'CALLBACK' | 'INTERESTED' | 'WON' | 'BUSY' | 'NOT_INTERESTED' | 'ALL'>('TO_CALL');
   const [search, setSearch] = useState('');
 
-  const filteredClients = clients.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-                          c.company.toLowerCase().includes(search.toLowerCase());
-    if (activeTab === 'Due Today') return matchesSearch && c.status === 'Due Today';
-    if (activeTab === 'HOT') return matchesSearch && c.temperature === 'HOT';
-    if (activeTab === 'Converted') return matchesSearch && c.status === 'Converted';
-    return matchesSearch;
+  // Leads assigned to the active telecaller
+  const myLeads = assignedLeads.filter((l) => {
+    const isMine =
+      l.assignedToEmployeeId === profile.id ||
+      (l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === profile.name.toLowerCase()) ||
+      l.assignedToEmployeeId === 'emp-101'; // Demo telecaller fallback
+    return isMine;
   });
 
-  const getTempBadge = (temp: LeadTemperature) => {
-    switch (temp) {
-      case 'HOT':
-        return <span className="bg-rose-50 text-rose-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-rose-200 flex items-center gap-1"><Flame className="w-3 h-3 text-rose-500 fill-rose-500" /> Hot Lead</span>;
-      case 'WARM':
-        return <span className="bg-amber-50 text-amber-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-amber-200">Warm Lead</span>;
-      case 'COLD':
-        return <span className="bg-slate-100 text-slate-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md">Cold Lead</span>;
+  const toCallCount = myLeads.filter((l) => l.status === 'PENDING').length;
+  const followUpCount = myLeads.filter((l) => l.status === 'CALLBACK').length;
+  const interestedCount = myLeads.filter((l) => l.status === 'INTERESTED').length;
+  const wonCount = myLeads.filter((l) => l.status === 'CONVERTED').length;
+  const busyCount = myLeads.filter((l) => l.status === 'BUSY').length;
+  const notInterestedCount = myLeads.filter((l) => l.status === 'NOT_INTERESTED').length;
+
+  const filteredLeads = myLeads.filter((lead) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      lead.name.toLowerCase().includes(q) ||
+      lead.company.toLowerCase().includes(q) ||
+      lead.phone.includes(q);
+
+    if (!matchesSearch) return false;
+
+    if (activeTab === 'TO_CALL') return lead.status === 'PENDING';
+    if (activeTab === 'CALLBACK') return lead.status === 'CALLBACK';
+    if (activeTab === 'INTERESTED') return lead.status === 'INTERESTED';
+    if (activeTab === 'WON') return lead.status === 'CONVERTED';
+    if (activeTab === 'BUSY') return lead.status === 'BUSY';
+    if (activeTab === 'NOT_INTERESTED') return lead.status === 'NOT_INTERESTED';
+    return true; // ALL
+  });
+
+  const getStatusBadge = (status: AssignedLead['status'], callCount: number) => {
+    switch (status) {
+      case 'PENDING':
+        return (
+          <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+            {callCount === 0 ? 'Fresh' : 'Pending'}
+          </span>
+        );
+      case 'INTERESTED':
+        return (
+          <span className="bg-sky-50 text-sky-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-sky-200 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-sky-600" />
+            Interested
+          </span>
+        );
+      case 'CALLBACK':
+        return (
+          <span className="bg-amber-50 text-amber-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
+            <PhoneForwarded className="w-3 h-3 text-amber-600" />
+            Follow-Up
+          </span>
+        );
       case 'CONVERTED':
-        return <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Won</span>;
+        return (
+          <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+            <Award className="w-3 h-3 text-emerald-600" />
+            Won Deal
+          </span>
+        );
+      case 'BUSY':
+        return (
+          <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-slate-200 flex items-center gap-1">
+            <PhoneOff className="w-3 h-3 text-slate-500" />
+            No Answer
+          </span>
+        );
+      case 'NOT_INTERESTED':
+        return (
+          <span className="bg-rose-50 text-rose-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-rose-200 flex items-center gap-1">
+            <ThumbsDown className="w-3 h-3 text-rose-500" />
+            Not Interested
+          </span>
+        );
+      case 'CONNECTED':
+      default:
+        return (
+          <span className="bg-teal-50 text-[#00876f] text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-teal-200 flex items-center gap-1">
+            <Phone className="w-3 h-3 text-[#00A88B]" />
+            Spoke
+          </span>
+        );
     }
   };
 
-  const handleCall = (client: any) => {
-    triggerToast(`📞 Calling ${client.name} (${client.phone})`);
-    setTimeout(() => {
-      setIsQuickCallModalOpen(true);
-    }, 1000);
-  };
-
-  const handleWhatsApp = (client: any) => {
-    triggerToast(`💬 Opening WhatsApp for ${client.name}`);
+  const handleCallLead = (lead: AssignedLead) => {
+    openCallModalForLead(lead);
+    window.location.href = `tel:${lead.phone}`;
+    triggerToast(`📞 Dialing ${lead.name}...`);
   };
 
   return (
     <div className="flex flex-col gap-4 pb-28 pt-2 px-3 sm:px-4 max-w-lg mx-auto">
       
-      {/* 1. Top Header */}
+      {/* 1. Header */}
       <div className="flex items-center justify-between pt-1">
         <div>
-          <h2 className="font-display font-black text-xl text-[#0A2540] tracking-tight">Client Pipeline</h2>
-          <p className="text-[11px] text-slate-500 font-medium">Follow-ups, client alerts & deal conversion</p>
+          <h2 className="font-display font-black text-xl text-[#0A2540] tracking-tight">My Leads</h2>
+          <p className="text-[11px] text-slate-500 font-medium">
+            Assigned by Admin · Tap to call and record result
+          </p>
         </div>
-        <button
-          onClick={() => triggerToast('➕ Add New Client Lead modal')}
-          className="flex items-center gap-1.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-md shadow-[#00C9A7]/25 active:scale-95 transition-all flex-shrink-0"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>New Client</span>
-        </button>
+        <span className="text-xs font-mono font-bold bg-teal-50 text-[#00A88B] px-2.5 py-1 rounded-lg border border-[#00C9A7]/20">
+          {myLeads.length} Total
+        </span>
       </div>
 
-      {/* 2. Search Bar with Clear Button */}
+      {/* 2. Search Bar */}
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search client by name or company..."
+          placeholder="Search by name, company, or phone..."
           className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] shadow-xs font-medium"
         />
         {search && (
           <button 
             onClick={() => setSearch('')}
-            className="absolute right-2.5 top-2.5 p-0.5 rounded-full bg-slate-200 text-slate-600"
+            className="absolute right-2.5 top-2.5 p-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold"
           >
             <X className="w-3 h-3" />
           </button>
         )}
       </div>
 
-      {/* 3. Filter Tabs */}
+      {/* 3. Category Filter Tabs */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-        {(['ALL', 'Due Today', 'HOT', 'Converted'] as const).map(tab => (
+        {[
+          { id: 'TO_CALL', label: 'To Call', count: toCallCount },
+          { id: 'CALLBACK', label: 'Follow-Ups', count: followUpCount },
+          { id: 'INTERESTED', label: 'Interested', count: interestedCount },
+          { id: 'WON', label: 'Won Deals', count: wonCount },
+          { id: 'BUSY', label: 'No Answer', count: busyCount },
+          { id: 'NOT_INTERESTED', label: 'Not Interested', count: notInterestedCount },
+          { id: 'ALL', label: 'All', count: myLeads.length },
+        ].map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-              activeTab === tab
-                ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs font-extrabold'
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === tab.id
+                ? 'bg-[#0A2540] text-white shadow-xs'
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
             }`}
           >
-            {tab === 'ALL' ? 'All Leads' : tab}
+            <span>{tab.label}</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              {tab.count}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* 4. Client List Cards */}
+      {/* 4. Lead Cards List */}
       <div className="space-y-3">
-        {filteredClients.map((client) => (
-          <div key={client.id} className="nexus-card p-4 bg-white border border-slate-200 shadow-sm hover:border-[#00C9A7] transition-all space-y-2.5">
+        {filteredLeads.map((lead) => (
+          <div 
+            key={lead.id} 
+            className="nexus-card p-4 bg-white border border-slate-200 shadow-sm hover:border-[#00C9A7] transition-all space-y-2.5"
+          >
             <div className="flex items-start justify-between">
               <div>
-                <h4 className="font-display font-bold text-sm text-[#0A2540]">{client.company}</h4>
-                <p className="text-xs font-semibold text-slate-700">{client.name}</p>
+                <h4 className="font-display font-bold text-sm text-[#0A2540]">{lead.name}</h4>
+                <p className="text-xs font-semibold text-slate-600">{lead.company} {lead.city ? `· ${lead.city}` : ''}</p>
               </div>
-              {getTempBadge(client.temperature)}
+              {getStatusBadge(lead.status, lead.callCount)}
             </div>
 
-            <p className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100 leading-relaxed">
-              {client.requirement}
-            </p>
-
-            <div className="flex items-center justify-between text-xs text-slate-500 font-mono">
-              <span>Potential Deal: <strong className="text-[#0A2540]">₹{client.dealValue.toLocaleString()}</strong></span>
-              {client.dueTime && (
-                <span className="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-amber-600" />
-                  {client.dueTime}
-                </span>
-              )}
+            <div className="flex items-center justify-between text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-800">{lead.phone}</span>
+              <span className="text-[11px] text-slate-400">
+                {lead.callCount === 0 ? 'Never called' : `Dials: ${lead.callCount}`}
+              </span>
             </div>
 
-            {/* 1-Tap Trigger Buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+            {lead.followUpDate && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-800 font-bold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                <Clock className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                <span>Follow-up: {lead.followUpDate}</span>
+              </div>
+            )}
+
+            {lead.notes && (
+              <p className="text-[11px] text-slate-500 italic bg-slate-50/70 p-2 rounded-lg border border-slate-100">
+                "{lead.notes}"
+              </p>
+            )}
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
               <button
-                onClick={() => handleCall(client)}
+                onClick={() => handleCallLead(lead)}
                 className="py-2.5 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
               >
                 <Phone className="w-3.5 h-3.5" />
-                <span>Call Client</span>
+                <span>Call Now</span>
               </button>
 
               <button
-                onClick={() => handleWhatsApp(client)}
+                onClick={() => openCallModalForLead(lead)}
                 className="py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
               >
-                <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                <span>WhatsApp</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                <span>Record Result</span>
               </button>
             </div>
           </div>
         ))}
+
+        {!filteredLeads.length && (
+          <div className="nexus-card p-8 bg-white border border-slate-200 text-center space-y-2">
+            <Layers className="w-8 h-8 text-slate-300 mx-auto" />
+            <h4 className="font-display font-bold text-sm text-[#0A2540]">No leads in this category</h4>
+            <p className="text-xs text-slate-400">
+              {search ? 'Try clearing your search query.' : 'Leads with this status will appear here.'}
+            </p>
+          </div>
+        )}
       </div>
 
     </div>

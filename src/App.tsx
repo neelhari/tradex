@@ -17,7 +17,11 @@ import { FaceIdScannerModal } from './components/modals/FaceIdScannerModal';
 import { QuickCallLogModal } from './components/modals/QuickCallLogModal';
 import { ApplyLeaveModal } from './components/modals/ApplyLeaveModal';
 import { DigitalIdCardModal } from './components/modals/DigitalIdCardModal';
+import { OfferLetterModal } from './components/modals/OfferLetterModal';
+import { PayslipDetailModal } from './components/modals/PayslipDetailModal';
+import { RecentPayslipsModal } from './components/modals/RecentPayslipsModal';
 import { DevSettingsModal } from './components/common/DevSettingsModal';
+import { LiveVideoRoomModal } from './components/modals/LiveVideoRoomModal';
 
 // Mobile Views
 import { TelecallerHomeView } from './views/TelecallerHomeView';
@@ -62,7 +66,8 @@ import {
   Crown,
   FileSpreadsheet,
   FileText,
-  UserPlus
+  UserPlus,
+  Video
 } from 'lucide-react';
 import { NavTab, UserRole } from './types';
 
@@ -75,9 +80,14 @@ export const App: React.FC = () => {
     setCurrentRole, 
     activeTab, 
     setActiveTab, 
-    activeToast, 
+    activeToast,
+    selectedPayslip,
+    isPayslipModalOpen,
+    setIsPayslipModalOpen, 
     profile, 
     stats, 
+    clients,
+    assignedLeads,
     teamMembers,
     teamGroups,
     leaveRequests,
@@ -93,6 +103,25 @@ export const App: React.FC = () => {
 
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isMobileRoleMenuOpen, setIsMobileRoleMenuOpen] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState('');
+
+  const q = globalSearch.trim().toLowerCase();
+  const matchingPeople = q
+    ? teamMembers.filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          m.empCode.toLowerCase().includes(q) ||
+          (m.group && m.group.toLowerCase().includes(q))
+      )
+    : [];
+  const matchingLeads = q
+    ? assignedLeads.filter(
+        (l) =>
+          l.name.toLowerCase().includes(q) ||
+          (l.company && l.company.toLowerCase().includes(q)) ||
+          (l.phone && l.phone.includes(q))
+      )
+    : [];
 
   const backendBanner = backendError ? (
     <div className="fixed top-0 left-0 right-0 z-[60] bg-rose-600 text-white text-xs font-bold px-4 py-2 text-center shadow-lg">
@@ -140,7 +169,7 @@ export const App: React.FC = () => {
         { id: 'team', label: 'Team Members & CRM', icon: Users },
         { id: 'approvals', label: 'Leave Approvals', icon: CheckCircle2, badge: pendingCount },
         { id: 'reports', label: 'Performance Reports', icon: TrendingUp },
-        { id: 'meetings', label: 'Standups & Tasks', icon: CalendarCheck },
+        { id: 'meetings', label: 'Team Meetings', icon: Video },
       ];
     }
 
@@ -170,11 +199,11 @@ export const App: React.FC = () => {
 
     // Default: Telecaller / SDR
     return [
-      { id: 'home', label: 'Dashboard & Goals', icon: Home },
-      { id: 'calling', label: 'Calling CRM & Logs', icon: PhoneCall },
-      { id: 'clients', label: 'Client Pipeline', icon: Users },
-      { id: 'leaves', label: 'Attendance & Leaves', icon: CalendarCheck },
-      { id: 'profile', label: 'ID Card & Payslips', icon: User },
+      { id: 'home', label: 'Home Dashboard', icon: Home },
+      { id: 'calling', label: 'My Calls', icon: PhoneCall },
+      { id: 'clients', label: 'My Leads', icon: Users },
+      { id: 'leaves', label: 'Attendance & Leave', icon: CalendarCheck },
+      { id: 'profile', label: 'Me', icon: User },
     ];
   };
 
@@ -239,7 +268,7 @@ export const App: React.FC = () => {
       }
     }
 
-    // Mobile View (Screens < 1024px)
+    // Mobile View (Screens < 1024px) - Dedicated Native Mobile App Views
     if (currentRole === 'team_leader') {
       return <TeamLeaderDashboardView />;
     }
@@ -273,10 +302,10 @@ export const App: React.FC = () => {
     invalidateAll();
     setCurrentRole(r);
     setActiveTab('home');
-    setAuthStep('LOGIN');
+    setAuthStep('AUTHENTICATED');
     setIsRoleDropdownOpen(false);
     setIsMobileRoleMenuOpen(false);
-    triggerToast(`Switched to ${r.toUpperCase().replace('_', ' ')} (Opened Login Page)`);
+    triggerToast(`Switched to ${r.toUpperCase().replace('_', ' ')} Workspace`);
   };
 
   const userInfo = getHeaderUserInfo();
@@ -291,116 +320,102 @@ export const App: React.FC = () => {
         
         {/* Desktop Top Global Header */}
         <header className="bg-white border-b border-slate-200 px-8 py-3 flex items-center justify-between sticky top-0 z-40 shadow-xs h-[65px]">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-8 flex-1 max-w-2xl">
             <TradeNexusLogo size="md" />
 
-            {/* Global Search Bar */}
-            <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-1.5 w-80 text-xs">
-              <Search className="w-4 h-4 text-slate-400 mr-2.5" />
-              <input
-                type="text"
-                placeholder="Search leads, calls, attendance, documents..."
-                className="bg-transparent text-xs text-slate-800 focus:outline-none w-full font-medium"
-              />
-            </div>
-          </div>
+            {/* Global Search Bar - Expanded into freed header space */}
+            <div className="relative flex-1 max-w-xl">
+              <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 w-full text-xs focus-within:border-[#00C9A7] focus-within:bg-white focus-within:shadow-xs transition-all">
+                <Search className="w-4 h-4 text-slate-400 mr-2.5 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  placeholder="Search leads, calls, attendance, documents..."
+                  className="bg-transparent text-xs text-slate-800 focus:outline-none w-full font-medium"
+                />
+                {globalSearch && (
+                  <button
+                    onClick={() => setGlobalSearch('')}
+                    className="text-slate-400 hover:text-slate-600 text-xs font-bold px-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
 
-          {/* Header Right Actions */}
-          <div className="flex items-center gap-3">
-            
-            {/* Clean Dropdown Role Switcher */}
-            <div className="relative">
-              <button
-                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-[#0A2540] px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 transition-all active:scale-95 shadow-2xs"
-              >
-                <Shield className="w-3.5 h-3.5 text-[#00C9A7]" />
-                <span>Role: <strong className="capitalize">{currentRole === 'telecaller' ? 'Telecaller' : currentRole === 'team_leader' ? 'Team Lead' : currentRole === 'hr' ? 'HR Portal' : 'Admin'}</strong></span>
-                <ChevronDown className="w-3 h-3 text-slate-500" />
-              </button>
-
-              {isRoleDropdownOpen && (
-                <div className="absolute right-0 top-11 bg-white rounded-2xl shadow-xl border border-slate-200 p-1.5 w-48 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider px-2.5 py-1 block">
-                    Switch Active Portal
-                  </span>
-                  {(['telecaller', 'team_leader', 'hr', 'admin'] as UserRole[]).map((r) => (
+              {globalSearch.trim().length > 1 && (
+                <div className="absolute left-0 top-11 bg-white rounded-2xl shadow-xl border border-slate-200 p-2.5 w-96 z-50 animate-in fade-in zoom-in-95 duration-150 max-h-80 overflow-y-auto">
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 mb-1.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Results ({matchingPeople.length + matchingLeads.length})
+                    </span>
                     <button
-                      key={r}
-                      onClick={() => handleRoleSelect(r)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                        currentRole === r
-                          ? 'bg-[#00C9A7] text-[#0A2540] font-extrabold'
-                          : 'text-slate-700 hover:bg-slate-50'
-                      }`}
+                      onClick={() => setGlobalSearch('')}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 font-bold"
                     >
-                      {r === 'telecaller' ? 'Telecaller / SDR' : r === 'team_leader' ? 'Team Leader' : r === 'hr' ? 'HR Portal' : 'Admin Console'}
+                      Clear
                     </button>
-                  ))}
+                  </div>
+
+                  {matchingPeople.length > 0 && (
+                    <div className="mb-2">
+                      <span className="text-[9px] font-bold text-teal-600 uppercase px-2">Employees</span>
+                      {matchingPeople.slice(0, 4).map((m) => (
+                        <div
+                          key={m.id}
+                          onClick={() => {
+                            setActiveTab('home');
+                            setGlobalSearch('');
+                          }}
+                          className="p-2 hover:bg-slate-50 rounded-xl cursor-pointer flex justify-between items-center text-xs transition-colors"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-800 block">{m.name}</span>
+                            <span className="text-[10px] text-slate-400">{m.empCode} · {m.role}</span>
+                          </div>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                            {m.group || 'No Squad'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {matchingLeads.length > 0 && (
+                    <div>
+                      <span className="text-[9px] font-bold text-sky-600 uppercase px-2">Assigned Leads</span>
+                      {matchingLeads.slice(0, 4).map((l) => (
+                        <div
+                          key={l.id}
+                          onClick={() => {
+                            setActiveTab('clients');
+                            setGlobalSearch('');
+                          }}
+                          className="p-2 hover:bg-slate-50 rounded-xl cursor-pointer flex justify-between items-center text-xs transition-colors"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-800 block">{l.name}</span>
+                            <span className="text-[10px] text-slate-400">{l.company} · {l.phone}</span>
+                          </div>
+                          <span className="text-[10px] font-semibold text-emerald-600">{l.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {matchingPeople.length === 0 && matchingLeads.length === 0 && (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      No matching employees or leads found.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Test Login Flow Trigger */}
-            <button
-              onClick={() => setAuthStep('LOGIN')}
-              title="Test the 4-Step Login & Biometric Flow"
-              className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-[#5B3DF5] font-bold text-xs px-3.5 py-2 rounded-xl hover:bg-indigo-100 transition-all shadow-xs"
-            >
-              <ScanFace className="w-4 h-4" />
-              <span>Test Login Flow</span>
-            </button>
-
-            {/* Face ID Status */}
-            <button
-              onClick={() => setIsFaceIdModalOpen(true)}
-              className="flex items-center gap-1.5 bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00A88B] font-bold text-xs px-3.5 py-2 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-xs"
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>Face ID: Present ({profile.checkInTime})</span>
-            </button>
-
-            {/* Role-Specific Primary CTA Button */}
-            {currentRole === 'telecaller' && (
-              <button
-                onClick={() => setIsQuickCallModalOpen(true)}
-                className="flex items-center gap-1.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-4 py-2 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Log Call</span>
-              </button>
-            )}
-
-            {currentRole === 'team_leader' && (
-              <button
-                onClick={() => setActiveTab('meetings' as any)}
-                className="flex items-center gap-1.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-4 py-2 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
-              >
-                <CalendarCheck className="w-4 h-4" />
-                <span>Team Standups</span>
-              </button>
-            )}
-
-            {currentRole === 'hr' && (
-              <button
-                onClick={() => setActiveTab('employees' as any)}
-                className="flex items-center gap-1.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-4 py-2 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
-              >
-                <UserPlus className="w-4 h-4 stroke-[2.5]" />
-                <span>Employee Roster</span>
-              </button>
-            )}
-
-            {currentRole === 'admin' && (
-              <button
-                onClick={() => setIsExcelUploadModalOpen(true)}
-                className="flex items-center gap-1.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-4 py-2 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
-              >
-                <FileSpreadsheet className="w-4 h-4 stroke-[2.5]" />
-                <span>Import Leads</span>
-              </button>
-            )}
-
+          {/* Header Right Actions - Clean and uncluttered */}
+          <div className="flex items-center gap-3">
             {/* Notification Bell */}
             <button 
               onClick={() => triggerToast('🔔 2 pending callbacks for today')}
@@ -507,7 +522,7 @@ export const App: React.FC = () => {
                       />
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono block text-center font-medium">
-                      ₹{(totalSales / 1000).toFixed(0)}k of ₹{(targetTotal / 1000).toFixed(0)}k achieved
+                      ₹{(totalSales / 100000).toFixed(2)} L of ₹{(targetTotal / 100000).toFixed(2)} L achieved
                     </span>
                   </div>
                 );
@@ -580,7 +595,7 @@ export const App: React.FC = () => {
       {/* 2. MOBILE APP WORKSPACE (Screens < 1024px) */}
       <div className="lg:hidden flex flex-col min-h-screen w-full bg-[#F8FAFC] relative">
         {/* Global Mobile Header (Logo + Tagline on Left, Bell on Right) */}
-        <MobileHeader />
+        {activeTab !== 'profile' && <MobileHeader />}
 
         {/* Scrollable Page Body */}
         <main className="flex-1 overflow-y-auto">
@@ -649,7 +664,15 @@ export const App: React.FC = () => {
       <QuickCallLogModal />
       <ApplyLeaveModal />
       <DigitalIdCardModal />
+      <OfferLetterModal />
+      <PayslipDetailModal
+        payslip={selectedPayslip}
+        isOpen={isPayslipModalOpen}
+        onClose={() => setIsPayslipModalOpen(false)}
+      />
+      <RecentPayslipsModal />
       <DevSettingsModal />
+      <LiveVideoRoomModal />
     </div>
   );
 };

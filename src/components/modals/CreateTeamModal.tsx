@@ -22,6 +22,7 @@ export const CreateTeamModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [leaderName, setLeaderName] = useState('');
   const [monthlyTarget, setMonthlyTarget] = useState('200000');
   const [colour, setColour] = useState(COLOURS[0]);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   if (!isOpen) return null;
 
@@ -31,18 +32,22 @@ export const CreateTeamModal: React.FC<Props> = ({ isOpen, onClose }) => {
     setLeaderName('');
     setMonthlyTarget('200000');
     setColour(COLOURS[0]);
+    setSelectedMemberIds([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    createTeamGroup({
-      name: name.trim(),
-      description: description.trim(),
-      leaderName,
-      monthlyTarget: Number(monthlyTarget) || 0,
-      color: colour,
-    });
+    createTeamGroup(
+      {
+        name: name.trim(),
+        description: description.trim(),
+        leaderName,
+        monthlyTarget: Number(monthlyTarget) || 0,
+        color: colour,
+      },
+      selectedMemberIds
+    );
     reset();
     onClose();
   };
@@ -142,6 +147,48 @@ export const CreateTeamModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   }`}
                 />
               ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[11px] font-bold text-slate-700">
+                ASSIGN SQUAD MEMBERS ({selectedMemberIds.length} SELECTED)
+              </label>
+              <span className="text-[10px] text-slate-400">Optional</span>
+            </div>
+            <div className="max-h-36 overflow-y-auto border border-slate-300 rounded-xl p-2 bg-slate-50 space-y-1">
+              {teamMembers.map((m) => {
+                const isChecked = selectedMemberIds.includes(m.id);
+                return (
+                  <label
+                    key={m.id}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors ${
+                      isChecked ? 'bg-teal-50/80 border border-teal-200' : 'hover:bg-white border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setSelectedMemberIds((prev) =>
+                            isChecked ? prev.filter((id) => id !== m.id) : [...prev, m.id]
+                          );
+                        }}
+                        className="rounded text-[#00C9A7] focus:ring-[#00C9A7]"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-800 block leading-tight">{m.name}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{m.empCode} · {m.role}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      {m.group ? `Current: ${m.group}` : 'No Squad'}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 

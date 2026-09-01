@@ -23,24 +23,84 @@ function metresBetween(lat1: number, lng1: number, lat2: number, lng2: number): 
 }
 
 /**
- * Attendance rows carry a photo and coordinates, which only Admin may see.
- * Everyone else gets the same row with those three fields stripped out on the
- * server — hiding them in the browser would still send them over the wire.
+ * Attendance rows carry a photo and coordinates.
+ * Admin sees all. Employees see their own (Telecaller sees own).
+ * Team Leader and HR never receive photos or locations on the wire.
  */
-function forViewer(row: any, isAdmin: boolean) {
+function forViewer(row: any, isAdmin: boolean, requestingEmployeeId?: string) {
   if (isAdmin) return row;
+  if (requestingEmployeeId && (row.employeeId === requestingEmployeeId || row.id === requestingEmployeeId)) {
+    return row;
+  }
   const { checkInPhoto, checkInLat, checkInLng, checkOutPhoto, checkOutLat, checkOutLng, ...rest } = row;
   return rest;
 }
 
-// GET /api/attendance?role=admin
+// GET /api/attendance?role=admin&employeeId=...
 router.get('/', (req: Request, res: Response) => {
   try {
     const isAdmin = String(req.query.role || '').toLowerCase() === 'admin';
-    const records = db
-      .prepare('SELECT * FROM attendance_records ORDER BY date DESC, checkIn DESC')
-      .all();
-    return res.status(200).json(records.map((r) => forViewer(r, isAdmin)));
+    const employeeId = String(req.query.employeeId || '').trim();
+    const records = employeeId
+      ? db
+          .prepare('SELECT * FROM attendance_records WHERE (employeeId = ? OR employeeId IS NULL) ORDER BY date DESC, checkIn DESC')
+          .all(employeeId)
+      : db
+          .prepare('SELECT * FROM attendance_records ORDER BY date DESC, checkIn DESC')
+          .all();
+    return res.status(200).json(records.map((r) => forViewer(r, isAdmin, employeeId)));
+  } catch (error) {
+    return res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// GET /api/attendance/today — check current shift status for employee
+router.get('/today', (req: Request, res: Response) => {
+  try {
+    const employeeId = String(req.query.employeeId || '').trim();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const record = employeeId
+      ? db.prepare(`
+          SELECT * FROM attendance_records 
+          WHERE (employeeId = ? OR id LIKE ?) AND date = ?
+          ORDER BY createdAt DESC LIMIT 1
+        `).get(employeeId, `%${todayStr}%`, todayStr)
+      : db.prepare(`
+          SELECT * FROM attendance_records 
+          WHERE date = ?
+          ORDER BY createdAt DESC LIMIT 1
+        `).get(todayStr);
+
+    if (!record) {
+      return res.status(200).json({
+        hasRecord: false,
+        status: 'NOT_CHECKED_IN',
+        faceIdStatus: 'NOT_CHECKED_IN',
+        checkIn: null,
+        checkOut: null,
+        date: todayStr
+      });
+    }
+
+    const r = record as any;
+    const isCheckedOut = !!r.checkOut;
+    return res.status(200).json({
+      hasRecord: true,
+      id: r.id,
+      date: r.date,
+      status: isCheckedOut ? 'SHIFT_COMPLETED' : 'ON_DUTY',
+      faceIdStatus: isCheckedOut ? 'ON_BREAK' : 'VERIFIED_PRESENT',
+      checkIn: r.checkIn,
+      checkOut: r.checkOut,
+      workHours: r.workHours,
+      method: r.method,
+      locationStatus: r.locationStatus,
+      checkInPhoto: r.checkInPhoto,
+      checkInLat: r.checkInLat,
+      checkInLng: r.checkInLng,
+      checkInDistanceM: r.checkInDistanceM
+    });
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });
   }

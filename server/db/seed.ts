@@ -1,6 +1,37 @@
 import db from './connection.js';
+import { hashPassword } from './authUtils.js';
+
+export function seedUsersIfEmpty() {
+  try {
+    const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }).count;
+    if (userCount > 0) return;
+
+    console.log('[SQLite DB] Seeding default auth user credentials...');
+    const insertUser = db.prepare(`
+      INSERT INTO users (id, email, passwordHash, name, role, empCode, employeeId, active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const users = [
+      { id: 'usr-1', email: 'arjun@tradenexus.com', password: 'telecaller123', name: 'Arjun Kumar', role: 'telecaller', empCode: 'TNX-8492', employeeId: 'emp-101' },
+      { id: 'usr-2', email: 'nikhil@tradenexus.com', password: 'leader123', name: 'Nikhil Pareshan', role: 'team_leader', empCode: 'TNX-TL01', employeeId: 'emp-tl-1' },
+      { id: 'usr-3', email: 'hr@tradenexus.com', password: 'hr123', name: 'Pooja Sharma', role: 'hr', empCode: 'TNX-HR01', employeeId: 'emp-hr-1' },
+      { id: 'usr-4', email: 'admin@tradenexus.com', password: 'admin123', name: 'Super Admin', role: 'admin', empCode: 'TNX-AD01', employeeId: 'emp-ad-1' }
+    ];
+
+    for (const u of users) {
+      const hash = hashPassword(u.password);
+      insertUser.run(u.id, u.email, hash, u.name, u.role, u.empCode, u.employeeId, 1);
+    }
+    console.log('[SQLite DB] 4 default user accounts seeded.');
+  } catch (err) {
+    console.error('[SQLite DB] Error seeding users:', err);
+  }
+}
 
 export function seedInitialDataIfEmpty() {
+  seedUsersIfEmpty();
+
   const profileCount = (db.prepare('SELECT COUNT(*) as count FROM employee_profiles').get() as { count: number }).count;
   
   if (profileCount > 0) {
@@ -85,7 +116,10 @@ export function seedInitialDataIfEmpty() {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   insertLeave.run('leave-1', 'Arjun Kumar', 'TNX-8492', 'Casual Leave', '22 May 2025', '22 May 2025', 1, 'Family personal commitment in hometown', 'APPROVED', '20 May 2025', 'Ramesh Sharma (Team Leader)');
-  insertLeave.run('leave-2', 'Arjun Kumar', 'TNX-8492', 'Sick Leave', '05 Jun 2025', '06 Jun 2025', 2, 'Scheduled medical health checkup', 'PENDING', 'Today', null);
+  insertLeave.run('leave-2', 'Arjun Kumar', 'TNX-8492', 'Sick Leave', '05 Jun 2025', '06 Jun 2025', 2, 'Scheduled medical health checkup', 'APPROVED', 'Today', 'Ramesh Sharma (Team Leader)');
+  insertLeave.run('leave-3', 'Priya Nair', 'TNX-8493', 'Casual Leave', '04 Sept 2026', '05 Sept 2026', 2, 'Family medical emergency in hometown', 'PENDING', 'Today, 09:15 AM', null);
+  insertLeave.run('leave-4', 'Rahul Varma', 'TNX-8495', 'Sick Leave', '02 Sept 2026', '02 Sept 2026', 1, 'Severe fever and doctor advised rest', 'PENDING', 'Today, 08:30 AM', null);
+  insertLeave.run('leave-5', 'Sneha Patil', 'TNX-8498', 'Casual Leave', '10 Sept 2026', '12 Sept 2026', 3, 'Attending sister wedding ceremony in Pune', 'PENDING', 'Yesterday, 05:40 PM', null);
 
   // 7. Payslips
   const insertPayslip = db.prepare(`
@@ -101,11 +135,11 @@ export function seedInitialDataIfEmpty() {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const members = [
-    { id: 'tm-1', empCode: 'TNX-8492', name: 'Arjun Kumar', avatar: 'AK', role: 'Senior Telecaller / SDR', groupName: 'HNI Closers', phone: '+91 98450 12345', attendanceStatus: 'PRESENT', checkInTime: '09:12 AM', checkInMethod: 'Face ID Biometric', dialsToday: 68, goalCalls: 100, connected: 44, interested: 12, salesAchieved: 145000, salesTarget: 200000, conversionRate: 17.6 },
+    { id: 'tm-1', empCode: 'TNX-8492', name: 'Arjun Kumar', avatar: 'AK', role: 'Senior Sales Employee / SDR', groupName: 'HNI Closers', phone: '+91 98450 12345', attendanceStatus: 'PRESENT', checkInTime: '09:12 AM', checkInMethod: 'Face ID Biometric', dialsToday: 68, goalCalls: 100, connected: 44, interested: 12, salesAchieved: 145000, salesTarget: 200000, conversionRate: 17.6 },
     { id: 'tm-2', empCode: 'TNX-8493', name: 'Priya Nair', avatar: 'PN', role: 'Inside Sales Specialist', groupName: 'HNI Closers', phone: '+91 98450 67890', attendanceStatus: 'PRESENT', checkInTime: '09:05 AM', checkInMethod: 'Face ID Biometric', dialsToday: 82, goalCalls: 100, connected: 58, interested: 16, salesAchieved: 190000, salesTarget: 200000, conversionRate: 19.5 },
-    { id: 'tm-3', empCode: 'TNX-8495', name: 'Rahul Varma', avatar: 'RV', role: 'Telecaller Executive', groupName: 'Inbound Qualifiers', phone: '+91 98450 44556', attendanceStatus: 'PRESENT', checkInTime: '09:28 AM', checkInMethod: 'Geo-tagged', dialsToday: 51, goalCalls: 90, connected: 32, interested: 7, salesAchieved: 95000, salesTarget: 180000, conversionRate: 13.7 },
-    { id: 'tm-4', empCode: 'TNX-8498', name: 'Sneha Patil', avatar: 'SP', role: 'Telecaller Executive', groupName: 'Inbound Qualifiers', phone: '+91 98450 77889', attendanceStatus: 'LATE', checkInTime: '10:15 AM', checkInMethod: 'Face ID Biometric', dialsToday: 39, goalCalls: 90, connected: 21, interested: 5, salesAchieved: 65000, salesTarget: 180000, conversionRate: 12.8 },
-    { id: 'tm-5', empCode: 'TNX-8501', name: 'Rohan Joshi', avatar: 'RJ', role: 'Junior Telecaller', groupName: 'Retention Squad', phone: '+91 98450 99001', attendanceStatus: 'ON_LEAVE', checkInTime: null, checkInMethod: null, dialsToday: 0, goalCalls: 80, connected: 0, interested: 0, salesAchieved: 40000, salesTarget: 150000, conversionRate: 0 },
+    { id: 'tm-3', empCode: 'TNX-8495', name: 'Rahul Varma', avatar: 'RV', role: 'Sales Employee', groupName: 'Inbound Qualifiers', phone: '+91 98450 44556', attendanceStatus: 'PRESENT', checkInTime: '09:28 AM', checkInMethod: 'Geo-tagged', dialsToday: 51, goalCalls: 90, connected: 32, interested: 7, salesAchieved: 95000, salesTarget: 180000, conversionRate: 13.7 },
+    { id: 'tm-4', empCode: 'TNX-8498', name: 'Sneha Patil', avatar: 'SP', role: 'Sales Employee', groupName: 'Inbound Qualifiers', phone: '+91 98450 77889', attendanceStatus: 'LATE', checkInTime: '10:15 AM', checkInMethod: 'Face ID Biometric', dialsToday: 39, goalCalls: 90, connected: 21, interested: 5, salesAchieved: 65000, salesTarget: 180000, conversionRate: 12.8 },
+    { id: 'tm-5', empCode: 'TNX-8501', name: 'Rohan Joshi', avatar: 'RJ', role: 'Junior Sales Employee', groupName: 'Retention Squad', phone: '+91 98450 99001', attendanceStatus: 'ON_LEAVE', checkInTime: null, checkInMethod: null, dialsToday: 0, goalCalls: 80, connected: 0, interested: 0, salesAchieved: 40000, salesTarget: 150000, conversionRate: 0 },
     { id: 'tm-6', empCode: 'TNX-8504', name: 'Kavita Menon', avatar: 'KM', role: 'Inside Sales Specialist', groupName: 'Retention Squad', phone: '+91 98450 22334', attendanceStatus: 'PRESENT', checkInTime: '08:58 AM', checkInMethod: 'Face ID Biometric', dialsToday: 74, goalCalls: 100, connected: 49, interested: 11, salesAchieved: 160000, salesTarget: 200000, conversionRate: 14.8 }
   ];
   for (const m of members) {
@@ -178,12 +212,12 @@ export function seedInitialDataIfEmpty() {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const assignedLeads = [
-    { id: 'asg-1', name: 'Suresh Raina', phone: '+91 98451 11223', email: 'suresh.r@primeglobal.com', company: 'Prime Global Logistics', city: 'Mumbai', assignedToEmployeeId: 'emp-101', assignedToEmployeeName: 'Arjun Kumar', batchId: 'batch-1', assignedDate: 'Today', status: 'PENDING', notes: 'Imported from B2B Logistics Database', callCount: 0, lastCallTimestamp: null, dealValue: 0, followUpDate: null },
-    { id: 'asg-2', name: 'Meera Nambiar', phone: '+91 97312 33445', email: 'meera@finedge.in', company: 'FinEdge Advisory Corp', city: 'Bengaluru', assignedToEmployeeId: 'emp-101', assignedToEmployeeName: 'Arjun Kumar', batchId: 'batch-1', assignedDate: 'Today', status: 'INTERESTED', notes: 'Interested in Premium SaaS plan. Send quote by 3 PM.', callCount: 1, lastCallTimestamp: '10:45 AM', dealValue: 75000, followUpDate: null },
-    { id: 'asg-3', name: 'Kavita Sharma', phone: '+91 99001 88776', email: 'kavita@apexretail.com', company: 'Apex Retailers Hub', city: 'Delhi NCR', assignedToEmployeeId: 'emp-101', assignedToEmployeeName: 'Arjun Kumar', batchId: 'batch-1', assignedDate: 'Today', status: 'CALLBACK', notes: 'Requested callback after 4:00 PM today.', callCount: 1, lastCallTimestamp: '11:15 AM', dealValue: 0, followUpDate: 'Today, 04:00 PM' },
-    { id: 'asg-4', name: 'Rohan Deshmukh', phone: '+91 96112 44556', email: 'rohan.d@omnitrade.in', company: 'OmniTrade Solutions', city: 'Pune', assignedToEmployeeId: 'emp-102', assignedToEmployeeName: 'Nikhil Sharma', batchId: 'batch-2', assignedDate: 'Today', status: 'PENDING', notes: 'Allocated batch for Nikhil', callCount: 0, lastCallTimestamp: null, dealValue: 0, followUpDate: null },
-    { id: 'asg-5', name: 'Deepak Chawla', phone: '+91 98223 99881', email: 'deepak@zenith.com', company: 'Zenith Logistics Tech', city: 'Hyderabad', assignedToEmployeeId: 'emp-102', assignedToEmployeeName: 'Nikhil Sharma', batchId: 'batch-2', assignedDate: 'Today', status: 'CONNECTED', notes: 'Spoke with CFO. Exploring multi-user license.', callCount: 1, lastCallTimestamp: '09:50 AM', dealValue: 0, followUpDate: null },
-    { id: 'asg-6', name: 'Alok Aggarwal', phone: '+91 97441 22334', email: 'alok@bharatexport.com', company: 'Bharat Export Corp', city: 'Surat', assignedToEmployeeId: 'emp-103', assignedToEmployeeName: 'Kailash Verma', batchId: 'batch-3', assignedDate: 'Today', status: 'PENDING', notes: 'Batch for Kailash', callCount: 0, lastCallTimestamp: null, dealValue: 0, followUpDate: null }
+    { id: 'asg-1', name: 'Suresh Raina', phone: '+91 98451 11223', email: 'suresh.r@primeglobal.com', company: 'Prime Global Logistics', city: 'Mumbai', assignedToEmployeeId: 'tm-1', assignedToEmployeeName: 'Arjun Kumar', batchId: 'batch-1', assignedDate: 'Today', status: 'PENDING', notes: 'Imported from B2B Logistics Database', callCount: 0, lastCallTimestamp: null, dealValue: 0, followUpDate: null },
+    { id: 'asg-2', name: 'Meera Nambiar', phone: '+91 97312 33445', email: 'meera@finedge.in', company: 'FinEdge Advisory Corp', city: 'Bengaluru', assignedToEmployeeId: 'tm-1', assignedToEmployeeName: 'Arjun Kumar', batchId: 'batch-1', assignedDate: 'Today', status: 'INTERESTED', notes: 'Interested in Premium SaaS plan. Send quote by 3 PM.', callCount: 1, lastCallTimestamp: '10:45 AM', dealValue: 75000, followUpDate: null },
+    { id: 'asg-3', name: 'Kavita Sharma', phone: '+91 99001 88776', email: 'kavita@apexretail.com', company: 'Apex Retailers Hub', city: 'Delhi NCR', assignedToEmployeeId: 'tm-1', assignedToEmployeeName: 'Arjun Kumar', batchId: 'batch-1', assignedDate: 'Today', status: 'CALLBACK', notes: 'Requested callback after 4:00 PM today.', callCount: 1, lastCallTimestamp: '11:15 AM', dealValue: 0, followUpDate: 'Today, 04:00 PM' },
+    { id: 'asg-4', name: 'Rohan Deshmukh', phone: '+91 96112 44556', email: 'rohan.d@omnitrade.in', company: 'OmniTrade Solutions', city: 'Pune', assignedToEmployeeId: 'tm-2', assignedToEmployeeName: 'Priya Nair', batchId: 'batch-2', assignedDate: 'Today', status: 'PENDING', notes: 'Allocated batch for Priya', callCount: 0, lastCallTimestamp: null, dealValue: 0, followUpDate: null },
+    { id: 'asg-5', name: 'Deepak Chawla', phone: '+91 98223 99881', email: 'deepak@zenith.com', company: 'Zenith Logistics Tech', city: 'Hyderabad', assignedToEmployeeId: 'tm-2', assignedToEmployeeName: 'Priya Nair', batchId: 'batch-2', assignedDate: 'Today', status: 'CONNECTED', notes: 'Spoke with CFO. Exploring multi-user license.', callCount: 1, lastCallTimestamp: '09:50 AM', dealValue: 0, followUpDate: null },
+    { id: 'asg-6', name: 'Alok Aggarwal', phone: '+91 97441 22334', email: 'alok@bharatexport.com', company: 'Bharat Export Corp', city: 'Surat', assignedToEmployeeId: 'tm-3', assignedToEmployeeName: 'Rahul Varma', batchId: 'batch-3', assignedDate: 'Today', status: 'PENDING', notes: 'Batch for Rahul', callCount: 0, lastCallTimestamp: null, dealValue: 0, followUpDate: null }
   ];
   for (const asg of assignedLeads) {
     insertAssignedLead.run(asg.id, asg.name, asg.phone, asg.email, asg.company, asg.city, asg.assignedToEmployeeId, asg.assignedToEmployeeName, asg.batchId, asg.assignedDate, asg.status, asg.notes, asg.callCount, asg.lastCallTimestamp, asg.dealValue, asg.followUpDate);
@@ -194,9 +228,9 @@ export function seedInitialDataIfEmpty() {
     INSERT INTO lead_batches (id, fileName, uploadedAt, totalLeads, assignedToEmployeeName, assignedToEmployeeId)
     VALUES (?, ?, ?, ?, ?, ?)
   `);
-  insertBatch.run('batch-1', 'B2B_Q3_HighValue_Leads.xlsx', 'Today, 09:00 AM', 50, 'Arjun Kumar', 'emp-101');
-  insertBatch.run('batch-2', 'Tech_Enterprises_South.csv', 'Today, 09:15 AM', 100, 'Nikhil Sharma', 'emp-102');
-  insertBatch.run('batch-3', 'Logistics_Manufacturing_Batch4.xlsx', 'Today, 09:30 AM', 75, 'Kailash Verma', 'emp-103');
+  insertBatch.run('batch-1', 'B2B_Q3_HighValue_Leads.xlsx', 'Today, 09:00 AM', 50, 'Arjun Kumar', 'tm-1');
+  insertBatch.run('batch-2', 'Tech_Enterprises_South.csv', 'Today, 09:15 AM', 100, 'Priya Nair', 'tm-2');
+  insertBatch.run('batch-3', 'Logistics_Manufacturing_Batch4.xlsx', 'Today, 09:30 AM', 75, 'Rahul Varma', 'tm-3');
 
   // 17. Face Biometrics
   const insertFace = db.prepare(`

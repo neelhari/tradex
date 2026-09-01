@@ -82,11 +82,11 @@ export const SCREEN_RESOURCES = {
   faceScan: ['profile', 'faceProfiles'],
   attendanceSuccess: ['profile'],
 
-  telecallerHome: ['profile', 'stats', 'clients', 'callLogs'],
+  telecallerHome: ['profile', 'stats', 'clients', 'callLogs', 'assignedLeads'],
   dailyCalling: ['profile', 'callLogs', 'stats', 'clients', 'assignedLeads'],
   clientsPipeline: ['clients', 'assignedLeads'],
   attendanceLeaves: ['profile', 'attendanceLogs', 'leaveRequests'],
-  profileSelfService: ['profile', 'payslips', 'offerLetters'],
+  profileSelfService: ['profile', 'payslips', 'offerLetters', 'teamTasks', 'teamMeetings'],
   modulesMenu: ['profile'],
 
   teamLeaderDashboard: [
@@ -96,6 +96,8 @@ export const SCREEN_RESOURCES = {
     'teamMeetings',
     'leaveRequests',
     'clients',
+    'assignedLeads',
+    'callLogs',
   ],
 
   hrDashboard: [

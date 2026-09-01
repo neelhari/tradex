@@ -6,7 +6,10 @@ const router = Router();
 // GET /api/assigned-leads
 router.get('/', (req: Request, res: Response) => {
   try {
-    const leads = db.prepare('SELECT * FROM assigned_leads ORDER BY createdAt DESC').all();
+    const employeeId = String(req.query.employeeId || '').trim();
+    const leads = employeeId
+      ? db.prepare('SELECT * FROM assigned_leads WHERE assignedToEmployeeId = ? ORDER BY createdAt DESC').all(employeeId)
+      : db.prepare('SELECT * FROM assigned_leads ORDER BY createdAt DESC').all();
     return res.status(200).json(leads);
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });

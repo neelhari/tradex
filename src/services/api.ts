@@ -128,8 +128,26 @@ export const api = {
     request<{ success: boolean }>(`/clients/${id}`, { method: 'DELETE' }),
 
   // Attendance
-  getAttendance: (role?: string) =>
-    request<AttendanceRecord[]>(`/attendance${role ? `?role=${role}` : ''}`),
+  getTodayAttendance: (employeeId?: string) =>
+    request<{
+      hasRecord: boolean;
+      id?: string;
+      date: string;
+      status: string;
+      faceIdStatus: string;
+      checkIn: string | null;
+      checkOut: string | null;
+      workHours: string | null;
+      method?: string;
+      locationStatus?: string;
+    }>(`/attendance/today${employeeId ? `?employeeId=${employeeId}` : ''}`),
+  getAttendance: (role?: string, employeeId?: string) => {
+    const params = new URLSearchParams();
+    if (role) params.set('role', role);
+    if (employeeId) params.set('employeeId', employeeId);
+    const qs = params.toString();
+    return request<AttendanceRecord[]>(`/attendance${qs ? `?${qs}` : ''}`);
+  },
   updateAttendance2: (id: string, data: Partial<AttendanceRecord>) =>
     request<AttendanceRecord>(`/attendance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   getOffice: () => request<OfficeSettings>('/attendance/office'),
@@ -179,6 +197,8 @@ export const api = {
   getTeamMeetings: () => request<TeamMeeting[]>('/team-meetings'),
   createTeamMeeting: (data: Omit<TeamMeeting, 'id'> & { id?: string }) => 
     request<TeamMeeting>('/team-meetings', { method: 'POST', body: JSON.stringify(data) }),
+  updateTeamMeeting: (id: string, data: Partial<TeamMeeting>) => 
+    request<TeamMeeting>(`/team-meetings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTeamMeeting: (id: string) => 
     request<{ success: boolean }>(`/team-meetings/${id}`, { method: 'DELETE' }),
 
@@ -204,7 +224,8 @@ export const api = {
     request<ExitEmployee>(`/exit-employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // Assigned Leads
-  getAssignedLeads: () => request<AssignedLead[]>('/assigned-leads'),
+  getAssignedLeads: (employeeId?: string) => 
+    request<AssignedLead[]>(`/assigned-leads${employeeId ? `?employeeId=${employeeId}` : ''}`),
   createAssignedLead: (data: Omit<AssignedLead, 'id'> & { id?: string }) => 
     request<AssignedLead>('/assigned-leads', { method: 'POST', body: JSON.stringify(data) }),
   bulkImportAssignedLeads: (fileName: string, targetEmployeeId: string, targetEmployeeName: string, leads: any[]) => 

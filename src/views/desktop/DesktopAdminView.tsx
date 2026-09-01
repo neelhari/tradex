@@ -20,6 +20,11 @@ import {
   MapPin,
   Crosshair,
   Save,
+  ChevronLeft,
+  ChevronRight,
+  MessageSquare,
+  Filter,
+  Video,
 } from 'lucide-react';
 import { OfficeSettings, TeamMember, UserRole } from '../../types';
 import { api } from '../../services/api';
@@ -27,6 +32,9 @@ import { ExcelLeadUploadModal } from '../../components/modals/ExcelLeadUploadMod
 import { AddEmployeeModal } from '../../components/modals/AddEmployeeModal';
 import { EmployeeRecordModal, PORTAL_LABEL } from '../../components/modals/EmployeeRecordModal';
 import { CreateTeamModal } from '../../components/modals/CreateTeamModal';
+import { ManageTeamMembersModal } from '../../components/modals/ManageTeamMembersModal';
+import { TeamGroup } from '../../types';
+import { Employee360ProfileView } from '../Employee360ProfileView';
 
 interface DesktopAdminViewProps {
   currentTab?: string;
@@ -57,10 +65,15 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
     clients,
     paymentVerifications,
     attendanceLogs,
+    leaveRequests,
+    approveLeaveRequest,
+    rejectLeaveRequest,
     setIsExcelUploadModalOpen,
     assignTeamLeaderToGroup,
     verifyPayment,
     reassignLeadsBetween,
+    teamMeetings,
+    joinMeeting,
     triggerToast,
   } = useApp();
 
@@ -81,7 +94,24 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
   const [locating, setLocating] = useState(false);
   const [moveFrom, setMoveFrom] = useState('');
   const [moveTo, setMoveTo] = useState('');
+  const [moveCount, setMoveCount] = useState('');
   const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
+  const [managingSquad, setManagingSquad] = useState<TeamGroup | null>(null);
+
+  // Attendance Report date picker & filter state
+  const [attendanceDate, setAttendanceDate] = useState<string>(
+    () => new Date().toISOString().split('T')[0]
+  );
+  const [attendanceFilter, setAttendanceFilter] = useState<'ALL' | 'PROBLEMS'>('ALL');
+
+  // Approvals subtab & rejection prompt
+  const [approvalTab, setApprovalTab] = useState<'PAYMENTS' | 'LEAVES'>('PAYMENTS');
+  const [rejectionTarget, setRejectionTarget] = useState<{
+    id: string;
+    type: 'PAYMENT' | 'LEAVE';
+    name: string;
+  } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     api.getOffice().then(setOffice).catch(() => setOffice(null));
@@ -159,11 +189,16 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
   });
 
   const leadsPerEmployee = teamMembers.map((m) => {
-    const mine = assignedLeads.filter((l) => l.assignedToEmployeeId === m.id);
+    const mine = assignedLeads.filter(
+      (l) =>
+        l.assignedToEmployeeId === m.id ||
+        (l.assignedToEmployeeName &&
+          l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase())
+    );
     return {
       member: m,
       total: mine.length,
-      called: mine.filter((l) => l.callCount > 0).length,
+      called: mine.filter((l) => (l.callCount || 0) > 0).length,
       interested: mine.filter((l) => l.status === 'INTERESTED').length,
       converted: mine.filter((l) => l.status === 'CONVERTED').length,
     };
@@ -215,6 +250,44 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
   const renderOverview = () => (
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHead title="Overview" blurb="Where the company stands today, and what is waiting for you." />
+
+      {/* 🔴 Live Team Meeting Banner for Admin */}
+      {(() => {
+        const liveMeeting = teamMeetings.find(m => m.status === 'LIVE');
+        if (!liveMeeting) return null;
+        return (
+          <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-2 border-emerald-500 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-md animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-3.5">
+              <span className="relative flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-600"></span>
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    🔴 Live Team Meeting in Progress
+                  </span>
+                  <span className="text-xs font-mono text-emerald-800 font-bold">Conducted by Team Leader</span>
+                </div>
+                <h4 className="font-display font-black text-base text-[#0A2540] mt-0.5">
+                  {liveMeeting.title}
+                </h4>
+                <p className="text-xs text-slate-500 font-medium">
+                  {liveMeeting.invitedMemberName ? `Participants: ${liveMeeting.invitedMemberName}` : 'All team telecallers'} • Admin can join video session anytime
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => joinMeeting(liveMeeting)}
+              className="px-5 py-2.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs rounded-xl flex items-center gap-2 shadow-md shadow-[#00C9A7]/30 transition-all active:scale-95"
+            >
+              <Video className="w-4 h-4" />
+              <span>Join as Admin</span>
+            </button>
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <Card label="Employees" value={String(headcount)} sub="on the books" />
@@ -497,6 +570,15 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
                       </option>
                     ))}
                   </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setManagingSquad(g)}
+                    className="w-full flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-3 rounded-xl transition-all border border-slate-200 hover:border-slate-300"
+                  >
+                    <Users className="w-3.5 h-3.5 text-[#00A88B]" />
+                    <span>{members.length === 0 ? '+ Add Members' : `Manage Squad (${members.length})`}</span>
+                  </button>
                 </div>
               );
             })}
@@ -507,10 +589,15 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
   );
 
   const renderAttendance = () => {
-    const todayIso = new Date().toISOString().split('T')[0];
-    // Today's check-in record per employee, which carries the photo and location
+    // Record lookup based on selected date
     const recordFor = (employeeId: string) =>
-      attendanceLogs.find((a) => a.employeeId === employeeId && a.date === todayIso);
+      attendanceLogs.find((a) => a.employeeId === employeeId && a.date === attendanceDate);
+
+    const isProblem = (m: TeamMember, rec?: ReturnType<typeof recordFor>) => {
+      if (m.attendanceStatus === 'ABSENT' || m.attendanceStatus === 'LATE') return true;
+      if (rec && rec.locationStatus === 'AWAY') return true;
+      return false;
+    };
 
     const locationCell = (rec: ReturnType<typeof recordFor>) => {
       if (!rec) return <span className="text-slate-400">—</span>;
@@ -527,7 +614,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
       return <span className="text-[10px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-500">Not shared</span>;
     };
 
-    const today = new Date().toLocaleDateString('en-GB', {
+    const selectedDateFormatted = new Date(attendanceDate + 'T00:00:00').toLocaleDateString('en-GB', {
       weekday: 'long',
       day: '2-digit',
       month: 'short',
@@ -536,18 +623,23 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
     const late = teamMembers.filter((m) => m.attendanceStatus === 'LATE').length;
     const onLeave = teamMembers.filter((m) => m.attendanceStatus === 'ON_LEAVE').length;
     const absent = teamMembers.filter((m) => m.attendanceStatus === 'ABSENT').length;
+    const problemsCount = teamMembers.filter((m) => isProblem(m, recordFor(m.id))).length;
+
+    const displayedMembers = attendanceFilter === 'PROBLEMS'
+      ? teamMembers.filter((m) => isProblem(m, recordFor(m.id)))
+      : teamMembers;
 
     return (
       <div className="space-y-6 max-w-7xl mx-auto">
-        <PageHead title="Attendance Report" blurb={today}>
+        <PageHead title="Attendance Report" blurb={selectedDateFormatted}>
           <button
             onClick={() =>
               downloadCsv(
-                'Attendance',
-                'Name,Team,Status,Check-in,Method',
+                `Attendance_${attendanceDate}`,
+                'Name,Team,Status,Check-in,Method,Location',
                 teamMembers.map(
                   (m) =>
-                    `"${m.name}","${m.group}","${m.attendanceStatus}","${m.checkInTime || ''}","${m.checkInMethod || ''}"`
+                    `"${m.name}","${m.group}","${m.attendanceStatus}","${m.checkInTime || ''}","${m.checkInMethod || ''}","${recordFor(m.id)?.locationStatus || ''}"`
                 )
               )
             }
@@ -557,6 +649,73 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
             <span>Download to Excel</span>
           </button>
         </PageHead>
+
+        {/* Date Navigation & Problem Filter Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const d = new Date(attendanceDate + 'T00:00:00');
+                d.setDate(d.getDate() - 1);
+                setAttendanceDate(d.toISOString().split('T')[0]);
+              }}
+              title="Previous Day"
+              className="w-8 h-8 rounded-xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <input
+              type="date"
+              value={attendanceDate}
+              onChange={(e) => setAttendanceDate(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+            />
+
+            <button
+              onClick={() => {
+                const d = new Date(attendanceDate + 'T00:00:00');
+                d.setDate(d.getDate() + 1);
+                setAttendanceDate(d.toISOString().split('T')[0]);
+              }}
+              title="Next Day"
+              className="w-8 h-8 rounded-xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setAttendanceDate(new Date().toISOString().split('T')[0])}
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            >
+              Today
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAttendanceFilter('ALL')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                attendanceFilter === 'ALL'
+                  ? 'bg-[#0A2540] text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All Employees ({teamMembers.length})
+            </button>
+            <button
+              onClick={() => setAttendanceFilter('PROBLEMS')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                attendanceFilter === 'PROBLEMS'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+              }`}
+            >
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>Flagged Problems ({problemsCount})</span>
+            </button>
+          </div>
+        </div>
 
         {/* Office location — the reference point every check-in is measured against */}
         <div className="nexus-card bg-white border border-slate-200 shadow-sm p-5 space-y-4">
@@ -680,7 +839,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {teamMembers.map((m) => {
+                {displayedMembers.map((m) => {
                   const rec = recordFor(m.id);
                   return (
                   <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
@@ -689,15 +848,17 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
                         <img
                           src={rec.checkInPhoto}
                           alt={`${m.name} at check-in`}
-                          className="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                          className="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-xs"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 font-mono">
+                          No Pic
+                        </div>
                       )}
                     </td>
                     <td className="py-3.5 px-5 font-bold text-[#0A2540]">{m.name}</td>
                     <td className="py-3.5 px-5 text-slate-600">{m.group}</td>
-                    <td className="py-3.5 px-5 font-mono text-slate-700">{m.checkInTime || '—'}</td>
+                    <td className="py-3.5 px-5 font-mono text-slate-700">{rec?.checkIn || m.checkInTime || '—'}</td>
                     <td className="py-3.5 px-5">{locationCell(rec)}</td>
                     <td className="py-3.5 px-5 font-mono text-slate-700">{rec?.checkOut || '—'}</td>
                     <td className="py-3.5 px-5">
@@ -721,7 +882,9 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
               </tbody>
             </table>
           </div>
-          {!teamMembers.length && <Empty text="No employees yet." />}
+          {!displayedMembers.length && (
+            <Empty text={attendanceFilter === 'PROBLEMS' ? 'No flagged attendance problems on this day!' : 'No employees yet.'} />
+          )}
         </div>
 
         <p className="text-[11px] text-slate-500 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3">
@@ -811,17 +974,43 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
               <option value="">— Choose telecaller —</option>
               {teamMembers
                 .filter((m) => m.id !== moveFrom && m.active !== 0)
-                .map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
+                .map((m) => {
+                  const heldCount = assignedLeads.filter(
+                    (l) =>
+                      l.assignedToEmployeeId === m.id ||
+                      (l.assignedToEmployeeName &&
+                        l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase())
+                  ).length;
+                  return (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({heldCount} leads held)
+                    </option>
+                  );
+                })}
             </select>
+          </div>
+
+          <div className="w-24">
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Quantity
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={moveCount}
+              onChange={(e) => setMoveCount(e.target.value)}
+              placeholder="All"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+            />
           </div>
 
           <button
             onClick={async () => {
-              await reassignLeadsBetween(moveFrom, moveTo);
+              const limit = moveCount.trim() ? Math.max(1, Number(moveCount)) : undefined;
+              await reassignLeadsBetween(moveFrom, moveTo, limit);
               setMoveFrom('');
               setMoveTo('');
+              setMoveCount('');
             }}
             disabled={!moveFrom || !moveTo}
             className="bg-[#0A2540] hover:bg-[#0F3258] disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs px-5 py-2.5 rounded-xl transition-all active:scale-95"
@@ -862,87 +1051,207 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
     </div>
   );
 
-  const renderApprovals = () => (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <PageHead
-        title="Approvals"
-        blurb={`${pendingPayments.length} payment${pendingPayments.length === 1 ? '' : 's'} waiting for your final sign-off.`}
-      />
+  const renderApprovals = () => {
+    const pendingLeaves = leaveRequests.filter((l) => l.status === 'PENDING');
+    const totalPending = pendingPayments.length + pendingLeaves.length;
 
-      {!pendingPayments.length ? (
-        <div className="nexus-card bg-white border border-slate-200 shadow-sm">
-          <Empty text="Nothing waiting. Every payment has been dealt with." />
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <PageHead
+          title="Approvals"
+          blurb={`${totalPending} item${totalPending === 1 ? '' : 's'} waiting for your sign-off.`}
+        />
+
+        {/* Sub-tabs: Payments vs Leaves */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setApprovalTab('PAYMENTS')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              approvalTab === 'PAYMENTS'
+                ? 'bg-[#0A2540] text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            Payments ({pendingPayments.length})
+          </button>
+          <button
+            onClick={() => setApprovalTab('LEAVES')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              approvalTab === 'LEAVES'
+                ? 'bg-[#0A2540] text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            Leave Escalations ({pendingLeaves.length})
+          </button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {pendingPayments.map((p) => (
-            <div key={p.id} className="nexus-card p-5 bg-white border border-slate-200 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <span className="font-mono-nums font-black text-xl text-[#0A2540] block">
-                    {inr(p.dealAmount)}
-                  </span>
-                  <span className="text-sm font-bold text-slate-700 block">{p.companyName}</span>
-                  <span className="text-[11px] text-slate-500 block">
-                    Closed by {p.telecallerName} · {p.paymentMode} · {p.timestamp}
-                  </span>
-                  <span className="text-[11px] font-mono text-slate-400 block">UTR {p.utrNumber}</span>
-                </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => verifyPayment(p.id, 'VERIFIED')}
-                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all active:scale-95"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Approve</span>
-                  </button>
-                  <button
-                    onClick={() => verifyPayment(p.id, 'REJECTED')}
-                    className="flex items-center gap-1.5 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all active:scale-95"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    <span>Reject</span>
-                  </button>
-                </div>
+        {approvalTab === 'PAYMENTS' && (
+          <>
+            {!pendingPayments.length ? (
+              <div className="nexus-card bg-white border border-slate-200 shadow-sm">
+                <Empty text="Nothing waiting. Every payment has been dealt with." />
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ) : (
+              <div className="space-y-3">
+                {pendingPayments.map((p) => (
+                  <div key={p.id} className="nexus-card p-5 bg-white border border-slate-200 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <span className="font-mono-nums font-black text-xl text-[#0A2540] block">
+                          {inr(p.dealAmount)}
+                        </span>
+                        <span className="text-sm font-bold text-slate-700 block">{p.companyName}</span>
+                        <span className="text-[11px] text-slate-500 block">
+                          Closed by {p.telecallerName} · {p.paymentMode} · {p.timestamp}
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-400 block">UTR {p.utrNumber}</span>
+                      </div>
 
-      <div className="nexus-card bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100">
-          <h3 className="font-display font-black text-base text-[#0A2540]">Already decided</h3>
-        </div>
-        {paymentVerifications.filter((p) => p.status !== 'PENDING_HR_AUDIT').length === 0 ? (
-          <Empty text="No decisions recorded yet." />
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {paymentVerifications
-              .filter((p) => p.status !== 'PENDING_HR_AUDIT')
-              .map((p) => (
-                <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <span className="text-xs font-bold text-[#0A2540] block truncate">
-                      {inr(p.dealAmount)} · {p.companyName}
-                    </span>
-                    <span className="text-[11px] text-slate-500">Closed by {p.telecallerName}</span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => verifyPayment(p.id, 'VERIFIED')}
+                          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all active:scale-95"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Approve</span>
+                        </button>
+                        <button
+                          onClick={() =>
+                            setRejectionTarget({
+                              id: p.id,
+                              type: 'PAYMENT',
+                              name: `${inr(p.dealAmount)} from ${p.companyName}`,
+                            })
+                          }
+                          className="flex items-center gap-1.5 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all active:scale-95"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          <span>Reject</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <span
-                    className={`text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 ${
-                      p.status === 'VERIFIED' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                    }`}
-                  >
-                    {p.status}
-                  </span>
-                </div>
-              ))}
-          </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
+
+        {approvalTab === 'LEAVES' && (
+          <>
+            {!pendingLeaves.length ? (
+              <div className="nexus-card bg-white border border-slate-200 shadow-sm">
+                <Empty text="No leave escalations waiting. All team requests are cleared." />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingLeaves.map((l) => (
+                  <div key={l.id} className="nexus-card p-5 bg-white border border-slate-200 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-[#0A2540]">{l.employeeName}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-50 text-sky-700">
+                            {l.leaveType}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-600 block">
+                          <strong>{l.totalDays} day{l.totalDays === 1 ? '' : 's'}</strong> ({l.fromDate} → {l.toDate})
+                        </span>
+                        <p className="text-[11px] text-slate-500 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          "{l.reason}"
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => {
+                            approveLeaveRequest(l.id);
+                            triggerToast(`✓ Approved leave for ${l.employeeName}`);
+                          }}
+                          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all active:scale-95"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Approve</span>
+                        </button>
+                        <button
+                          onClick={() =>
+                            setRejectionTarget({
+                              id: l.id,
+                              type: 'LEAVE',
+                              name: `Leave for ${l.employeeName} (${l.totalDays} days)`,
+                            })
+                          }
+                          className="flex items-center gap-1.5 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all active:scale-95"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          <span>Reject</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="nexus-card bg-white border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-100">
+            <h3 className="font-display font-black text-base text-[#0A2540]">Already decided</h3>
+          </div>
+          {paymentVerifications.filter((p) => p.status !== 'PENDING_HR_AUDIT').length === 0 &&
+          leaveRequests.filter((l) => l.status !== 'PENDING').length === 0 ? (
+            <Empty text="No decisions recorded yet." />
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {paymentVerifications
+                .filter((p) => p.status !== 'PENDING_HR_AUDIT')
+                .map((p) => (
+                  <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-[#0A2540] block truncate">
+                        {inr(p.dealAmount)} · {p.companyName}
+                      </span>
+                      <span className="text-[11px] text-slate-500">Closed by {p.telecallerName}</span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 ${
+                        p.status === 'VERIFIED' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                      }`}
+                    >
+                      {p.status}
+                    </span>
+                  </div>
+                ))}
+              {leaveRequests
+                .filter((l) => l.status !== 'PENDING')
+                .map((l) => (
+                  <div key={l.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-[#0A2540] block truncate">
+                        Leave: {l.employeeName} ({l.leaveType})
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {l.fromDate} → {l.toDate} · {l.totalDays} day{l.totalDays === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 ${
+                        l.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                      }`}
+                    >
+                      {l.status}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderReports = () => {
     const reports = [
@@ -1072,6 +1381,18 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
 
   // ---------------------------------------------------------------- render
 
+  if (openEmployee) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <Employee360ProfileView
+          member={openEmployee}
+          onBack={() => setOpenEmployee(null)}
+          viewerRole="admin"
+        />
+      </div>
+    );
+  }
+
   return (
     <>
       {activeTab === 'home' && renderOverview()}
@@ -1085,6 +1406,68 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
       <AddEmployeeModal isOpen={isAddUserModalOpen} onClose={() => setIsAddUserModalOpen(false)} />
       <EmployeeRecordModal employee={openEmployee} onClose={() => setOpenEmployee(null)} />
       <CreateTeamModal isOpen={isCreateTeamOpen} onClose={() => setIsCreateTeamOpen(false)} />
+      <ManageTeamMembersModal
+        team={managingSquad}
+        isOpen={!!managingSquad}
+        onClose={() => setManagingSquad(null)}
+      />
+
+      {/* Rejection Prompt Dialog */}
+      {rejectionTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="font-display font-black text-sm text-[#0A2540]">
+                Reject {rejectionTarget.type === 'PAYMENT' ? 'Payment Sign-Off' : 'Leave Escalation'}
+              </h4>
+              <button
+                onClick={() => setRejectionTarget(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div>
+              <p className="text-xs text-slate-600 mb-2 font-medium">
+                Reason for rejecting <strong>{rejectionTarget.name}</strong>:
+              </p>
+              <textarea
+                rows={3}
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="e.g. UTR transaction details could not be verified against bank statement..."
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-rose-500 font-medium"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRejectionTarget(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (rejectionTarget.type === 'PAYMENT') {
+                    verifyPayment(rejectionTarget.id, 'REJECTED');
+                    triggerToast(`✓ Payment rejected with audit note`);
+                  } else {
+                    rejectLeaveRequest(rejectionTarget.id, rejectionReason || 'Rejected by Admin');
+                    triggerToast(`✓ Leave request rejected`);
+                  }
+                  setRejectionTarget(null);
+                  setRejectionReason('');
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xs active:scale-95 transition-all"
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -7,6 +7,7 @@ export const FaceIdScannerModal: React.FC = () => {
   const {
     isFaceIdModalOpen,
     setIsFaceIdModalOpen,
+    faceIdModalMode,
     profile,
     recordCheckIn,
     recordCheckOut,
@@ -16,6 +17,8 @@ export const FaceIdScannerModal: React.FC = () => {
 
   const [phase, setPhase] = useState<'IDLE' | 'CAPTURING' | 'DONE'>('IDLE');
   const [note, setNote] = useState<string | null>(null);
+
+  const isCheckOut = faceIdModalMode === 'CHECK_OUT';
 
   useEffect(() => {
     if (isFaceIdModalOpen) {
@@ -35,39 +38,30 @@ export const FaceIdScannerModal: React.FC = () => {
     setIsFaceIdModalOpen(false);
   };
 
-  const handleCheckIn = async () => {
+  const handleCapture = async () => {
     setPhase('CAPTURING');
     setNote(null);
 
     const result = await capture();
 
-    // A refused camera or location never blocks the check-in; it is recorded
-    // as not shared so Admin can follow it up.
-    await recordCheckIn({
-      photo: result.photo,
-      latitude: result.latitude,
-      longitude: result.longitude,
-    });
+    if (isCheckOut) {
+      await recordCheckOut({
+        photo: result.photo,
+        latitude: result.latitude,
+        longitude: result.longitude,
+      });
+    } else {
+      await recordCheckIn({
+        photo: result.photo,
+        latitude: result.latitude,
+        longitude: result.longitude,
+      });
+    }
 
     setNote(result.locationError);
     setPhase('DONE');
     stopCamera();
-    setTimeout(close, result.locationError ? 2600 : 1500);
-  };
-
-  const handleCheckOut = async () => {
-    setPhase('CAPTURING');
-    setNote(null);
-    const result = await capture();
-    await recordCheckOut({
-      photo: result.photo,
-      latitude: result.latitude,
-      longitude: result.longitude,
-    });
-    setNote(result.locationError);
-    setPhase('DONE');
-    stopCamera();
-    setTimeout(close, result.locationError ? 2600 : 1500);
+    setTimeout(close, result.locationError ? 2400 : 1500);
   };
 
   return (
@@ -76,23 +70,27 @@ export const FaceIdScannerModal: React.FC = () => {
 
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#E6FAF6] flex items-center justify-center text-[#00C9A7]">
-              <Camera className="w-4 h-4" />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isCheckOut ? 'bg-rose-50 text-rose-600' : 'bg-[#E6FAF6] text-[#00C9A7]'}`}>
+              {isCheckOut ? <LogOut className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="font-display font-bold text-base text-[#0A2540]">Check in</h3>
-              <p className="text-xs text-slate-500">A photo and your location are recorded</p>
+              <h3 className="font-display font-black text-base text-[#0A2540]">
+                {isCheckOut ? 'Face ID Punch Out' : 'Face ID Punch In'}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                {isCheckOut ? 'Verify face to end your shift' : 'Verify face & GPS location to begin shift'}
+              </p>
             </div>
           </div>
           <button
             onClick={close}
-            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800"
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Live camera */}
+        {/* Live camera view */}
         <div className="my-5 relative aspect-[4/3] rounded-3xl overflow-hidden bg-slate-900 flex items-center justify-center">
           <video
             ref={videoRef}
@@ -119,56 +117,63 @@ export const FaceIdScannerModal: React.FC = () => {
           )}
 
           {isCameraOn && phase === 'IDLE' && (
-            <div className="absolute inset-6 border-2 border-dashed border-[#00C9A7]/70 rounded-[28px] pointer-events-none" />
+            <div className={`absolute inset-6 border-2 border-dashed ${isCheckOut ? 'border-rose-400/70' : 'border-[#00C9A7]/70'} rounded-[28px] pointer-events-none animate-pulse`} />
           )}
 
           {phase === 'DONE' && (
-            <div className="absolute inset-0 bg-emerald-600/90 flex flex-col items-center justify-center gap-2 text-white">
-              <CheckCircle2 className="w-10 h-10" />
-              <span className="font-display font-black text-sm">Checked in</span>
+            <div className="absolute inset-0 bg-emerald-600/90 flex flex-col items-center justify-center gap-2 text-white animate-in zoom-in-95">
+              <CheckCircle2 className="w-12 h-12" />
+              <span className="font-display font-black text-base">
+                {isCheckOut ? 'Punched Out Successfully' : 'Punched In Successfully'}
+              </span>
+              <span className="text-xs text-emerald-100 font-mono">
+                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
           )}
         </div>
 
         <div className="space-y-2 text-center mb-4">
           <p className="text-xs font-semibold text-slate-600">
-            {phase === 'IDLE' && 'Look at the camera, then tap Check in.'}
-            {phase === 'CAPTURING' && 'Taking your photo and reading your location…'}
-            {phase === 'DONE' && `Recorded for ${profile.name || 'you'}.`}
+            {phase === 'IDLE' && `Look directly at the camera, then tap ${isCheckOut ? 'Punch Out' : 'Punch In'}.`}
+            {phase === 'CAPTURING' && 'Verifying face and recording location…'}
+            {phase === 'DONE' && `Attendance recorded for ${profile.name || 'you'}.`}
           </p>
 
           {note && (
             <p className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-center gap-1.5 justify-center">
               <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{note} Your check-in was still recorded.</span>
+              <span>{note} Your punch was still recorded.</span>
             </p>
           )}
 
           {phase === 'IDLE' && (
-            <p className="text-[11px] text-slate-400 flex items-center gap-1.5 justify-center">
-              <MapPin className="w-3 h-3" />
-              <span>Your browser will ask permission for the camera and location.</span>
+            <p className="text-[11px] text-slate-400 flex items-center gap-1.5 justify-center font-medium">
+              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+              <span>Geo-tagging and face photo sent securely to Admin.</span>
             </p>
           )}
         </div>
 
-        <div className="space-y-2">
+        {/* Action Button */}
+        <div>
           <button
-            onClick={handleCheckIn}
+            onClick={handleCapture}
             disabled={phase !== 'IDLE'}
-            className="w-full py-3.5 rounded-2xl bg-[#00C9A7] hover:bg-[#00B4D8] disabled:bg-slate-200 disabled:text-slate-400 text-[#0A2540] font-black text-sm shadow-lg shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
+            className={`w-full py-3.5 rounded-2xl font-display font-black text-sm shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 ${
+              isCheckOut
+                ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/25'
+                : 'bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] shadow-[#00C9A7]/25'
+            }`}
           >
-            <Camera className="w-5 h-5" />
-            <span>{phase === 'CAPTURING' ? 'Recording…' : 'Check in'}</span>
-          </button>
-
-          <button
-            onClick={handleCheckOut}
-            disabled={phase !== 'IDLE'}
-            className="w-full py-3 rounded-2xl border border-slate-200 disabled:opacity-50 text-slate-600 hover:bg-slate-50 font-bold text-xs flex items-center justify-center gap-2 transition-all"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Check out instead</span>
+            {isCheckOut ? <LogOut className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
+            <span>
+              {phase === 'CAPTURING'
+                ? 'Verifying…'
+                : isCheckOut
+                ? 'Scan Face & Punch Out'
+                : 'Scan Face & Punch In'}
+            </span>
           </button>
         </div>
       </div>

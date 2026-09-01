@@ -4,48 +4,60 @@ import { useScreenData } from '../hooks/useScreenData';
 import { 
   CheckCircle2, 
   Phone, 
-  MessageCircle, 
   Plus, 
-  FileText, 
   AlertTriangle, 
   PhoneCall, 
   Clock, 
   Target,
-  UserCheck
+  UserCheck,
+  LogOut,
+  Camera,
+  Check,
+  RotateCcw,
+  Video
 } from 'lucide-react';
 
 export const TelecallerHomeView: React.FC = () => {
   const { 
     profile, 
     stats, 
-    clients, 
+    myLeads, 
+    assignedLeads,
+    teamMeetings,
+    joinMeeting,
     setIsFaceIdModalOpen, 
     setIsQuickCallModalOpen, 
+    setActiveCallingLead,
+    openCallModalForLead,
+    openPunchIn,
+    openPunchOut,
     triggerToast,
     setActiveTab 
   } = useApp();
 
   const { isLoading } = useScreenData('telecallerHome');
 
-  // May be undefined while the pipeline loads, or when no leads are assigned yet
-  const urgentLead = clients.find(c => c.status === 'Due Today') || clients[0];
+  // Callback lead due today or first in queue from allocated leads
+  const urgentLead = myLeads.find(c => c.status === 'Due Today') || myLeads[0];
   const goalPercentage = Math.round((stats.dialsMade / Math.max(1, stats.todayGoalCalls)) * 100);
   const tgtPercentage = Math.round((stats.monthlySalesAchieved / Math.max(1, stats.monthlySalesTarget)) * 100);
 
   const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const remainingToTarget = Math.max(0, stats.monthlySalesTarget - stats.monthlySalesAchieved);
 
+  const isPunchedIn = profile.faceIdStatus === 'VERIFIED_PRESENT' && !!profile.checkInTime;
+  const isShiftEnded = profile.faceIdStatus === 'ON_BREAK';
+
   const handleInstantCall = () => {
     if (!urgentLead) return;
-    triggerToast(`📞 Dialing ${urgentLead.name} (${urgentLead.phone})...`);
-    setTimeout(() => {
+    const matched = assignedLeads.find(l => l.id === urgentLead.id || l.phone === urgentLead.phone);
+    if (matched) {
+      openCallModalForLead(matched);
+    } else {
+      setActiveCallingLead(null);
       setIsQuickCallModalOpen(true);
-    }, 1000);
-  };
-
-  const handleWhatsApp = () => {
-    if (!urgentLead) return;
-    triggerToast(`💬 Opening WhatsApp with product demo template for ${urgentLead.name}`);
+    }
+    window.location.href = `tel:${urgentLead.phone}`;
   };
 
   return (
@@ -62,10 +74,22 @@ export const TelecallerHomeView: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs text-slate-500 font-semibold">{profile.roleTitle}</span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.2 rounded-full border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Online
-            </span>
+            {isPunchedIn ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Active Shift
+              </span>
+            ) : isShiftEnded ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                Shift Ended
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                Off Duty
+              </span>
+            )}
           </div>
         </div>
 
@@ -75,42 +99,132 @@ export const TelecallerHomeView: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Biometric Face ID Attendance Card */}
-      <div 
-        onClick={() => setIsFaceIdModalOpen(true)}
-        className="nexus-card p-3.5 bg-gradient-to-r from-[#E6FAF6]/90 via-white to-white border border-[#00C9A7]/30 flex items-center justify-between cursor-pointer hover:border-[#00C9A7] transition-all active:scale-[0.99] shadow-sm"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#00C9A7]/15 text-[#00A88B] flex items-center justify-center flex-shrink-0">
-            <UserCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h3 className="font-display font-bold text-sm text-[#0A2540]">Face ID Verified</h3>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+      {/* 🔴 Live Team Meeting Banner on Mobile */}
+      {(() => {
+        const liveMeeting = teamMeetings.find(m => 
+          m.status === 'LIVE' && 
+          (!m.invitedMemberName || m.invitedMemberName.includes(profile.name) || m.invitedMemberName.toLowerCase().includes('all') || m.invitedMemberName.toLowerCase().includes('team'))
+        );
+        if (!liveMeeting) return null;
+        return (
+          <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-500 rounded-2xl flex items-center justify-between gap-3 shadow-sm animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="relative flex h-3 w-3 flex-shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600"></span>
+              </span>
+              <div className="min-w-0">
+                <span className="text-[9px] font-black bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Live Video Meeting
+                </span>
+                <h4 className="font-bold text-xs text-[#0A2540] truncate mt-0.5">
+                  {liveMeeting.title}
+                </h4>
+              </div>
             </div>
-            <p className="text-[11px] text-slate-500 font-mono font-medium">
-              Check-in: <strong className="text-[#00A88B]">{profile.checkInTime}</strong>
-            </p>
+
+            <button
+              onClick={() => joinMeeting(liveMeeting)}
+              className="px-3 py-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-[#00C9A7]/30 flex-shrink-0 active:scale-95 transition-all"
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>Join</span>
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* 2. Clear Punch In / Punch Out Attendance Lifecycle */}
+      {!isPunchedIn && !isShiftEnded && (
+        <div className="nexus-card p-4 bg-gradient-to-r from-amber-500/10 via-amber-50/50 to-white border border-amber-300 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+              <Camera className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-display font-bold text-sm text-[#0A2540]">Morning Punch In</h4>
+              <p className="text-[11px] text-slate-500 font-medium">Verify face to begin your shift</p>
+            </div>
+          </div>
+          <button
+            onClick={openPunchIn}
+            className="px-3.5 py-2 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs shadow-sm active:scale-95 transition-all"
+          >
+            Punch In
+          </button>
+        </div>
+      )}
+
+      {isPunchedIn && (
+        <div className="nexus-card p-3.5 bg-gradient-to-r from-[#E6FAF6]/90 via-white to-white border border-[#00C9A7]/30 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#00C9A7]/15 text-[#00A88B] flex items-center justify-center flex-shrink-0">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h4 className="font-display font-bold text-sm text-[#0A2540]">On Duty</h4>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Punched in: <strong className="text-[#00A88B] font-mono">{profile.checkInTime}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openPunchOut}
+              title="End shift with face scan"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-black transition-all active:scale-95 shadow-xs"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Punch Out</span>
+            </button>
           </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span>ON DUTY</span>
+      {isShiftEnded && (
+        <div className="nexus-card p-3.5 bg-slate-50 border border-slate-200 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-4.5 h-4.5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-display font-bold text-xs text-slate-800">Shift Completed</h4>
+                <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-200/70 text-slate-600 px-1.5 py-0.5 rounded">
+                  Punched Out
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                {profile.checkInTime} → {profile.checkOutTime || '06:30 PM'}
+              </p>
+            </div>
+          </div>
+          
+          <button
+            onClick={openPunchIn}
+            title="Need to resume calling? Punch in again"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs shadow-xs active:scale-95 transition-all flex-shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Punch In Again</span>
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* 3. Today's Calling Goal Hero Card */}
+      {/* 3. Today's Calling Goal Progress Card */}
       <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="font-display font-extrabold text-sm text-[#0A2540] tracking-tight">Today's Calling Goal</h3>
-            <p className="text-[11px] text-slate-400 font-medium">Keep up the great momentum!</p>
+            <p className="text-[11px] text-slate-400 font-medium">Calls completed against your daily target</p>
           </div>
           <div className="flex items-center gap-1 text-[11px] font-bold text-[#00A88B] bg-[#E6FAF6] px-2.5 py-1 rounded-lg">
             <Target className="w-3.5 h-3.5" />
-            <span>Goal: {stats.todayGoalCalls} Calls</span>
+            <span>Target: {stats.todayGoalCalls} Calls</span>
           </div>
         </div>
 
@@ -133,7 +247,7 @@ export const TelecallerHomeView: React.FC = () => {
                 stroke="#00C9A7"
                 strokeWidth="7"
                 strokeDasharray="201"
-                strokeDashoffset={201 - (201 * goalPercentage) / 100}
+                strokeDashoffset={201 - (201 * Math.min(100, goalPercentage)) / 100}
                 strokeLinecap="round"
                 fill="transparent"
                 className="transition-all duration-1000 ease-out"
@@ -144,7 +258,7 @@ export const TelecallerHomeView: React.FC = () => {
                 {goalPercentage}%
               </span>
               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                COMPLETED
+                DONE
               </span>
             </div>
           </div>
@@ -186,13 +300,13 @@ export const TelecallerHomeView: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Monthly Sales Target (TGT) Progress Bar */}
+      {/* 4. Monthly Sales Target Progress Bar */}
       <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h4 className="font-display font-bold text-sm text-[#0A2540]">Sales Target (TGT)</h4>
-              <p className="text-[11px] text-slate-400 font-medium">Monthly Target Quota</p>
+              <h4 className="font-display font-bold text-sm text-[#0A2540]">Monthly Sales Incentive Target</h4>
+              <p className="text-[11px] text-slate-400 font-medium">Revenue quota towards your bonus</p>
             </div>
             <div className="text-right">
               <span className="text-sm font-mono-nums font-extrabold text-[#00A88B]">
@@ -215,7 +329,7 @@ export const TelecallerHomeView: React.FC = () => {
           <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mb-2.5">
             <div 
               className="h-full bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] rounded-full transition-all duration-700"
-              style={{ width: `${tgtPercentage}%` }}
+              style={{ width: `${Math.min(100, tgtPercentage)}%` }}
             />
           </div>
         </div>
@@ -226,76 +340,70 @@ export const TelecallerHomeView: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Urgent Client Follow-up Alert Card */}
+      {/* 5. Next Follow-up Lead Card */}
       {urgentLead ? (
         <div className="nexus-card p-4 bg-gradient-to-br from-[#FFFBEB] via-white to-white border border-amber-300/60 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-300">
               <Clock className="w-3 h-3 text-amber-600" />
-              <span>{urgentLead.dueTime || 'Due in 15 mins'}</span>
+              <span>{urgentLead.dueTime || 'Due for Callback'}</span>
             </span>
-            <span className="text-[11px] font-bold text-slate-400">Next Callback Lead</span>
+            <span className="text-[11px] font-bold text-slate-400">Next Priority Lead</span>
           </div>
 
           <div className="mb-3">
-            <h4 className="font-display font-bold text-base text-[#0A2540]">{urgentLead.company}</h4>
-            <p className="text-xs font-semibold text-slate-700">{urgentLead.name}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{urgentLead.requirement}</p>
+            <h4 className="font-display font-bold text-base text-[#0A2540]">{urgentLead.name}</h4>
+            <p className="text-xs font-semibold text-slate-700">{urgentLead.company}</p>
+            <p className="text-xs font-mono text-slate-500 mt-0.5">{urgentLead.phone}</p>
           </div>
 
-          {/* 1-Tap Action Triggers */}
+          {/* Action Triggers */}
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
               onClick={handleInstantCall}
-              className="py-2.5 px-3 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-bold text-xs shadow-md shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
+              className="py-2.5 px-3 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs shadow-md shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
             >
               <Phone className="w-3.5 h-3.5" />
-              <span>Instant Call</span>
+              <span>Call Lead</span>
             </button>
 
             <button
-              onClick={handleWhatsApp}
-              className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+              onClick={() => {
+                const matched = assignedLeads.find((l) => l.id === urgentLead.id || l.phone === urgentLead.phone);
+                if (matched) {
+                  openCallModalForLead(matched);
+                } else {
+                  setActiveCallingLead(null);
+                  setIsQuickCallModalOpen(true);
+                }
+              }}
+              className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xs"
             >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-              <span>WhatsApp</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+              <span>Record Result</span>
             </button>
           </div>
         </div>
       ) : (
         <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm text-center space-y-1">
-          <h4 className="font-display font-bold text-sm text-[#0A2540]">No callbacks due</h4>
+          <h4 className="font-display font-bold text-sm text-[#0A2540]">No callbacks due right now</h4>
           <p className="text-xs text-slate-500">
-            {isLoading ? 'Loading your pipeline…' : 'Leads assigned to you will appear here.'}
+            {isLoading ? 'Loading your leads…' : 'Leads requiring follow-up will appear here.'}
           </p>
         </div>
       )}
 
-      {/* 6. Quick Action Floating Buttons */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <button
-          onClick={() => setIsQuickCallModalOpen(true)}
-          className="py-3 px-3.5 rounded-2xl bg-white border border-slate-200 hover:border-[#00C9A7] text-[#0A2540] font-bold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
-        >
-          <div className="w-7 h-7 rounded-xl bg-[#E6FAF6] text-[#00C9A7] flex items-center justify-center flex-shrink-0">
-            <Plus className="w-4 h-4 stroke-[3]" />
-          </div>
-          <span>Quick Log Call</span>
-        </button>
-
-        <button
-          onClick={() => {
-            triggerToast('📝 Opening Client Note dialog');
-            setActiveTab('clients');
-          }}
-          className="py-3 px-3.5 rounded-2xl bg-white border border-slate-200 hover:border-[#00C9A7] text-[#0A2540] font-bold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
-        >
-          <div className="w-7 h-7 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0">
-            <FileText className="w-3.5 h-3.5" />
-          </div>
-          <span>Client Note</span>
-        </button>
-      </div>
+      {/* 6. Clean Primary Log Call Action */}
+      <button
+        onClick={() => {
+          setActiveCallingLead(null);
+          setIsQuickCallModalOpen(true);
+        }}
+        className="w-full py-3.5 px-4 rounded-2xl bg-[#0A2540] hover:bg-[#12385f] text-white font-display font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
+      >
+        <Plus className="w-4 h-4 text-[#00C9A7] stroke-[3]" />
+        <span>+ Log an Unscheduled Call</span>
+      </button>
 
     </div>
   );

@@ -9,17 +9,34 @@ import {
   TrendingUp, 
   UserCheck, 
   Clock, 
-  MessageCircle, 
   Target, 
   Calendar, 
   Plus, 
   FileText, 
   ArrowUpRight,
-  ShieldCheck
+  ShieldCheck,
+  LogOut,
+  Camera,
+  RotateCcw,
+  Video,
+  Users
 } from 'lucide-react';
 
 export const DesktopTelecallerHome: React.FC = () => {
-  const { profile, stats, myLeads: clients, callLogs, setIsFaceIdModalOpen, setIsQuickCallModalOpen, triggerToast, setActiveTab } = useApp();
+  const { 
+    profile, 
+    stats, 
+    myLeads: clients, 
+    callLogs, 
+    teamMeetings,
+    joinMeeting,
+    setIsFaceIdModalOpen, 
+    setIsQuickCallModalOpen, 
+    openPunchIn, 
+    openPunchOut, 
+    triggerToast, 
+    setActiveTab 
+  } = useApp();
 
   const { isLoading } = useScreenData('telecallerHome');
 
@@ -28,6 +45,15 @@ export const DesktopTelecallerHome: React.FC = () => {
   const goalPercentage = Math.round((stats.dialsMade / Math.max(1, stats.todayGoalCalls)) * 100);
   const tgtPercentage = Math.round((stats.monthlySalesAchieved / Math.max(1, stats.monthlySalesTarget)) * 100);
 
+  const handleInstantCall = () => {
+    if (!urgentLead) return;
+    triggerToast(`📞 Dialing ${urgentLead.name} (${urgentLead.phone})...`);
+    window.location.href = `tel:${urgentLead.phone}`;
+    setTimeout(() => {
+      setIsQuickCallModalOpen(true);
+    }, 500);
+  };
+
   const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const pendingCallbacks = clients.filter(c => c.status === 'Due Today' || c.status === 'Follow-up').length;
   const dialsRemaining = Math.max(0, stats.todayGoalCalls - stats.dialsMade);
@@ -35,18 +61,10 @@ export const DesktopTelecallerHome: React.FC = () => {
   const estRemaining = `${Math.floor(minsRemaining / 60)}h ${minsRemaining % 60}m`;
   const avgDuration = `${Math.floor(stats.averageCallDurationSec / 60)}m ${String(stats.averageCallDurationSec % 60).padStart(2, '0')}s`;
 
-  const handleInstantCall = () => {
-    if (!urgentLead) return;
-    triggerToast(`📞 Dialing ${urgentLead.name} (${urgentLead.phone})...`);
-    setTimeout(() => {
-      setIsQuickCallModalOpen(true);
-    }, 1000);
-  };
-
-  const handleWhatsApp = () => {
-    if (!urgentLead) return;
-    triggerToast(`💬 Opening WhatsApp with product demo template for ${urgentLead.name}`);
-  };
+  const liveMeeting = teamMeetings.find(m => 
+    m.status === 'LIVE' && 
+    (!m.invitedMemberName || m.invitedMemberName.includes(profile.name) || m.invitedMemberName.toLowerCase().includes('all') || m.invitedMemberName.toLowerCase().includes('team'))
+  );
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -66,13 +84,45 @@ export const DesktopTelecallerHome: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsFaceIdModalOpen(true)}
-            className="flex items-center gap-2 bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00A88B] font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-xs"
-          >
-            <UserCheck className="w-4 h-4" />
-            <span>Face ID: Present ({profile.checkInTime})</span>
-          </button>
+          {profile.faceIdStatus === 'VERIFIED_PRESENT' && profile.checkInTime ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00A88B] font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-xs">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                <span>On Duty · In: {profile.checkInTime}</span>
+              </div>
+              <button
+                onClick={openPunchOut}
+                title="End shift with face scan"
+                className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-xs px-3.5 py-2.5 rounded-xl transition-all active:scale-95 shadow-xs"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Punch Out</span>
+              </button>
+            </div>
+          ) : profile.faceIdStatus === 'ON_BREAK' ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Shift Ended ({profile.checkInTime} → {profile.checkOutTime || '06:30 PM'})</span>
+              </div>
+              <button
+                onClick={openPunchIn}
+                title="Need to resume calling? Punch in again"
+                className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-extrabold text-xs px-3.5 py-2.5 rounded-xl transition-all active:scale-95 shadow-xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Punch In Again</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={openPunchIn}
+              className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95"
+            >
+              <Camera className="w-4 h-4" />
+              <span>Punch In (Face Scan)</span>
+            </button>
+          )}
 
           <button
             onClick={() => setIsQuickCallModalOpen(true)}
@@ -83,6 +133,40 @@ export const DesktopTelecallerHome: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 🔴 Live Team Meeting Banner (if active) */}
+      {liveMeeting && (
+        <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border-2 border-emerald-500 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-md animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3.5">
+            <span className="relative flex h-3.5 w-3.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-600"></span>
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  🔴 Live Team Meeting
+                </span>
+                <span className="text-xs font-mono text-emerald-800 font-bold">Conducted by Team Leader</span>
+              </div>
+              <h4 className="font-display font-black text-base text-[#0A2540] mt-0.5">
+                {liveMeeting.title}
+              </h4>
+              <p className="text-xs text-slate-500 font-medium">
+                {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : 'All team telecallers invited'} • Click Join to enter live video session
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => joinMeeting(liveMeeting)}
+            className="px-6 py-2.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs rounded-xl flex items-center gap-2 shadow-md shadow-[#00C9A7]/30 transition-all active:scale-95"
+          >
+            <Video className="w-4 h-4" />
+            <span>Join Video Call</span>
+          </button>
+        </div>
+      )}
 
       {/* 2. Top Row: 4 Full-Width Metric Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -272,9 +356,9 @@ export const DesktopTelecallerHome: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex items-center justify-between text-xs font-mono text-slate-600 mb-4 px-1">
-              <span>Potential Deal: <strong className="text-[#0A2540] text-sm">₹{urgentLead.dealValue.toLocaleString()}</strong></span>
-              <span className="text-emerald-700 font-bold">Hot Temperature 🔥</span>
+            <div className="flex items-center justify-between text-xs text-slate-600 mb-4 px-1">
+              <span>Phone: <strong className="font-mono text-[#0A2540]">{urgentLead.phone}</strong></span>
+              <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Pending Callback</span>
             </div>
           </div>
 
@@ -289,11 +373,11 @@ export const DesktopTelecallerHome: React.FC = () => {
             </button>
 
             <button
-              onClick={handleWhatsApp}
+              onClick={() => setIsQuickCallModalOpen(true)}
               className="py-3 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xs"
             >
-              <MessageCircle className="w-4 h-4 text-emerald-600" />
-              <span>Send WhatsApp</span>
+              <CheckCircle2 className="w-4 h-4 text-teal-600" />
+              <span>Record Result</span>
             </button>
           </div>
         </div>

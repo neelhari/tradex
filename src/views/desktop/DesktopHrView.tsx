@@ -22,10 +22,12 @@ import {
   UserPlus,
   ArrowUpRight,
   ShieldCheck,
-  MoreHorizontal
+  MoreHorizontal,
+  Video
 } from 'lucide-react';
-import { CandidateInterview, OnboardingEmployee, ExitEmployee, PaymentVerificationItem } from '../../types';
+import { CandidateInterview, OnboardingEmployee, ExitEmployee, PaymentVerificationItem, TeamMember } from '../../types';
 import { AddEmployeeModal } from '../../components/modals/AddEmployeeModal';
+import { Employee360ProfileView } from '../Employee360ProfileView';
 
 interface DesktopHrViewProps {
   currentTab?: string;
@@ -37,6 +39,7 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
   onTabChange
 }) => {
   const { 
+    profile,
     teamMembers, 
     teamGroups, 
     leaveRequests, 
@@ -53,7 +56,10 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
     toggleExitChecklist, 
     verifyPayment, 
     generateBulkPayslips, 
-    triggerToast 
+    teamMeetings,
+    joinMeeting,
+    triggerToast,
+    setIsFaceIdModalOpen 
   } = useApp();
 
   useScreenData('hrDashboard');
@@ -66,6 +72,7 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [isPayslipGenModalOpen, setIsPayslipGenModalOpen] = useState(false);
+  const [selectedEmployeeFor360, setSelectedEmployeeFor360] = useState<TeamMember | null>(null);
 
   // Form states
   const [candName, setCandName] = useState('');
@@ -88,6 +95,8 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
   const pendingPayments = paymentVerifications.filter(p => p.status === 'PENDING_HR_AUDIT');
   const pendingApprovalsCount = pendingLeaves.length + pendingPayments.length;
   const attendancePercent = Math.round((presentCount / Math.max(1, totalEmployees)) * 100);
+
+  const hrName = profile?.name?.trim() || 'Priya (HR Head)';
 
   const handleScheduleInterviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,150 +141,204 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
     <div className="space-y-6 max-w-7xl mx-auto">
       
       {/* 1. Top Header Banner */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
-              Hello, Priya (HR Head)
-            </h2>
-            <span className="text-xl">👋</span>
+      {activeTab === 'home' && (
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
+                Hello, {hrName}
+              </h2>
+              <span className="text-xl">👋</span>
+
+              {/* Face ID & Attendance status on the dashboard itself */}
+              <button
+                onClick={() => setIsFaceIdModalOpen(true)}
+                title="Click to view Biometric Attendance details"
+                className="flex items-center gap-1.5 bg-[#E6FAF6] border border-[#00C9A7]/40 text-[#00A88B] font-bold text-xs px-3 py-1.5 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-2xs cursor-pointer active:scale-95"
+              >
+                <UserCheck className="w-4 h-4 text-[#00C9A7]" />
+                <span>
+                  Face ID: {profile?.checkInTime ? `Present (${profile.checkInTime})` : profile?.faceIdStatus === 'VERIFIED_PRESENT' ? 'Present' : 'Not Checked In'}
+                </span>
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Human Resources & Operations • <span className="text-[#00A88B] font-bold">People Management</span> • <strong className="text-emerald-600">● {presentCount} Employees Checked In</strong>
+            </p>
           </div>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Human Resources & Operations • <span className="text-[#00A88B] font-bold">People Management</span> • <strong className="text-emerald-600">● {presentCount} Employees Checked In</strong>
-          </p>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exportHrReportCSV}
+              className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs"
+            >
+              <Download className="w-4 h-4 text-slate-500" />
+              <span>Export Audit</span>
+            </button>
+
+            <button
+              onClick={() => setIsInterviewModalOpen(true)}
+              className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-[#5B3DF5] font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-indigo-100 transition-all shadow-xs"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Schedule Interview</span>
+            </button>
+
+            <button
+              onClick={() => setIsPayslipGenModalOpen(true)}
+              className="flex items-center gap-2 bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00A88B] font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-xs"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>Run Payroll</span>
+            </button>
+
+            <button
+              onClick={() => setIsAddEmployeeModalOpen(true)}
+              className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Onboard Employee</span>
+            </button>
+          </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={exportHrReportCSV}
-            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs"
-          >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export Audit</span>
-          </button>
+      {/* 🔴 Live Team Meeting Banner for HR */}
+      {activeTab === 'home' && (() => {
+        const liveMeeting = teamMeetings.find(m => m.status === 'LIVE');
+        if (!liveMeeting) return null;
+        return (
+          <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 border-2 border-emerald-500 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-md animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-3.5">
+              <span className="relative flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-600"></span>
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    🔴 Live Team Meeting in Progress
+                  </span>
+                  <span className="text-xs font-mono text-emerald-800 font-bold">Conducted by Team Leader</span>
+                </div>
+                <h4 className="font-display font-black text-base text-[#0A2540] mt-0.5">
+                  {liveMeeting.title}
+                </h4>
+                <p className="text-xs text-slate-500 font-medium">
+                  {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : 'All team telecallers'} • HR can join to audit or assist
+                </p>
+              </div>
+            </div>
 
-          <button
-            onClick={() => setIsInterviewModalOpen(true)}
-            className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-[#5B3DF5] font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-indigo-100 transition-all shadow-xs"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Schedule Interview</span>
-          </button>
-
-          <button
-            onClick={() => setIsPayslipGenModalOpen(true)}
-            className="flex items-center gap-2 bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00A88B] font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-xs"
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>Run Payroll</span>
-          </button>
-
-          <button
-            onClick={() => setIsAddEmployeeModalOpen(true)}
-            className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Onboard Employee</span>
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={() => joinMeeting(liveMeeting)}
+              className="px-5 py-2.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs rounded-xl flex items-center gap-2 shadow-md shadow-[#00C9A7]/30 transition-all active:scale-95"
+            >
+              <Video className="w-4 h-4" />
+              <span>Join Video Session</span>
+            </button>
+          </div>
+        );
+      })()}
 
       {/* 2. Top Metric Cards (Widescreen 4-Column Grid) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        
-        {/* Card 1: Total Employees */}
-        <div 
-          onClick={() => setTab('employees')}
-          className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-[#00C9A7] transition-all group"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Active Workforce
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{totalEmployees}</span>
-              <span className="text-xs font-bold text-slate-400">Headcount</span>
+      {activeTab === 'home' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          
+          {/* Card 1: Total Employees */}
+          <div 
+            onClick={() => setTab('employees')}
+            className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-[#00C9A7] transition-all group"
+          >
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Active Workforce
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{totalEmployees}</span>
+                <span className="text-xs font-bold text-slate-400">Headcount</span>
+              </div>
+              <span className="text-xs text-[#00A88B] font-extrabold mt-1 block group-hover:underline">
+                Across {totalTeams} Teams →
+              </span>
             </div>
-            <span className="text-xs text-[#00A88B] font-extrabold mt-1 block group-hover:underline">
-              Across {totalTeams} Teams →
-            </span>
-          </div>
 
-          <div className="w-12 h-12 rounded-2xl bg-[#E6FAF6] text-[#00C9A7] flex items-center justify-center shadow-xs">
-            <Users className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 2: Present Today */}
-        <div 
-          onClick={() => setTab('employees')}
-          className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-500 transition-all group"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Present Today
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-2xl text-emerald-600">{presentCount}</span>
-              <span className="text-xs font-bold text-slate-400">/ {totalEmployees} Present</span>
+            <div className="w-12 h-12 rounded-2xl bg-[#E6FAF6] text-[#00C9A7] flex items-center justify-center shadow-xs">
+              <Users className="w-6 h-6" />
             </div>
-            <span className="text-xs text-emerald-600 font-extrabold mt-1 block">
-              {attendancePercent}% Attendance
-            </span>
           </div>
 
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
-            <UserCheck className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 3: Pending Approvals */}
-        <div 
-          onClick={() => setTab('clearances')}
-          className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-rose-400 transition-all group"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Pending Approvals
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-2xl text-rose-600">{pendingApprovalsCount}</span>
-              <span className="text-xs font-bold text-slate-400">Requests</span>
+          {/* Card 2: Present Today */}
+          <div 
+            onClick={() => setTab('employees')}
+            className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-500 transition-all group"
+          >
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Present Today
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono-nums font-black text-2xl text-emerald-600">{presentCount}</span>
+                <span className="text-xs font-bold text-slate-400">/ {totalEmployees} Present</span>
+              </div>
+              <span className="text-xs text-emerald-600 font-extrabold mt-1 block">
+                {attendancePercent}% Attendance
+              </span>
             </div>
-            <span className="text-xs text-rose-600 font-extrabold mt-1 block">
-              {pendingLeaves.length} Leaves • {pendingPayments.length} Payments
-            </span>
-          </div>
 
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shadow-xs">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 4: Candidates in Pipeline */}
-        <div 
-          onClick={() => setTab('interviews')}
-          className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-indigo-400 transition-all group"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Interview Pipeline
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{candidates.length}</span>
-              <span className="text-xs font-bold text-slate-400">Candidates</span>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
+              <UserCheck className="w-6 h-6" />
             </div>
-            <span className="text-xs text-indigo-600 font-extrabold mt-1 block">
-              {candidates.filter(c => c.status === 'INTERVIEW_SCHEDULED').length} Scheduled Today
-            </span>
           </div>
 
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#5B3DF5] flex items-center justify-center shadow-xs">
-            <Calendar className="w-6 h-6" />
+          {/* Card 3: Pending Approvals */}
+          <div 
+            onClick={() => setTab('clearances')}
+            className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-rose-400 transition-all group"
+          >
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Pending Approvals
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono-nums font-black text-2xl text-rose-600">{pendingApprovalsCount}</span>
+                <span className="text-xs font-bold text-slate-400">Requests</span>
+              </div>
+              <span className="text-xs text-rose-600 font-extrabold mt-1 block">
+                {pendingLeaves.length} Leaves • {pendingPayments.length} Payments
+              </span>
+            </div>
+
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shadow-xs">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
           </div>
+
+          {/* Card 4: Candidates in Pipeline */}
+          <div 
+            onClick={() => setTab('interviews')}
+            className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-indigo-400 transition-all group"
+          >
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Interview Pipeline
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{candidates.length}</span>
+                <span className="text-xs font-bold text-slate-400">Candidates</span>
+              </div>
+              <span className="text-xs text-indigo-600 font-extrabold mt-1 block">
+                {candidates.filter(c => c.status === 'INTERVIEW_SCHEDULED').length} Scheduled Today
+              </span>
+            </div>
+
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#5B3DF5] flex items-center justify-center shadow-xs">
+              <Calendar className="w-6 h-6" />
+            </div>
+          </div>
+
         </div>
-
-      </div>
+      )}
 
       {/* --- TAB: HOME / OVERVIEW --- */}
       {activeTab === 'home' && (
@@ -445,6 +508,13 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
 
       {/* --- TAB: EMPLOYEES / DIRECTORY --- */}
       {activeTab === 'employees' && (
+        selectedEmployeeFor360 ? (
+          <Employee360ProfileView 
+            member={selectedEmployeeFor360} 
+            onBack={() => setSelectedEmployeeFor360(null)} 
+            viewerRole="hr" 
+          />
+        ) : (
         <div className="space-y-6 animate-in fade-in duration-150">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
             
@@ -501,14 +571,18 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
                       );
                     })
                     .map((emp) => (
-                    <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr 
+                      key={emp.id} 
+                      onClick={() => setSelectedEmployeeFor360(emp)}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                    >
                       <td className="py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-black text-xs">
                             {emp.avatar || emp.name.substring(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <span className="font-bold text-[#0A2540] block">{emp.name}</span>
+                            <span className="font-bold text-[#0A2540] block group-hover:text-[#00A88B] transition-colors">{emp.name}</span>
                             <span className="text-[10px] text-slate-400 font-mono">{emp.empCode}</span>
                           </div>
                         </div>
@@ -526,6 +600,11 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
                         </span>
                       </td>
                       <td className="py-3.5 font-mono text-slate-500">{emp.checkInTime || 'Not checked in'}</td>
+                      <td className="py-3.5 text-right pr-2">
+                        <span className="text-[#00A88B] font-bold text-xs group-hover:underline inline-flex items-center gap-1">
+                          View 360° Profile →
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -573,6 +652,7 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
           </div>
 
         </div>
+        )
       )}
 
       {/* --- TAB: INTERVIEWS --- */}

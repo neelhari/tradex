@@ -5,83 +5,112 @@ import {
   PhoneCall, 
   Plus, 
   Search, 
-  Filter, 
   Download, 
   Phone, 
   Clock, 
-  Calendar, 
   CheckCircle2, 
-  MessageSquare,
-  FileSpreadsheet,
-  X,
-  Sparkles
+  PhoneForwarded,
+  PhoneOff,
+  ThumbsDown,
+  Award,
+  X
 } from 'lucide-react';
-import { CallOutcome, AssignedLead } from '../../types';
+import { CallOutcome } from '../../types';
 
 export const DesktopDailyCalling: React.FC = () => {
   const { 
     callLogs, 
     stats, 
-    assignedLeads, 
-    profile, 
-    updateAssignedLeadStatus, 
     setIsQuickCallModalOpen, 
+    setActiveCallingLead,
     triggerToast 
   } = useApp();
 
   useScreenData('dailyCalling');
 
-  const [activeTab, setActiveTab] = useState<'assigned' | 'history'>('assigned');
   const [selectedOutcome, setSelectedOutcome] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Disposition Modal
-  const [selectedLeadForCall, setSelectedLeadForCall] = useState<AssignedLead | null>(null);
-  const [callDisposition, setCallDisposition] = useState<AssignedLead['status']>('CONNECTED');
-  const [callNotes, setCallNotes] = useState('');
-  const [dealAmount, setDealAmount] = useState<number>(0);
-  const [callbackTime, setCallbackTime] = useState('');
+  const filteredLogs = callLogs.filter((log) => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      log.clientName.toLowerCase().includes(q) ||
+      log.companyName.toLowerCase().includes(q) ||
+      log.phoneNumber.includes(q);
 
-  // Filter assigned leads for the active employee
-  const myAssignedLeads = assignedLeads.filter(lead => {
-    const isMine = lead.assignedToEmployeeId === profile.id || 
-                   (lead.assignedToEmployeeName ?? '').toLowerCase() === profile.name.toLowerCase() ||
-                   lead.assignedToEmployeeId === 'emp-101';
-    const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          lead.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          lead.phone.includes(searchQuery);
-    return isMine && matchesSearch;
+    if (!matchesSearch) return false;
+    if (selectedOutcome === 'ALL') return true;
+    return log.outcome === selectedOutcome;
   });
 
-  const filteredLogs = callLogs.filter(log => {
-    const matchesSearch = log.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          log.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          log.phoneNumber.includes(searchQuery);
-    if (selectedOutcome === 'ALL') return matchesSearch;
-    return matchesSearch && log.outcome === selectedOutcome;
-  });
-
-  const handleOpenCallModal = (lead: AssignedLead) => {
-    setSelectedLeadForCall(lead);
-    setCallDisposition(lead.status === 'PENDING' ? 'CONNECTED' : lead.status);
-    setCallNotes(lead.notes || '');
-    setDealAmount(lead.dealValue || 0);
-    setCallbackTime(lead.followUpDate || 'Today, 03:00 PM');
+  const getOutcomeBadge = (outcome: CallOutcome) => {
+    switch (outcome) {
+      case 'INTERESTED':
+        return (
+          <span className="bg-sky-50 text-sky-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-sky-200 flex items-center gap-1.5 w-fit">
+            <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
+            Interested
+          </span>
+        );
+      case 'DEAL_CLOSED':
+        return (
+          <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5 w-fit">
+            <Award className="w-3.5 h-3.5 text-emerald-600" />
+            Won Deal
+          </span>
+        );
+      case 'CALLBACK':
+        return (
+          <span className="bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1.5 w-fit">
+            <PhoneForwarded className="w-3.5 h-3.5 text-amber-600" />
+            Call Back
+          </span>
+        );
+      case 'BUSY':
+        return (
+          <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1.5 w-fit">
+            <PhoneOff className="w-3.5 h-3.5 text-slate-500" />
+            No Answer
+          </span>
+        );
+      case 'NOT_INTERESTED':
+        return (
+          <span className="bg-rose-50 text-rose-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-rose-200 flex items-center gap-1.5 w-fit">
+            <ThumbsDown className="w-3.5 h-3.5 text-rose-500" />
+            Not Interested
+          </span>
+        );
+      case 'CONNECTED':
+      default:
+        return (
+          <span className="bg-teal-50 text-[#00876f] text-xs font-bold px-2.5 py-1 rounded-lg border border-teal-200 flex items-center gap-1.5 w-fit">
+            <Phone className="w-3.5 h-3.5 text-[#00A88B]" />
+            Spoke
+          </span>
+        );
+    }
   };
 
-  const handleSaveDisposition = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLeadForCall) return;
+  const formatDuration = (sec: number) => {
+    if (!sec) return '00s';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m > 0 ? `${m}m ` : ''}${s > 0 ? `${s}s` : ''}`;
+  };
 
-    updateAssignedLeadStatus(
-      selectedLeadForCall.id,
-      callDisposition,
-      callNotes,
-      callDisposition === 'CONVERTED' ? dealAmount : undefined,
-      callDisposition === 'CALLBACK' ? callbackTime : undefined
+  const handleExportCsv = () => {
+    const header = 'Time,Client Name,Company,Phone,Duration (sec),Outcome,Notes,Follow Up';
+    const rows = filteredLogs.map((l) =>
+      `"${l.timestamp}","${l.clientName}","${l.companyName}","${l.phoneNumber}",${l.durationSec},"${l.outcome}","${(l.notes || '').replace(/"/g, '""')}","${l.followUpDate || ''}"`
     );
-
-    setSelectedLeadForCall(null);
+    const csv = `data:text/csv;charset=utf-8,${header}\n${rows.join('\n')}`;
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csv));
+    link.setAttribute('download', `Call_Logs_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    triggerToast('✓ Call logs downloaded to CSV');
   };
 
   return (
@@ -91,16 +120,16 @@ export const DesktopDailyCalling: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
-            Daily Calling Activity & Assigned Leads
+            Call Logs & Register
           </h2>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Admin Allocated Excel Leads • Live Telecaller CRM • Real-Time Stats Sync
+            Complete record of today's completed calls, durations, and client responses
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => triggerToast('📊 Exporting calling activity to CSV / Excel')}
+            onClick={handleExportCsv}
             className="flex items-center gap-2 bg-white border border-slate-200 hover:border-[#00C9A7] text-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all"
           >
             <Download className="w-4 h-4 text-slate-500" />
@@ -108,366 +137,141 @@ export const DesktopDailyCalling: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setIsQuickCallModalOpen(true)}
+            onClick={() => {
+              setActiveCallingLead(null);
+              setIsQuickCallModalOpen(true);
+            }}
             className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>+ Log New Call</span>
+            <span>+ Log Call</span>
           </button>
         </div>
       </div>
 
-      {/* Top KPI Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Dials Made</span>
+      {/* KPI Metrics Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm space-y-1">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Today's Dials</span>
+          <div className="flex items-baseline gap-2">
             <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{stats.dialsMade}</span>
-            <span className="text-xs text-slate-400 block mt-1 font-semibold">Target: {stats.todayGoalCalls} Dials</span>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-[#E6FAF6] text-[#00C9A7] flex items-center justify-center">
-            <PhoneCall className="w-5 h-5" />
+            <span className="text-xs font-semibold text-slate-400 font-mono">/ {stats.todayGoalCalls} Target</span>
           </div>
         </div>
 
-        <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Connected Calls</span>
-            <span className="font-mono-nums font-black text-2xl text-sky-600">{stats.connected}</span>
-            <span className="text-xs text-sky-600 block mt-1 font-extrabold">
-              {Math.round((stats.connected / Math.max(1, stats.dialsMade)) * 100)}% Connection Rate
-            </span>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
+        <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm space-y-1">
+          <span className="text-xs font-bold text-sky-500 uppercase tracking-wider block">Connected Calls</span>
+          <span className="font-mono-nums font-black text-2xl text-sky-600">{stats.connected}</span>
         </div>
 
-        <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Assigned Leads</span>
-            <span className="font-mono-nums font-black text-2xl text-teal-700">{myAssignedLeads.length}</span>
-            <span className="text-xs text-teal-600 block mt-1 font-bold">Admin Allocated Queue</span>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
-            <FileSpreadsheet className="w-5 h-5" />
-          </div>
+        <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm space-y-1">
+          <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block">Interested Prospects</span>
+          <span className="font-mono-nums font-black text-2xl text-emerald-600">{stats.interested}</span>
         </div>
 
-        <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Sales Achieved</span>
-            <span className="font-mono-nums font-black text-2xl text-[#00A88B]">₹{(stats.monthlySalesAchieved / 1000).toFixed(0)}k</span>
-            <span className="text-xs text-[#00A88B] block mt-1 font-extrabold">{stats.interested} Converted/Hot</span>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <MessageSquare className="w-5 h-5" />
-          </div>
+        <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm space-y-1">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Avg Duration</span>
+          <span className="font-mono-nums font-black text-2xl text-[#0A2540]">
+            {formatDuration(stats.averageCallDurationSec || 120)}
+          </span>
         </div>
-      </div>
-
-      {/* Main Tab Bar: Assigned Leads from Admin vs Historical Call Logs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-        <button
-          onClick={() => setActiveTab('assigned')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-            activeTab === 'assigned'
-              ? 'bg-[#0A2540] text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-          }`}
-        >
-          <FileSpreadsheet className="w-4 h-4 text-[#00C9A7]" />
-          <span>Assigned Leads from Admin ({myAssignedLeads.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-            activeTab === 'history'
-              ? 'bg-[#0A2540] text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-          }`}
-        >
-          <Clock className="w-4 h-4 text-slate-400" />
-          <span>Completed Call Logs ({filteredLogs.length})</span>
-        </button>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Search */}
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex gap-1.5 overflow-x-auto">
+          {[
+            { id: 'ALL', label: 'All Calls' },
+            { id: 'CONNECTED', label: 'Spoke' },
+            { id: 'INTERESTED', label: 'Interested' },
+            { id: 'CALLBACK', label: 'Callbacks' },
+            { id: 'DEAL_CLOSED', label: 'Won Deals' },
+            { id: 'BUSY', label: 'No Answer' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedOutcome(tab.id)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedOutcome === tab.id
+                  ? 'bg-[#0A2540] text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-72">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={activeTab === 'assigned' ? "Search assigned leads..." : "Search client name, company, or phone number..."}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] font-medium"
+            placeholder="Search client, company or phone..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7]"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Call History Table */}
+      <div className="nexus-card bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs min-w-[50rem]">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-wider font-bold text-[10px] bg-slate-50/70">
+                <th className="py-3.5 px-5">Time</th>
+                <th className="py-3.5 px-5">Client / Contact</th>
+                <th className="py-3.5 px-5">Company</th>
+                <th className="py-3.5 px-5">Phone Number</th>
+                <th className="py-3.5 px-5">Duration</th>
+                <th className="py-3.5 px-5">Outcome</th>
+                <th className="py-3.5 px-5">Notes & Follow-up</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-3.5 px-5 font-mono text-slate-500 font-semibold">{log.timestamp}</td>
+                  <td className="py-3.5 px-5 font-bold text-[#0A2540]">{log.clientName}</td>
+                  <td className="py-3.5 px-5 text-slate-600 font-medium">{log.companyName}</td>
+                  <td className="py-3.5 px-5 font-mono text-slate-700">{log.phoneNumber}</td>
+                  <td className="py-3.5 px-5 font-mono text-slate-600">{formatDuration(log.durationSec)}</td>
+                  <td className="py-3.5 px-5">{getOutcomeBadge(log.outcome)}</td>
+                  <td className="py-3.5 px-5 max-w-xs">
+                    <p className="truncate text-slate-600 text-xs">{log.notes || '—'}</p>
+                    {log.followUpDate && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 mt-1">
+                        <Clock className="w-3 h-3" />
+                        {log.followUpDate}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        {/* Filter Tabs for History */}
-        {activeTab === 'history' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-            {['ALL', 'CONNECTED', 'INTERESTED', 'DEAL_CLOSED', 'CALLBACK', 'BUSY', 'NOT_INTERESTED'].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setSelectedOutcome(filter)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                  selectedOutcome === filter
-                    ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs'
-                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {filter === 'ALL' ? 'All Calls' : filter.replace('_', ' ')}
-              </button>
-            ))}
+        {!filteredLogs.length && (
+          <div className="p-10 text-center space-y-2">
+            <PhoneCall className="w-8 h-8 text-slate-300 mx-auto" />
+            <h4 className="font-display font-bold text-sm text-[#0A2540]">No calls recorded</h4>
+            <p className="text-xs text-slate-400">
+              {searchQuery ? 'No calls matched your search query.' : 'Calls you log will appear in this register.'}
+            </p>
           </div>
         )}
       </div>
 
-      {/* VIEW A: Assigned Leads Queue Table */}
-      {activeTab === 'assigned' && (
-        <div className="nexus-card bg-white border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-400 uppercase tracking-wider font-bold text-[10px]">
-                  <th className="py-3.5 px-4">Lead Contact & Company</th>
-                  <th className="py-3.5 px-4">Phone Number</th>
-                  <th className="py-3.5 px-4">City / Region</th>
-                  <th className="py-3.5 px-4">Current Status</th>
-                  <th className="py-3.5 px-4">Notes / Requirement</th>
-                  <th className="py-3.5 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {myAssignedLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span className="font-display font-bold text-sm text-[#0A2540] block">{lead.name}</span>
-                      <span className="text-[11px] text-slate-500 font-medium">{lead.company}</span>
-                    </td>
-                    <td className="py-4 px-4 font-mono text-slate-700 whitespace-nowrap font-bold">
-                      {lead.phone}
-                    </td>
-                    <td className="py-4 px-4 text-slate-500 whitespace-nowrap">
-                      {lead.city || 'Pan-India'}
-                    </td>
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span className={`inline-block text-[10px] font-extrabold px-3 py-1 rounded-full ${
-                        lead.status === 'CONVERTED' ? 'bg-emerald-100 text-emerald-800' :
-                        lead.status === 'INTERESTED' ? 'bg-sky-100 text-sky-800' :
-                        lead.status === 'CALLBACK' ? 'bg-amber-100 text-amber-800' :
-                        lead.status === 'CONNECTED' ? 'bg-teal-100 text-teal-800' :
-                        lead.status === 'NOT_INTERESTED' ? 'bg-rose-100 text-rose-800' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
-                        {lead.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-slate-600 max-w-md">
-                      <p className="line-clamp-2">{lead.notes || 'Allocated lead batch'}</p>
-                    </td>
-                    <td className="py-4 px-4 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => handleOpenCallModal(lead)}
-                        className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs transition-all inline-flex items-center gap-1.5 shadow-xs"
-                      >
-                        <PhoneCall className="w-3 h-3" />
-                        <span>Call & Update</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW B: Full-Width Calling Logs Table */}
-      {activeTab === 'history' && (
-        <div className="nexus-card bg-white border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-400 uppercase tracking-wider font-bold text-[10px]">
-                  <th className="py-3.5 px-4">Time</th>
-                  <th className="py-3.5 px-4">Client Name & Company</th>
-                  <th className="py-3.5 px-4">Phone Number</th>
-                  <th className="py-3.5 px-4">Talk Duration</th>
-                  <th className="py-3.5 px-4">Call Outcome</th>
-                  <th className="py-3.5 px-4">Detailed Notes & Discussion</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-4 px-4 font-mono text-slate-400 font-semibold whitespace-nowrap">
-                      {log.timestamp}
-                    </td>
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span className="font-display font-bold text-sm text-[#0A2540] block">{log.clientName}</span>
-                      <span className="text-[11px] text-slate-500 font-medium">{log.companyName}</span>
-                    </td>
-                    <td className="py-4 px-4 font-mono text-slate-600 whitespace-nowrap">
-                      {log.phoneNumber}
-                    </td>
-                    <td className="py-4 px-4 font-mono text-slate-700 whitespace-nowrap font-bold">
-                      {Math.floor(log.durationSec / 60)}m {log.durationSec % 60}s
-                    </td>
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span className={`inline-block text-[10px] font-extrabold px-3 py-1 rounded-full ${
-                        log.outcome === 'DEAL_CLOSED' ? 'bg-emerald-100 text-emerald-800' :
-                        log.outcome === 'INTERESTED' ? 'bg-sky-100 text-sky-800' :
-                        log.outcome === 'CALLBACK' ? 'bg-amber-100 text-amber-800' :
-                        log.outcome === 'CONNECTED' ? 'bg-teal-100 text-teal-800' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
-                        {log.outcome.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-slate-600 max-w-md">
-                      <p className="line-clamp-2">{log.notes}</p>
-                    </td>
-                    <td className="py-4 px-4 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => triggerToast(`📞 Dialing ${log.clientName} (${log.phoneNumber})`)}
-                        className="px-3 py-1.5 rounded-lg bg-[#E6FAF6] hover:bg-[#00C9A7] text-[#00A88B] hover:text-[#0A2540] font-bold text-xs transition-colors inline-flex items-center gap-1.5"
-                      >
-                        <Phone className="w-3 h-3" />
-                        <span>Redial</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Desktop Call Disposition Modal */}
-      {selectedLeadForCall && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 border border-slate-200">
-            
-            {/* Header */}
-            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
-              <div>
-                <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider">Telecaller Live Disposition</span>
-                <h3 className="font-display font-black text-xl text-[#0A2540]">{selectedLeadForCall.name}</h3>
-                <p className="text-xs text-slate-500">{selectedLeadForCall.company} • {selectedLeadForCall.phone}</p>
-              </div>
-              <button 
-                onClick={() => setSelectedLeadForCall(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveDisposition} className="space-y-4 text-xs">
-              
-              {/* Disposition Outcome */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1.5">Call Outcome / Disposition *</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'CONNECTED', label: 'Connected', color: 'bg-teal-50 text-teal-800 border-teal-300' },
-                    { id: 'INTERESTED', label: 'Interested', color: 'bg-sky-50 text-sky-800 border-sky-300' },
-                    { id: 'CALLBACK', label: 'Callback', color: 'bg-amber-50 text-amber-800 border-amber-300' },
-                    { id: 'CONVERTED', label: 'Deal Closed 🎉', color: 'bg-emerald-50 text-emerald-800 border-emerald-300' },
-                    { id: 'NOT_INTERESTED', label: 'Not Interested', color: 'bg-rose-50 text-rose-800 border-rose-300' },
-                  ].map(opt => (
-                    <button
-                      type="button"
-                      key={opt.id}
-                      onClick={() => setCallDisposition(opt.id as any)}
-                      className={`p-2.5 rounded-xl border text-center font-bold transition-all ${
-                        callDisposition === opt.id
-                          ? `${opt.color} border-2 ring-2 ring-teal-500/20`
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Deal Value if Converted */}
-              {callDisposition === 'CONVERTED' && (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1.5 animate-in fade-in">
-                  <label className="font-bold text-emerald-900 block text-[11px]">
-                    Deal Value Closed (₹ INR) *
-                  </label>
-                  <input
-                    type="number"
-                    value={dealAmount}
-                    onChange={(e) => setDealAmount(Number(e.target.value) || 0)}
-                    placeholder="e.g. 50000"
-                    className="w-full p-2.5 rounded-xl border border-emerald-300 bg-white font-mono font-bold text-emerald-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
-                  <span className="text-[10px] text-emerald-700">
-                    Will trigger payment verification record for HR audit and update revenue dashboard.
-                  </span>
-                </div>
-              )}
-
-              {/* Callback Time if Callback */}
-              {callDisposition === 'CALLBACK' && (
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Scheduled Callback Time</label>
-                  <input
-                    type="text"
-                    value={callbackTime}
-                    onChange={(e) => setCallbackTime(e.target.value)}
-                    placeholder="e.g. Today, 04:30 PM"
-                    className="w-full p-2.5 rounded-xl border border-slate-200 font-semibold"
-                  />
-                </div>
-              )}
-
-              {/* Notes */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Conversation Notes & Details</label>
-                <textarea
-                  rows={3}
-                  value={callNotes}
-                  onChange={(e) => setCallNotes(e.target.value)}
-                  placeholder="Key discussion points, product interest, client budget, objections..."
-                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-teal-500"
-                />
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="flex gap-3 pt-2 border-t border-slate-100">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black text-xs shadow-md shadow-teal-500/20"
-                >
-                  Save Disposition & Sync Dashboards
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedLeadForCall(null)}
-                  className="py-3 px-5 rounded-xl bg-slate-100 text-slate-600 font-bold"
-                >
-                  Cancel
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
-

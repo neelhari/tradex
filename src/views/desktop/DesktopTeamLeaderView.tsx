@@ -23,9 +23,26 @@ import {
   X,
   CalendarCheck,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Award,
+  AlertTriangle,
+  TrendingDown,
+  ShieldAlert,
+  Sparkles,
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  Share2,
+  Copy,
+  Radio,
+  PhoneOff,
+  Trash2,
+  UserPlus
 } from 'lucide-react';
 import { TeamMeeting, TeamMember } from '../../types';
+import { TelecallerDetailDrawer } from '../../components/modals/TelecallerDetailDrawer';
+import { Employee360ProfileView } from '../Employee360ProfileView';
 
 interface DesktopTeamLeaderViewProps {
   currentTab?: string;
@@ -37,6 +54,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
   onTabChange 
 }) => {
   const { 
+    profile,
     teamMembers, 
     teamGroups, 
     teamTasks, 
@@ -44,11 +62,12 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
     leaveRequests, 
     approveLeaveRequest, 
     rejectLeaveRequest, 
-    reassignLead, 
-    createTeamTask, 
-    toggleTaskStatus, 
     scheduleTeamMeeting, 
-    triggerToast 
+    updateTeamMeeting,
+    deleteTeamMeeting,
+    joinMeeting,
+    triggerToast,
+    setIsFaceIdModalOpen
   } = useApp();
 
   useScreenData('teamLeaderDashboard');
@@ -61,25 +80,24 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   
   // Modals state
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
-  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
-  const [selectedLeadForReassign, setSelectedLeadForReassign] = useState<string | null>(null);
-  const [newAssignee, setNewAssignee] = useState('');
-
-  // Form states
-  const [taskTitle, setTaskTitle] = useState('');
-  const [taskAssignee, setTaskAssignee] = useState('');
-  useListDefault(taskAssignee, setTaskAssignee, teamMembers, (m) => m.name);
-  useListDefault(newAssignee, setNewAssignee, teamMembers, (m) => m.name);
-  const [taskPriority, setTaskPriority] = useState<'HIGH' | 'MEDIUM' | 'NORMAL'>('HIGH');
-  const [taskDueDate, setTaskDueDate] = useState('Today, 06:00 PM');
+  const [selectedMemberForDetail, setSelectedMemberForDetail] = useState<TeamMember | null>(null);
+  const [selectedMemberFor360, setSelectedMemberFor360] = useState<TeamMember | null>(null);
 
   const [meetingTitle, setMeetingTitle] = useState('');
-  const [meetingType, setMeetingType] = useState<TeamMeeting['type']>('Team Standup');
+  const [meetingType, setMeetingType] = useState<string>('Team Discussion');
   const [meetingTime, setMeetingTime] = useState('Today • 04:30 PM');
-  const [meetingLocation, setMeetingLocation] = useState('Conference Bay A');
+  const [meetingLocation, setMeetingLocation] = useState('In-App Video Room');
   const [meetingAgenda, setMeetingAgenda] = useState('');
+  const [invitedTelecaller, setInvitedTelecaller] = useState('');
+  useListDefault(invitedTelecaller, setInvitedTelecaller, teamMembers, (m) => m.name);
+
+  // Invitee selection states for Schedule Meeting
+  const [inviteeMode, setInviteeMode] = useState<'ALL' | '1ON1' | 'CUSTOM'>('ALL');
+  const [selectedInvitees, setSelectedInvitees] = useState<string[]>([]);
+
+  // Filter States
+  const [meetingFilter, setMeetingFilter] = useState<'ALL' | '1ON1' | 'TEAM' | 'PROBLEM_SOLVING'>('ALL');
 
   // Rejection modal state
   const [rejectingLeaveId, setRejectingLeaveId] = useState<string | null>(null);
@@ -96,7 +114,36 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
   const targetTotal = teamMembers.reduce((sum, m) => sum + (m.salesTarget || 200000), 0);
   const targetPercentage = Math.min(100, Math.round((totalSales / Math.max(1, targetTotal)) * 100));
 
+  const leaderName = profile?.name?.trim() || 'Ramesh Sharma';
+
   const pendingLeaves = leaveRequests.filter(r => r.status === 'PENDING');
+
+  // Leave Approvals filter & search
+  const [leaveStatusFilter, setLeaveStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const [leaveSearch, setLeaveSearch] = useState('');
+
+  // Performance Reports timeframe
+  const [reportsTimeframe, setReportsTimeframe] = useState<'today' | 'week' | 'month'>('month');
+
+  // Leave metrics
+  const pendingLeavesCount = leaveRequests.filter(r => r.status === 'PENDING').length;
+  const approvedLeavesCount = leaveRequests.filter(r => r.status === 'APPROVED').length;
+  const rejectedLeavesCount = leaveRequests.filter(r => r.status === 'REJECTED').length;
+
+  const filteredLeaves = leaveRequests.filter(req => {
+    const matchesFilter = leaveStatusFilter === 'ALL' || req.status === leaveStatusFilter;
+    const matchesSearch = !leaveSearch.trim() || 
+      (req.employeeName || '').toLowerCase().includes(leaveSearch.toLowerCase()) ||
+      (req.employeeCode || '').toLowerCase().includes(leaveSearch.toLowerCase()) ||
+      (req.reason || '').toLowerCase().includes(leaveSearch.toLowerCase()) ||
+      (req.leaveType || '').toLowerCase().includes(leaveSearch.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  // Performance analytics metrics
+  const totalConnectedCalls = teamMembers.reduce((sum, m) => sum + (m.connected || 0), 0);
+  const totalInterested = teamMembers.reduce((sum, m) => sum + (m.interested || 0), 0);
+  const connectRate = totalActivities > 0 ? Math.round((totalConnectedCalls / totalActivities) * 100) : 62;
 
   const filteredMembers = teamMembers.filter(m => {
     const matchesFilter = attendanceFilter === 'ALL' || m.attendanceStatus === attendanceFilter;
@@ -107,31 +154,66 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
     return matchesFilter && matchesSearch;
   });
 
-  const handleCreateTaskSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!taskTitle.trim()) return;
-    createTeamTask({
-      title: taskTitle,
-      assignedTo: taskAssignee,
-      dueDate: taskDueDate,
-      priority: taskPriority,
-    });
-    setTaskTitle('');
-    setIsTaskModalOpen(false);
+  const startInstantMeeting = (type: string = 'Team Discussion', specificTelecaller?: string) => {
+    const meetingId = `meet-${Date.now()}`;
+    const title = specificTelecaller 
+      ? `1-on-1 Call with ${specificTelecaller}` 
+      : type === 'Problem Solving' 
+      ? `Problem Solving Huddle • ${profile?.teamName || 'Alpha Team'}`
+      : `Instant Team Meeting • ${profile?.teamName || 'Alpha Team'}`;
+      
+    const newMtg: TeamMeeting = {
+      id: meetingId,
+      title,
+      dateTime: 'Live Now',
+      type: type || 'Team Discussion',
+      location: 'In-App Video Room',
+      attendeesCount: specificTelecaller ? 2 : teamMembers.length,
+      agenda: specificTelecaller ? `1-on-1 coaching & review with ${specificTelecaller}` : 'Live team discussion and call assistance',
+      status: 'LIVE',
+      meetingLink: `https://meet.tradenexus.io/room/${meetingId}`,
+      invitedMemberName: specificTelecaller,
+    };
+    
+    scheduleTeamMeeting(newMtg);
+    joinMeeting(newMtg);
+    triggerToast(`🚀 Live video meeting started: "${title}"`);
+  };
+
+  const copyMeetingLink = (link?: string) => {
+    const url = link || `https://meet.tradenexus.io/room/team-huddle`;
+    navigator.clipboard?.writeText(url);
+    triggerToast('✓ Meeting link copied to clipboard!');
   };
 
   const handleCreateMeetingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!meetingTitle.trim()) return;
+
+    let inviteesDisplay: string | undefined = undefined;
+    let attendeesCount = teamMembers.length;
+
+    if (inviteeMode === '1ON1') {
+      inviteesDisplay = invitedTelecaller;
+      attendeesCount = 2;
+    } else if (inviteeMode === 'CUSTOM') {
+      inviteesDisplay = selectedInvitees.length > 0 ? selectedInvitees.join(', ') : undefined;
+      attendeesCount = selectedInvitees.length > 0 ? selectedInvitees.length + 1 : teamMembers.length;
+    }
+
     scheduleTeamMeeting({
       title: meetingTitle,
-      dateTime: meetingTime,
+      dateTime: meetingTime || 'Today • 04:30 PM',
       type: meetingType,
-      location: meetingLocation,
-      agenda: meetingAgenda,
+      location: meetingLocation || 'In-App Video Room',
+      agenda: meetingAgenda || '',
+      status: 'UPCOMING',
+      invitedMemberName: inviteesDisplay,
+      attendeesCount,
     });
     setMeetingTitle('');
     setMeetingAgenda('');
+    setSelectedInvitees([]);
     setIsMeetingModalOpen(false);
   };
 
@@ -150,188 +232,196 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
     triggerToast('✓ Exported Team Performance Report (CSV)');
   };
 
+  const formatInLakhs = (num: number): string => {
+    if (!num || num === 0) return '₹0';
+    if (num >= 100000) {
+      const lakhs = num / 100000;
+      return `₹${lakhs % 1 === 0 ? lakhs.toFixed(0) : lakhs.toFixed(2)} L`;
+    }
+    return `₹${num.toLocaleString('en-IN')}`;
+  };
+
+  const renderMemberAvatar = (member: { avatar?: string; name: string }) => {
+    if (member.avatar && member.avatar.startsWith('http')) {
+      return (
+        <img
+          src={member.avatar}
+          alt={member.name}
+          className="w-8 h-8 rounded-xl object-cover border border-slate-200 flex-shrink-0"
+        />
+      );
+    }
+    const initials = (member.avatar && member.avatar.length <= 3)
+      ? member.avatar
+      : member.name.substring(0, 2).toUpperCase();
+    return (
+      <div className="w-8 h-8 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-black text-xs shadow-2xs flex-shrink-0">
+        {initials}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      
-      {/* 1. Top Header Banner with Greeting & High-Value Quick Actions */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
-              Hello, Ramesh Sharma
-            </h2>
-            <span className="text-xl">👋</span>
-          </div>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Team Leader • <span className="text-[#00A88B] font-bold">Alpha Growth Team</span> • <strong className="text-emerald-600">● {presentCount} Active Telecallers</strong>
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={exportTeamReportCSV}
-            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs"
-          >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export CSV</span>
-          </button>
-
-          <button
-            onClick={() => setIsTaskModalOpen(true)}
-            className="flex items-center gap-2 bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00A88B] font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Assign Task</span>
-          </button>
-
-          <button
-            onClick={() => setIsMeetingModalOpen(true)}
-            className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
-          >
-            <Calendar className="w-4 h-4 stroke-[3]" />
-            <span>Schedule Standup</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Top Metric Summary Cards (Widescreen 4-Column Grid) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        
-        {/* Card 1: Team Members */}
-        <div 
-          onClick={() => setTab('team')}
-          className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-[#00C9A7] transition-all group"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Total Team Size
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{totalTeamStrength}</span>
-              <span className="text-xs font-bold text-slate-400">Telecallers</span>
-            </div>
-            <span className="text-xs text-[#00A88B] font-extrabold mt-1 block group-hover:underline">
-              View Roster →
-            </span>
-          </div>
-
-          <div className="w-12 h-12 rounded-2xl bg-[#E6FAF6] text-[#00C9A7] flex items-center justify-center shadow-xs">
-            <Users className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 2: Attendance / Present */}
-        <div 
-          onClick={() => { setAttendanceFilter('PRESENT'); setTab('team'); }}
-          className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-500 transition-all group"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Present Today
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-2xl text-emerald-600">{presentCount}</span>
-              <span className="text-xs font-bold text-slate-400">/ {totalTeamStrength} On Duty</span>
-            </div>
-            <span className="text-xs text-emerald-600 font-extrabold mt-1 block">
-              {Math.round((presentCount / Math.max(1, totalTeamStrength)) * 100)}% Attendance Rate
-            </span>
-          </div>
-
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
-            <UserCheck className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 3: Total Dials Today */}
-        <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Total Dials Today
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{totalActivities}</span>
-              <span className="text-xs font-bold text-slate-400">Calls Logged</span>
-            </div>
-            <span className="text-xs text-sky-600 font-extrabold mt-1 block">
-              Avg {Math.round(totalActivities / Math.max(1, presentCount))} calls / rep
-            </span>
-          </div>
-
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs">
-            <PhoneCall className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 4: Sales Achieved */}
-        <div 
-          onClick={() => setTab('reports')}
-          className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-400 transition-all group"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Team Monthly Sales
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-nums font-black text-2xl text-[#0A2540]">₹{(totalSales / 1000).toFixed(0)}k</span>
-              <span className="text-xs font-bold text-slate-400">/ ₹{(targetTotal / 1000).toFixed(0)}k</span>
-            </div>
-            <span className="text-xs text-amber-600 font-extrabold mt-1 block">
-              {targetPercentage}% Target Reached
-            </span>
-          </div>
-
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-        </div>
-
-      </div>
-
-      {/* 3. Main Stage Content Switcher based on active tab */}
 
       {/* --- TAB: HOME / OVERVIEW --- */}
       {activeTab === 'home' && (
         <div className="space-y-6 animate-in fade-in duration-150">
           
-          {/* Target Achievement Hero Progress Banner */}
-          <div className="bg-gradient-to-r from-[#0A2540] to-[#0A192F] text-white rounded-3xl p-6 shadow-md relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-2 z-10">
-              <span className="text-xs font-bold text-[#00C9A7] uppercase tracking-wider">
-                Monthly Target Performance
-              </span>
-              <h3 className="font-display font-black text-2xl md:text-3xl text-white">
-                ₹{totalSales.toLocaleString()} <span className="text-lg font-normal text-slate-400">of ₹{targetTotal.toLocaleString()}</span>
-              </h3>
-              <p className="text-xs text-slate-300 max-w-xl">
-                Alpha Growth Team has achieved <strong>{targetPercentage}%</strong> of the collective quota for May. Estimated collections standing at <strong>₹{totalCollections.toLocaleString()}</strong>.
+          {/* 1. Top Header Banner with Greeting & High-Value Quick Actions */}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
+                  Hello, {leaderName}
+                </h2>
+                <span className="text-xl">👋</span>
+
+                {/* Face ID & Attendance status on the dashboard itself */}
+                <button
+                  onClick={() => setIsFaceIdModalOpen(true)}
+                  title="Click to view Biometric Attendance details"
+                  className="flex items-center gap-1.5 bg-[#E6FAF6] border border-[#00C9A7]/40 text-[#00A88B] font-bold text-xs px-3 py-1.5 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-2xs cursor-pointer active:scale-95"
+                >
+                  <UserCheck className="w-4 h-4 text-[#00C9A7]" />
+                  <span>
+                    Face ID: {profile?.checkInTime ? `Present (${profile.checkInTime})` : profile?.faceIdStatus === 'VERIFIED_PRESENT' ? 'Present' : 'Not Checked In'}
+                  </span>
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Team Leader • <span className="text-[#00A88B] font-bold">{profile?.teamName || 'Alpha Growth Team'}</span> • <strong className="text-emerald-600">● {presentCount} Active Telecallers</strong>
               </p>
             </div>
 
-            <div className="flex items-center gap-6 z-10 flex-shrink-0">
-              <div className="w-24 h-24 rounded-full border-8 border-[#00C9A7] flex items-center justify-center bg-white/5 shadow-inner">
-                <span className="font-display font-black text-2xl text-white">{targetPercentage}%</span>
-              </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={exportTeamReportCSV}
+                className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs"
+              >
+                <Download className="w-4 h-4 text-slate-500" />
+                <span>Export CSV</span>
+              </button>
+
+              <button
+                onClick={() => setIsMeetingModalOpen(true)}
+                className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
+              >
+                <Calendar className="w-4 h-4 stroke-[3]" />
+                <span>Schedule Meeting</span>
+              </button>
             </div>
-            
-            <div className="absolute right-0 bottom-0 w-96 h-96 bg-[#00C9A7]/10 rounded-full blur-3xl pointer-events-none" />
           </div>
 
-          {/* 2-Column Section: Leaderboard + Upcoming Standups & Tasks */}
+          {/* 2. Top Metric Summary Cards (Widescreen 4-Column Grid) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            
+            {/* Card 1: Team Members */}
+            <div 
+              onClick={() => setTab('team')}
+              className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-[#00C9A7] transition-all group"
+            >
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Total Team Size
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{totalTeamStrength}</span>
+                  <span className="text-xs font-bold text-slate-400">Telecallers</span>
+                </div>
+                <span className="text-xs text-[#00A88B] font-extrabold mt-1 block group-hover:underline">
+                  View Team List →
+                </span>
+              </div>
+
+              <div className="w-12 h-12 rounded-2xl bg-[#E6FAF6] text-[#00C9A7] flex items-center justify-center shadow-xs">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Card 2: Attendance / Present */}
+            <div 
+              onClick={() => { setAttendanceFilter('PRESENT'); setTab('team'); }}
+              className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-emerald-500 transition-all group"
+            >
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Present Today
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono-nums font-black text-2xl text-emerald-600">{presentCount}</span>
+                  <span className="text-xs font-bold text-slate-400">/ {totalTeamStrength} Telecallers</span>
+                </div>
+                <span className="text-xs text-emerald-600 font-extrabold mt-1 block">
+                  {Math.round((presentCount / Math.max(1, totalTeamStrength)) * 100)}% Attendance Rate
+                </span>
+              </div>
+
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
+                <UserCheck className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Card 3: Total Dials Today */}
+            <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Total Dials Today
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{totalActivities}</span>
+                  <span className="text-xs font-bold text-slate-400">Calls Logged</span>
+                </div>
+                <span className="text-xs text-sky-600 font-extrabold mt-1 block">
+                  Avg {Math.round(totalActivities / Math.max(1, presentCount))} calls per caller
+                </span>
+              </div>
+
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs">
+                <PhoneCall className="w-6 h-6" />
+              </div>
+            </div>
+
+            {/* Card 4: Sales Achieved */}
+            <div 
+              onClick={() => setTab('reports')}
+              className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-400 transition-all group"
+            >
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Team Monthly Sales
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{formatInLakhs(totalSales)}</span>
+                  <span className="text-xs font-bold text-slate-400">/ {formatInLakhs(targetTotal)}</span>
+                </div>
+                <span className="text-xs text-amber-600 font-extrabold mt-1 block">
+                  {targetPercentage}% Target Reached
+                </span>
+              </div>
+
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+            </div>
+
+          </div>
+
+          {/* 2-Column Section: Telecallers Performance + Upcoming Meetings & Tasks */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Left 2 Cols: Real-Time Team Leaderboard Table */}
+            {/* Left 2 Cols: Real-Time Team Performance Table */}
             <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="font-display font-black text-base text-[#0A2540]">Team Reps Performance</h3>
-                  <p className="text-xs text-slate-400">Live dial quotas and conversion rates for today</p>
+                  <h3 className="font-display font-black text-base text-[#0A2540]">Telecallers Today's Performance</h3>
+                  <p className="text-xs text-slate-400">Today's call dials, customer interest, and sales done</p>
                 </div>
                 <button 
                   onClick={() => setTab('team')}
                   className="text-xs font-bold text-[#00A88B] hover:underline"
                 >
-                  Manage Roster →
+                  View All Telecallers →
                 </button>
               </div>
 
@@ -340,11 +430,11 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                   <thead>
                     <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       <th className="pb-3">Telecaller</th>
-                      <th className="pb-3">Group</th>
+                      <th className="pb-3">Check-In</th>
                       <th className="pb-3">Status</th>
                       <th className="pb-3">Dials Today</th>
+                      <th className="pb-3">Interested</th>
                       <th className="pb-3">Sales Done</th>
-                      <th className="pb-3">Conv. Rate</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -352,16 +442,16 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                       <tr key={member.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-black text-xs">
-                              {member.avatar || member.name.substring(0, 2).toUpperCase()}
-                            </div>
+                            {renderMemberAvatar(member)}
                             <div>
                               <span className="font-bold text-[#0A2540] block">{member.name}</span>
                               <span className="text-[10px] text-slate-400">{member.empCode}</span>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 font-semibold text-slate-600">{member.group}</td>
+                        <td className="py-3 font-mono text-[11px] text-slate-600">
+                          {member.checkInTime || '—'}
+                        </td>
                         <td className="py-3">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
                             member.attendanceStatus === 'PRESENT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
@@ -374,11 +464,11 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                         <td className="py-3 font-mono font-bold text-slate-800">
                           {member.dialsToday} <span className="text-slate-400 font-normal">/ {member.goalCalls}</span>
                         </td>
+                        <td className="py-3 font-mono font-bold text-emerald-600">
+                          {member.interested || 0} Leads
+                        </td>
                         <td className="py-3 font-mono font-bold text-[#00A88B]">
                           ₹{member.salesAchieved.toLocaleString()}
-                        </td>
-                        <td className="py-3 font-mono font-black text-slate-700">
-                          {member.conversionRate}%
                         </td>
                       </tr>
                     ))}
@@ -390,10 +480,10 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
             {/* Right 1 Col: Standups & Pending Approvals */}
             <div className="space-y-6">
               
-              {/* Standup Meetings Card */}
+              {/* Team Meetings Card */}
               <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-display font-black text-sm text-[#0A2540]">Scheduled Standups</h4>
+                  <h4 className="font-display font-black text-sm text-[#0A2540]">Scheduled Meetings</h4>
                   <button onClick={() => setIsMeetingModalOpen(true)} className="text-[11px] font-bold text-[#00A88B] hover:underline">
                     + New
                   </button>
@@ -422,24 +512,28 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h4 className="font-display font-black text-sm text-[#0A2540]">Pending Leaves</h4>
-                    {pendingLeaves.length > 0 && (
-                      <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
-                        {pendingLeaves.length}
+                    {pendingLeavesCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold">
+                        {pendingLeavesCount} new
                       </span>
                     )}
                   </div>
                   <button onClick={() => setTab('approvals')} className="text-[11px] font-bold text-[#00A88B] hover:underline">
-                    Review All →
+                    View All →
                   </button>
                 </div>
 
                 {pendingLeaves.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-3 text-center">No pending leave requests</p>
+                  <div className="text-center py-5 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1" />
+                    <span className="text-xs font-bold text-slate-700 block">All caught up!</span>
+                    <span className="text-[10px] text-slate-400">No pending leave requests</span>
+                  </div>
                 ) : (
                   <div className="space-y-2.5">
                     {pendingLeaves.slice(0, 2).map((req) => (
-                      <div key={req.id} className="p-3 bg-rose-50/50 border border-rose-100 rounded-2xl space-y-2">
-                        <div className="flex justify-between items-start">
+                      <div key={req.id} className="p-3 bg-amber-50/50 border border-amber-200/60 rounded-2xl space-y-2">
+                        <div className="flex items-center justify-between">
                           <div>
                             <span className="font-bold text-xs text-slate-800 block">{req.employeeName || 'Employee'}</span>
                             <span className="text-[10px] text-rose-700 font-semibold">{req.leaveType} • {req.totalDays} Day(s)</span>
@@ -474,16 +568,23 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
         </div>
       )}
 
-      {/* --- TAB: TEAM / ROSTER --- */}
+      {/* --- TAB: TEAM MEMBERS --- */}
       {activeTab === 'team' && (
+        selectedMemberFor360 ? (
+          <Employee360ProfileView 
+            member={selectedMemberFor360} 
+            onBack={() => setSelectedMemberFor360(null)} 
+            viewerRole="team_leader" 
+          />
+        ) : (
         <div className="space-y-6 animate-in fade-in duration-150">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
             
             {/* Top Toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="font-display font-black text-xl text-[#0A2540]">Team Roster & Live Tracking</h3>
-                <p className="text-xs text-slate-500">Monitor attendance, dialing throughput and sales numbers</p>
+                <h3 className="font-display font-black text-xl text-[#0A2540]">Team Members & Daily Status</h3>
+                <p className="text-xs text-slate-500">Monitor attendance, calls made, and sales achieved</p>
               </div>
 
               {/* Attendance Filter Tabs */}
@@ -511,414 +612,1012 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search telecallers by name, ID code, or group..."
+                placeholder="Search telecallers by name or employee ID code..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
               />
             </div>
 
-            {/* Widescreen Roster Grid Cards */}
+            {/* Team Member Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredMembers.map((member) => (
-                <div key={member.id} className="bg-slate-50/70 border border-slate-200 rounded-2xl p-5 hover:border-[#00C9A7] transition-all space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-black text-sm">
-                        {member.avatar || member.name.substring(0, 2).toUpperCase()}
+              {filteredMembers.map((member) => {
+                const memberInTime = member.checkInTime || (member.attendanceStatus === 'PRESENT' ? '09:15 AM' : member.attendanceStatus === 'LATE' ? '09:48 AM' : null);
+                const isLate = member.attendanceStatus === 'LATE' || (memberInTime && (() => {
+                  const parts = memberInTime.match(/(\d+):(\d+)/);
+                  if (!parts) return false;
+                  const h = parseInt(parts[1], 10);
+                  const m = parseInt(parts[2], 10);
+                  return (h === 9 && m > 30) || (h > 9 && h < 12);
+                })());
+
+                const memberOutTime = member.checkOutTime;
+
+                return (
+                  <div 
+                    key={member.id} 
+                    onClick={() => setSelectedMemberFor360(member)}
+                    className="bg-slate-50/80 border border-slate-200 rounded-3xl p-5 hover:border-[#00C9A7] hover:shadow-md hover:bg-white transition-all space-y-3.5 cursor-pointer group"
+                  >
+                    {/* Top Row: Avatar, Name, Code & Attendance Badge */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        {renderMemberAvatar(member)}
+                        <div>
+                          <h4 className="font-bold text-sm text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                            {member.name}
+                          </h4>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            {member.empCode} • {member.role || 'Telecaller'}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-[#0A2540]">{member.name}</h4>
-                        <span className="text-[11px] text-slate-400 font-mono">{member.empCode} • {member.group}</span>
-                      </div>
-                    </div>
 
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
-                      member.attendanceStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
-                      member.attendanceStatus === 'LATE' ? 'bg-amber-100 text-amber-800' :
-                      'bg-rose-100 text-rose-800'
-                    }`}>
-                      {member.attendanceStatus}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 bg-white p-3 rounded-xl border border-slate-100 text-center">
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-semibold">Dials</span>
-                      <strong className="text-xs font-mono text-[#0A2540]">{member.dialsToday}</strong>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-semibold">Sales</span>
-                      <strong className="text-xs font-mono text-[#00A88B]">₹{(member.salesAchieved / 1000).toFixed(0)}k</strong>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-semibold">Conv. %</span>
-                      <strong className="text-xs font-mono text-slate-700">{member.conversionRate}%</strong>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                    <span className="flex items-center gap-1 text-[11px]">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      In: {member.checkInTime || 'Not checked in'}
-                    </span>
-                    <button 
-                      onClick={() => triggerToast(`📞 Calling ${member.name} (${member.phone})...`)}
-                      className="text-[#00A88B] hover:underline font-bold text-[11px]"
-                    >
-                      Call Rep
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* --- TAB: APPROVALS --- */}
-      {activeTab === 'approvals' && (
-        <div className="space-y-6 animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-            <div>
-              <h3 className="font-display font-black text-xl text-[#0A2540]">Leave & Exception Approvals</h3>
-              <p className="text-xs text-slate-500">Review, approve or reject pending leave requests from team members</p>
-            </div>
-
-            <div className="space-y-3">
-              {leaveRequests.map((req) => (
-                <div 
-                  key={req.id} 
-                  className={`p-5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                    req.status === 'PENDING' ? 'bg-amber-50/40 border-amber-200' :
-                    req.status === 'APPROVED' ? 'bg-emerald-50/30 border-emerald-200' :
-                    'bg-slate-50 border-slate-200'
-                  }`}
-                >
-                  <div className="space-y-1.5 max-w-xl">
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-sm text-[#0A2540]">{req.employeeName || 'Employee'} ({req.employeeCode || '—'})</span>
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
-                        req.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
-                        req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        member.attendanceStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
+                        member.attendanceStatus === 'LATE' ? 'bg-amber-100 text-amber-800' :
                         'bg-rose-100 text-rose-800'
                       }`}>
-                        {req.status}
+                        {member.attendanceStatus}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs text-slate-600 font-medium">
-                      <span><strong>Type:</strong> {req.leaveType}</span>
-                      <span>•</span>
-                      <span><strong>Duration:</strong> {req.fromDate} to {req.toDate} ({req.totalDays} Day)</span>
-                    </div>
-
-                    <p className="text-xs text-slate-500">
-                      <strong>Reason:</strong> {req.reason}
-                    </p>
-                    {req.approvedBy && (
-                      <span className="text-[11px] text-slate-400 italic block">Actioned by: {req.approvedBy}</span>
-                    )}
-                  </div>
-
-                  {req.status === 'PENDING' && (
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <button
-                        onClick={() => approveLeaveRequest(req.id)}
-                        className="flex items-center gap-1.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs px-5 py-2.5 rounded-xl shadow-xs transition-all"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Approve Leave</span>
-                      </button>
-
-                      <button
-                        onClick={() => setRejectingLeaveId(req.id)}
-                        className="flex items-center gap-1.5 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Reject</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- TAB: REPORTS --- */}
-      {activeTab === 'reports' && (
-        <div className="space-y-6 animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-display font-black text-xl text-[#0A2540]">Team Performance Analytics</h3>
-                <p className="text-xs text-slate-500">Breakdown of targets, revenue contributions and team group dynamics</p>
-              </div>
-              <button
-                onClick={exportTeamReportCSV}
-                className="flex items-center gap-2 bg-[#00C9A7] text-[#0A2540] font-black text-xs px-4 py-2.5 rounded-xl shadow-xs"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export Detailed Report</span>
-              </button>
-            </div>
-
-            {/* Groups Breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {teamGroups.map((grp) => {
-                const percent = Math.min(100, Math.round((grp.achieved / Math.max(1, grp.monthlyTarget)) * 100));
-                return (
-                  <div key={grp.id} className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                    <div className="flex justify-between items-start">
+                    {/* Middle: Dials, Sales & Interested Leads */}
+                    <div className="grid grid-cols-3 gap-2 bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-2xs">
                       <div>
-                        <h4 className="font-bold text-sm text-[#0A2540]">{grp.name}</h4>
-                        <span className="text-[11px] text-slate-400">Leader: {grp.leaderName}</span>
+                        <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Dials</span>
+                        <strong className="text-sm font-mono-nums font-black text-[#0A2540]">{member.dialsToday}</strong>
                       </div>
-                      <span className="font-bold text-xs text-[#00A88B] bg-[#E6FAF6] px-2.5 py-0.5 rounded-full">
-                        {percent}%
-                      </span>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Sales</span>
+                        <strong className="text-sm font-mono-nums font-black text-[#00A88B]">{formatInLakhs(member.salesAchieved)}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Interested</span>
+                        <strong className="text-sm font-mono-nums font-black text-emerald-600">{member.interested || 0} Leads</strong>
+                      </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs font-semibold">
-                        <span className="text-slate-500">Achieved</span>
-                        <span className="text-[#0A2540]">₹{grp.achieved.toLocaleString()} / ₹{grp.monthlyTarget.toLocaleString()}</span>
+                    {/* Timing Row: Check-in & Check-out Side-by-Side */}
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-0.5">
+                      {/* Check-In */}
+                      <div className={`p-2.5 rounded-xl border flex items-center gap-1.5 ${
+                        isLate ? 'bg-amber-50/80 border-amber-300 text-amber-900 font-bold' : 'bg-white border-slate-100 text-slate-600'
+                      }`}>
+                        <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${isLate ? 'text-amber-600' : 'text-slate-400'}`} />
+                        <span className="text-[11px] truncate">
+                          In: {memberInTime || '—'} {isLate && '(Late)'}
+                        </span>
                       </div>
-                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#00C9A7] rounded-full" style={{ width: `${percent}%` }} />
+
+                      {/* Check-Out */}
+                      <div className="p-2.5 rounded-xl border bg-white border-slate-100 text-slate-600 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="text-[11px] truncate">
+                            Out: {memberOutTime || 'Shift Active'}
+                          </span>
+                        </div>
+                        {!memberOutTime && (member.attendanceStatus === 'PRESENT' || member.attendanceStatus === 'LATE') && (
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" title="Shift Active" />
+                        )}
                       </div>
+                    </div>
+
+                    {/* Card Bottom: Click to view details */}
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium pt-1 border-t border-slate-200/60">
+                      <span className="text-slate-400">View assigned leads & calls</span>
+                      <span className="text-[#00A88B] font-bold flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+                        Details →
+                      </span>
                     </div>
                   </div>
                 );
               })}
             </div>
+
           </div>
         </div>
+        )
       )}
 
-      {/* --- TAB: MEETINGS & TASKS --- */}
-      {activeTab === 'meetings' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-150">
+      {/* --- TAB: APPROVALS --- */}
+      {activeTab === 'approvals' && (
+        <div className="space-y-6 animate-in fade-in duration-150">
           
-          {/* Tasks Column */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          {/* Top Title & Quick Action */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
+                Leave Approvals
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Review and approve leave applications for your team members
+              </p>
+            </div>
+          </div>
+
+          {/* 3 Executive KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
-                <h3 className="font-display font-black text-base text-[#0A2540]">Team Tasks & Quotas</h3>
-                <p className="text-xs text-slate-400">Assign and track deliverables</p>
+                <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block mb-1">
+                  Pending Review
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{pendingLeavesCount}</span>
+                  <span className="text-xs font-bold text-slate-400">Requests</span>
+                </div>
+                <span className="text-xs text-amber-600 font-semibold mt-1 block">
+                  Requires immediate manager action
+                </span>
               </div>
-              <button 
-                onClick={() => setIsTaskModalOpen(true)}
-                className="flex items-center gap-1.5 text-xs font-bold text-[#00A88B] hover:underline"
-              >
-                <Plus className="w-4 h-4" /> Add Task
-              </button>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
+                <Clock className="w-6 h-6" />
+              </div>
             </div>
 
-            <div className="space-y-2.5">
-              {teamTasks.map((t) => (
-                <div 
-                  key={t.id}
-                  onClick={() => toggleTaskStatus(t.id)}
-                  className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-3 cursor-pointer hover:border-[#00C9A7] transition-all"
+            <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-sky-600 uppercase tracking-wider block mb-1">
+                  On Leave Today
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{onLeaveCount}</span>
+                  <span className="text-xs font-bold text-slate-400">Telecallers</span>
+                </div>
+                <span className="text-xs text-slate-500 font-semibold mt-1 block">
+                  Out of office headcount
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+
+            <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block mb-1">
+                  Processed This Month
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{approvedLeavesCount}</span>
+                  <span className="text-xs font-bold text-slate-400">Approved</span>
+                </div>
+                <span className="text-xs text-slate-500 font-semibold mt-1 block">
+                  {rejectedLeavesCount} Rejected • {Math.round((approvedLeavesCount / Math.max(1, approvedLeavesCount + rejectedLeavesCount)) * 100)}% Approval rate
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+
+          {/* Main Card: Tab Filter Bar + Search + Data Table */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
+            
+            {/* Filter toolbar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-100">
+              {/* Tab Switcher */}
+              <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                <button
+                  onClick={() => setLeaveStatusFilter('PENDING')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    leaveStatusFilter === 'PENDING' ? 'bg-white text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
                 >
-                  <div className={`w-5 h-5 rounded-lg border flex items-center justify-center mt-0.5 ${
-                    t.status === 'COMPLETED' ? 'bg-[#00C9A7] border-[#00C9A7] text-white' : 'border-slate-300 bg-white'
-                  }`}>
-                    {t.status === 'COMPLETED' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`text-xs font-bold ${t.status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-[#0A2540]'}`}>
-                      {t.title}
-                    </p>
-                    <span className="text-[10px] text-slate-400 font-semibold mt-1 block">
-                      Assigned to: {t.assignedTo} • Due: {t.dueDate}
-                    </span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold ${
-                    t.priority === 'HIGH' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {t.priority}
+                  <span>Pending</span>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${leaveStatusFilter === 'PENDING' ? 'bg-amber-100 text-amber-800 font-black' : 'bg-slate-200 text-slate-600'}`}>
+                    {pendingLeavesCount}
                   </span>
-                </div>
-              ))}
-            </div>
-          </div>
+                </button>
 
-          {/* Standup Meetings Column */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-display font-black text-base text-[#0A2540]">Standups & Coaching</h3>
-                <p className="text-xs text-slate-400">Team huddles and 1-on-1s</p>
+                <button
+                  onClick={() => setLeaveStatusFilter('APPROVED')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    leaveStatusFilter === 'APPROVED' ? 'bg-white text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>Approved</span>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${leaveStatusFilter === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 font-black' : 'bg-slate-200 text-slate-600'}`}>
+                    {approvedLeavesCount}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setLeaveStatusFilter('REJECTED')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    leaveStatusFilter === 'REJECTED' ? 'bg-white text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>Rejected</span>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${leaveStatusFilter === 'REJECTED' ? 'bg-rose-100 text-rose-800 font-black' : 'bg-slate-200 text-slate-600'}`}>
+                    {rejectedLeavesCount}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setLeaveStatusFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    leaveStatusFilter === 'ALL' ? 'bg-white text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  All History ({leaveRequests.length})
+                </button>
               </div>
-              <button 
-                onClick={() => setIsMeetingModalOpen(true)}
-                className="flex items-center gap-1.5 text-xs font-bold text-[#00A88B] hover:underline"
-              >
-                <Plus className="w-4 h-4" /> Schedule
-              </button>
-            </div>
 
-            <div className="space-y-3">
-              {teamMeetings.map((mtg) => (
-                <div key={mtg.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold text-[#00A88B] bg-[#E6FAF6] px-2.5 py-0.5 rounded-full uppercase">
-                      {mtg.type}
-                    </span>
-                    <span className="text-xs font-mono text-slate-500">{mtg.dateTime}</span>
-                  </div>
-                  <h4 className="font-bold text-sm text-[#0A2540]">{mtg.title}</h4>
-                  <p className="text-xs text-slate-600 font-medium">📍 {mtg.location}</p>
-                  <p className="text-xs text-slate-500 bg-white p-2.5 rounded-xl border border-slate-100 italic">
-                    "{mtg.agenda}"
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* Task Creation Modal */}
-      {isTaskModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white text-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95">
-            <h3 className="font-display font-black text-lg text-[#0A2540]">Create Team Task</h3>
-            <form onSubmit={handleCreateTaskSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-600 block mb-1">Task Title</label>
+              {/* Search Box */}
+              <div className="relative w-full md:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="e.g. Call back 20 pending leads from Q2"
-                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                  required
+                  value={leaveSearch}
+                  onChange={(e) => setLeaveSearch(e.target.value)}
+                  placeholder="Search employee, ID, reason..."
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="font-bold text-slate-600 block mb-1">Assign To</label>
-                <select
-                  value={taskAssignee}
-                  onChange={(e) => setTaskAssignee(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                >
-                  {teamMembers.map(m => (
-                    <option key={m.id} value={m.name}>{m.name} ({m.role})</option>
-                  ))}
-                </select>
+            {/* Enterprise Data Table */}
+            {filteredLeaves.length === 0 ? (
+              <div className="py-12 text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto stroke-1" />
+                <p className="text-sm font-bold text-slate-700">No leave requests found</p>
+                <p className="text-xs text-slate-400">All requests in this category have been processed or none exist.</p>
               </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-3 pl-2">Employee</th>
+                      <th className="pb-3">Leave Type</th>
+                      <th className="pb-3">Date Range</th>
+                      <th className="pb-3">Days</th>
+                      <th className="pb-3">Reason</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3 text-right pr-2">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredLeaves.map((req) => (
+                      <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3.5 pl-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-black text-xs">
+                              {(req.employeeName || 'EM').substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <span className="font-bold text-[#0A2540] block">{req.employeeName || 'Employee'}</span>
+                              <span className="text-[10px] text-slate-400 font-mono">{req.employeeCode || '—'}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${
+                            req.leaveType === 'Sick Leave' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                            req.leaveType === 'Casual Leave' ? 'bg-sky-50 text-sky-700 border border-sky-200' :
+                            'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          }`}>
+                            {req.leaveType}
+                          </span>
+                        </td>
+                        <td className="py-3.5 font-medium text-slate-600">
+                          {req.fromDate} → {req.toDate}
+                        </td>
+                        <td className="py-3.5 font-mono font-bold text-slate-700">
+                          {req.totalDays} Day{req.totalDays > 1 ? 's' : ''}
+                        </td>
+                        <td className="py-3.5 max-w-xs">
+                          <p className="text-slate-600 truncate" title={req.reason}>
+                            {req.reason}
+                          </p>
+                        </td>
+                        <td className="py-3.5">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                            req.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
+                            req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+                            'bg-rose-100 text-rose-800'
+                          }`}>
+                            {req.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 text-right pr-2">
+                          {req.status === 'PENDING' ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => approveLeaveRequest(req.id)}
+                                className="flex items-center gap-1 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition-all active:scale-95"
+                              >
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                onClick={() => setRejectingLeaveId(req.id)}
+                                className="flex items-center gap-1 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs px-2.5 py-1.5 rounded-xl transition-all"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                <span>Reject</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">
+                              {req.approvedBy ? `Actioned by ${req.approvedBy}` : 'Processed'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-bold text-slate-600 block mb-1">Priority</label>
-                  <select
-                    value={taskPriority}
-                    onChange={(e) => setTaskPriority(e.target.value as any)}
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800"
-                  >
-                    <option value="HIGH">HIGH Priority</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="NORMAL">NORMAL</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-slate-600 block mb-1">Due Date</label>
-                  <input
-                    type="text"
-                    value={taskDueDate}
-                    onChange={(e) => setTaskDueDate(e.target.value)}
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-xl bg-[#00C9A7] text-[#0A2540] font-black shadow-md shadow-[#00C9A7]/25"
-                >
-                  Assign Task
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsTaskModalOpen(false)}
-                  className="py-3 px-4 rounded-xl bg-slate-100 text-slate-600 font-bold"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
           </div>
+
         </div>
       )}
 
-      {/* Standup Meeting Modal */}
+      {/* --- TAB: REPORTS --- */}
+      {activeTab === 'reports' && (() => {
+        const isToday = reportsTimeframe === 'today';
+        const isWeek = reportsTimeframe === 'week';
+        const isMonth = reportsTimeframe === 'month';
+
+        const tfLabel = isToday ? 'Today' : isWeek ? 'This Week' : 'This Month';
+        const tfMultiplier = isToday ? 1 : isWeek ? 5 : 22;
+        const tfSalesMultiplier = isToday ? (1 / 22) : isWeek ? (1 / 4) : 1;
+
+        const tfDials = isToday ? totalActivities : Math.round(totalActivities * tfMultiplier);
+        const tfConnected = isToday ? totalConnectedCalls : Math.round(totalConnectedCalls * tfMultiplier);
+        const tfSales = isMonth ? totalSales : Math.round(totalSales * tfSalesMultiplier);
+        const tfTarget = isMonth ? targetTotal : Math.round(targetTotal * tfSalesMultiplier);
+        const tfTargetPercentage = Math.min(100, Math.round((tfSales / Math.max(1, tfTarget)) * 100));
+        const tfInterested = isToday ? totalInterested : Math.round(totalInterested * (isWeek ? 5 : 20));
+
+        return (
+          <div className="space-y-6 animate-in fade-in duration-150">
+            
+            {/* Header & Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
+                  Team Performance & Revenue Analytics
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Live dials, connect rates, quota pacing, and telecaller productivity
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Timeframe selector */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                  {(['today', 'week', 'month'] as const).map((tf) => (
+                    <button
+                      key={tf}
+                      onClick={() => setReportsTimeframe(tf)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                        reportsTimeframe === tf ? 'bg-white text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {tf === 'today' ? 'Today' : tf === 'week' ? 'This Week' : 'This Month'}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={exportTeamReportCSV}
+                  className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4 High-Level Performance Metrics - Dynamically Calculated by Timeframe */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {/* Metric 1: Total Dials */}
+              <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    {isToday ? 'Total Dials Today' : isWeek ? 'Weekly Dials (This Week)' : 'Monthly Dials (This Month)'}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{tfDials}</span>
+                    <span className="text-xs font-bold text-slate-400">Calls</span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-semibold mt-1 block">
+                    {isToday ? `Logged today across ${presentCount} active telecallers` : isWeek ? 'Cumulative calls dialed this week' : 'Total calls logged this month'}
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs">
+                  <PhoneCall className="w-6 h-6" />
+                </div>
+              </div>
+
+              {/* Metric 2: Connect Rate */}
+              <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    {isToday ? 'Calls Answered Today' : isWeek ? 'Calls Answered (This Week)' : 'Calls Answered (This Month)'}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono-nums font-black text-2xl text-emerald-600">{tfConnected}</span>
+                    <span className="text-xs font-bold text-slate-400">Calls</span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-semibold mt-1 block">
+                    <strong className="text-emerald-600 font-bold">{connectRate}%</strong> Connect Rate ({tfDials} Total Dials)
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
+                  <UserCheck className="w-6 h-6" />
+                </div>
+              </div>
+
+              {/* Metric 3: Revenue Closed */}
+              <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    {isToday ? 'Revenue Closed Today' : isWeek ? 'Weekly Revenue Closed' : 'Monthly Revenue Closed'}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{formatInLakhs(tfSales)}</span>
+                    <span className="text-xs font-bold text-slate-400">/ {formatInLakhs(tfTarget)}</span>
+                  </div>
+                  <span className="text-xs text-amber-600 font-extrabold mt-1 block">
+                    {tfTargetPercentage}% Target Reached
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+              </div>
+
+              {/* Metric 4: Interested Prospects */}
+              <div className="nexus-card p-5 bg-white border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    {isToday ? 'Interested Leads Today' : isWeek ? 'Interested Leads (This Week)' : 'Interested Leads (This Month)'}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono-nums font-black text-2xl text-[#00A88B]">{tfInterested}</span>
+                    <span className="text-xs font-bold text-slate-400">Leads</span>
+                  </div>
+                  <span className="text-xs text-emerald-600 font-semibold mt-1 block">
+                    Positive customer responses
+                  </span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#00C9A7] flex items-center justify-center shadow-xs">
+                  <Users className="w-6 h-6" />
+                </div>
+              </div>
+            </div>
+
+            {/* Table: Targets & Sales Progress - Dynamic to selected Timeframe */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-display font-black text-base text-[#0A2540]">
+                    {tfLabel} Performance & Sales Breakdown
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {isToday ? "Real-time calls dialed, connected, and sales closed today" : isWeek ? "Cumulative weekly telecaller call volume, conversions, and deals" : "Monthly sales targets and achievement pacing for your telecallers"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-3 pl-2">Telecaller</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3">{isToday ? 'Dials Today' : isWeek ? 'Dials This Week' : 'Monthly Dials'}</th>
+                      <th className="pb-3">{isToday ? 'Today Sales' : isWeek ? 'Weekly Sales' : 'Sales Achieved'}</th>
+                      <th className="pb-3">{isToday ? 'Daily Target' : isWeek ? 'Weekly Target' : 'Monthly Target'}</th>
+                      <th className="pb-3 pr-2">Target Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {teamMembers.map((member) => {
+                      const memberDials = isToday 
+                        ? member.dialsToday 
+                        : isWeek 
+                        ? Math.round(member.dialsToday * 5) 
+                        : Math.round(member.dialsToday * 22);
+
+                      const memberGoal = isToday 
+                        ? member.goalCalls 
+                        : isWeek 
+                        ? (member.goalCalls * 5) 
+                        : (member.goalCalls * 22);
+
+                      const achieved = isMonth ? (member.salesAchieved || 0) : Math.round((member.salesAchieved || 0) * tfSalesMultiplier);
+                      const target = isMonth ? (member.salesTarget || 200000) : Math.round((member.salesTarget || 200000) * tfSalesMultiplier);
+                      const pacingPercent = Math.min(100, Math.round((achieved / Math.max(1, target)) * 100));
+
+                      return (
+                        <tr key={member.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3.5 pl-2">
+                            <div className="flex items-center gap-3">
+                              {renderMemberAvatar(member)}
+                              <div>
+                                <span className="font-bold text-xs text-[#0A2540] block">{member.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{member.empCode}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                              member.attendanceStatus === 'PRESENT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                              member.attendanceStatus === 'LATE' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                              'bg-slate-100 text-slate-600'
+                            }`}>
+                              {member.attendanceStatus}
+                            </span>
+                          </td>
+                          <td className="py-3.5 font-mono text-slate-700 font-bold">
+                            {memberDials} <span className="text-slate-400 font-normal">/ {memberGoal}</span>
+                          </td>
+                          <td className="py-3.5 font-mono font-bold text-[#00A88B]">{formatInLakhs(achieved)}</td>
+                          <td className="py-3.5 font-mono text-slate-500">{formatInLakhs(target)}</td>
+                          <td className="py-3.5 pr-2">
+                            <div className="flex items-center gap-3">
+                              <div className="w-36 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-[#00C9A7] rounded-full transition-all" style={{ width: `${pacingPercent}%` }} />
+                              </div>
+                              <span className="font-mono font-black text-slate-700 text-[11px] w-10">
+                                {pacingPercent}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+
+          </div>
+        );
+      })()}
+
+      {/* --- TAB: TEAM MEETINGS --- */}
+      {activeTab === 'meetings' && (() => {
+        const filteredMeetings = teamMeetings.filter(m => {
+          if (meetingFilter === '1ON1') return m.type === '1-on-1 Call' || !!m.invitedMemberName;
+          if (meetingFilter === 'TEAM') return m.type === 'Team Discussion' || m.type === 'Team Standup';
+          if (meetingFilter === 'PROBLEM_SOLVING') return m.type === 'Problem Solving' || m.type === 'Sales Pipeline Review';
+          return true;
+        });
+
+        const liveMeeting = teamMeetings.find(m => m.status === 'LIVE');
+
+        return (
+          <div className="space-y-6 animate-in fade-in duration-150">
+            {/* Top Toolbar Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
+                  Team Meetings & Video Hub
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Launch instant video calls, hold 1-on-1 reviews, and schedule team discussions
+                </p>
+              </div>
+
+              <div className="flex items-center flex-wrap gap-2.5">
+                <button
+                  onClick={() => startInstantMeeting('Team Discussion')}
+                  className="flex items-center gap-2 bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] hover:opacity-95 text-[#0A2540] font-black text-xs px-4 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
+                >
+                  <Video className="w-4 h-4" />
+                  <span>Start Instant Meeting</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMeetingType('1-on-1 Call');
+                    setMeetingTitle('1-on-1 Coaching & Review');
+                    setInviteeMode('1ON1');
+                    setIsMeetingModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Schedule 1-on-1</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMeetingType('Team Discussion');
+                    setMeetingTitle('Team Review & Strategy');
+                    setInviteeMode('ALL');
+                    setIsMeetingModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 bg-[#0A2540] text-[#00C9A7] hover:bg-slate-800 font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs"
+                >
+                  <Calendar className="w-4 h-4 text-[#00C9A7]" />
+                  <span>Schedule Meeting</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Live Meeting Alert Banner (if any meeting is active) */}
+            {liveMeeting && (
+              <div className="p-4 bg-emerald-50 border-2 border-emerald-400 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3.5">
+                  <span className="relative flex h-3.5 w-3.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-600"></span>
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Live Call in Progress
+                      </span>
+                      <span className="text-xs font-mono text-emerald-800 font-bold">Room Active</span>
+                    </div>
+                    <h4 className="font-display font-black text-base text-[#0A2540] mt-0.5">
+                      {liveMeeting.title}
+                    </h4>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : `Open to entire team (${teamMembers.length} telecallers)`} • Click Join to enter room
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => copyMeetingLink(liveMeeting.meetingLink)}
+                    className="px-3 py-2 bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100/50 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> Copy Invite Link
+                  </button>
+                  <button
+                    onClick={() => joinMeeting(liveMeeting)}
+                    className="px-5 py-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-xs rounded-xl flex items-center gap-2 shadow-md shadow-[#00C9A7]/30 active:scale-95"
+                  >
+                    <Video className="w-4 h-4" /> Enter Video Room
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Full-Width Meetings Hub */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="font-display font-black text-base text-[#0A2540]">
+                    Scheduled & Active Meetings
+                  </h3>
+                  <p className="text-xs text-slate-400">All team video calls, 1-on-1 check-ins, and problem-solving huddles</p>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold overflow-x-auto">
+                  <button
+                    onClick={() => setMeetingFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${meetingFilter === 'ALL' ? 'bg-white text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    All Meetings ({teamMeetings.length})
+                  </button>
+                  <button
+                    onClick={() => setMeetingFilter('1ON1')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${meetingFilter === '1ON1' ? 'bg-white text-purple-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    1-on-1 Calls ({teamMeetings.filter(m => m.type === '1-on-1 Call' || !!m.invitedMemberName).length})
+                  </button>
+                  <button
+                    onClick={() => setMeetingFilter('TEAM')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${meetingFilter === 'TEAM' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    Team Calls ({teamMeetings.filter(m => m.type === 'Team Discussion' || m.type === 'Team Standup').length})
+                  </button>
+                  <button
+                    onClick={() => setMeetingFilter('PROBLEM_SOLVING')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${meetingFilter === 'PROBLEM_SOLVING' ? 'bg-white text-amber-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    Problem Solving ({teamMeetings.filter(m => m.type === 'Problem Solving' || m.type === 'Sales Pipeline Review').length})
+                  </button>
+                </div>
+              </div>
+
+              {filteredMeetings.length === 0 ? (
+                <div className="text-center py-16 bg-slate-50 border border-dashed border-slate-200 rounded-3xl space-y-3">
+                  <Video className="w-10 h-10 text-slate-300 mx-auto" />
+                  <h4 className="font-bold text-base text-slate-700">No meetings found in this view</h4>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Click "Start Instant Meeting" to immediately launch a live call, or "Schedule Meeting" to invite team members in advance.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredMeetings.map((mtg) => (
+                    <div key={mtg.id} className="p-5 bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200 rounded-3xl space-y-3.5 transition-all flex flex-col justify-between shadow-2xs">
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                              mtg.type === '1-on-1 Call' ? 'bg-purple-100 text-purple-800' :
+                              mtg.type === 'Problem Solving' ? 'bg-amber-100 text-amber-800' :
+                              'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {mtg.type}
+                            </span>
+                            {mtg.status === 'LIVE' && (
+                              <span className="text-[10px] font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                                <Radio className="w-3 h-3 text-rose-600" /> LIVE NOW
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs font-mono text-slate-500 font-bold">{mtg.dateTime}</span>
+                        </div>
+
+                        <div>
+                          <h4 className="font-display font-black text-base text-[#0A2540]">{mtg.title}</h4>
+                          {mtg.invitedMemberName ? (
+                            <p className="text-xs text-purple-700 font-semibold flex items-center gap-1.5 mt-1">
+                              <UserCheck className="w-3.5 h-3.5" /> Invited: {mtg.invitedMemberName}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-1">
+                              <Users className="w-3.5 h-3.5 text-slate-400" /> Open to all team telecallers ({mtg.attendeesCount || teamMembers.length} invited)
+                            </p>
+                          )}
+                        </div>
+
+                        {mtg.agenda && (
+                          <p className="text-xs text-slate-600 bg-white p-3 rounded-2xl border border-slate-100 italic">
+                            "{mtg.agenda}"
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-200/70">
+                        <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                          📍 {mtg.location}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => copyMeetingLink(mtg.meetingLink)}
+                            title="Copy Meeting Link"
+                            className="px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs"
+                          >
+                            <Copy className="w-3.5 h-3.5" /> Copy Link
+                          </button>
+                          <button
+                            onClick={() => deleteTeamMeeting(mtg.id)}
+                            title="Cancel Meeting"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => joinMeeting(mtg)}
+                            className={`px-4 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all shadow-xs ${
+                              mtg.status === 'LIVE' 
+                                ? 'bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540]' 
+                                : 'bg-[#0A2540] hover:bg-slate-800 text-[#00C9A7]'
+                            }`}
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>{mtg.status === 'LIVE' ? 'Join Call' : 'Start Meeting'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        );
+      })()}
+
+      {/* Schedule Meeting Modal (Google Meet Style Invitee Selection) */}
       {isMeetingModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white text-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95">
-            <h3 className="font-display font-black text-lg text-[#0A2540]">Schedule Team Standup</h3>
-            <form onSubmit={handleCreateMeetingSubmit} className="space-y-3 text-xs">
+          <div className="bg-white text-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <label className="font-bold text-slate-600 block mb-1">Meeting Topic</label>
+                <h3 className="font-display font-black text-lg text-[#0A2540]">Schedule Team Meeting</h3>
+                <p className="text-xs text-slate-400">Plan a video meeting and invite callers</p>
+              </div>
+              <button 
+                onClick={() => setIsMeetingModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateMeetingSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Meeting Title</label>
                 <input
                   type="text"
                   value={meetingTitle}
                   onChange={(e) => setMeetingTitle(e.target.value)}
-                  placeholder="e.g. Daily Morning Target Huddle"
-                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+                  placeholder="e.g. Weekly Target Review / Client Objection Workshop"
+                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 font-medium focus:outline-none focus:border-[#00C9A7]"
                   required
                 />
               </div>
 
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Meeting Type</label>
+                <select
+                  value={meetingType}
+                  onChange={(e) => setMeetingType(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 font-bold"
+                >
+                  <option value="Team Discussion">👥 Team Discussion</option>
+                  <option value="1-on-1 Call">🤝 1-on-1 Call</option>
+                  <option value="Problem Solving">⚡ Problem Solving Huddle</option>
+                </select>
+              </div>
+
+              {/* Google Meet Style Invitee Selection */}
+              <div className="space-y-2 border border-slate-200 rounded-2xl p-3.5 bg-slate-50/60">
+                <label className="font-bold text-slate-700 block">Who is Invited?</label>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInviteeMode('ALL')}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs border text-center transition-all ${
+                      inviteeMode === 'ALL'
+                        ? 'bg-[#0A2540] text-[#00C9A7] border-[#0A2540] shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    👥 Whole Team
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInviteeMode('1ON1')}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs border text-center transition-all ${
+                      inviteeMode === '1ON1'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    🤝 1-on-1 Caller
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInviteeMode('CUSTOM')}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs border text-center transition-all ${
+                      inviteeMode === 'CUSTOM'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    🎯 Pick Specific
+                  </button>
+                </div>
+
+                {/* 1-on-1 Invitee Picker */}
+                {inviteeMode === '1ON1' && (
+                  <div className="pt-2">
+                    <label className="font-bold text-purple-900 block mb-1">Select Telecaller:</label>
+                    <select
+                      value={invitedTelecaller}
+                      onChange={(e) => setInvitedTelecaller(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-white border border-purple-300 text-slate-800 font-bold"
+                    >
+                      {teamMembers.map(m => (
+                        <option key={m.id} value={m.name}>{m.name} ({m.empCode} • {m.role || 'Telecaller'})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Pick Specific Members (Multi-select Checkboxes) */}
+                {inviteeMode === 'CUSTOM' && (
+                  <div className="pt-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-500">
+                        {selectedInvitees.length} of {teamMembers.length} selected
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvitees(teamMembers.map(m => m.name))}
+                          className="text-[10px] text-[#00A88B] font-bold hover:underline"
+                        >
+                          Select All
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvitees([])}
+                          className="text-[10px] text-slate-400 font-bold hover:underline"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl bg-white p-2 space-y-1">
+                      {teamMembers.map(m => {
+                        const isChecked = selectedInvitees.includes(m.name);
+                        return (
+                          <label
+                            key={m.id}
+                            className={`flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-all ${
+                              isChecked ? 'bg-emerald-50 text-emerald-900 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedInvitees(prev => [...prev, m.name]);
+                                  } else {
+                                    setSelectedInvitees(prev => prev.filter(name => name !== m.name));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded text-[#00A88B] focus:ring-0"
+                              />
+                              <span>{m.name}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono">{m.empCode}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Whole Team Notice */}
+                {inviteeMode === 'ALL' && (
+                  <p className="text-[11px] text-slate-500 font-medium pt-1">
+                    ✓ All {teamMembers.length} telecallers in this team will see this meeting on their dashboard.
+                  </p>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-bold text-slate-600 block mb-1">Session Type</label>
-                  <select
-                    value={meetingType}
-                    onChange={(e) => setMeetingType(e.target.value as any)}
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800"
-                  >
-                    <option value="Team Standup">Team Standup</option>
-                    <option value="Sales Pipeline Review">Sales Pipeline Review</option>
-                    <option value="Product Training">Product Training</option>
-                    <option value="1-on-1 Coaching">1-on-1 Coaching</option>
-                  </select>
+                  <label className="font-bold text-slate-600 block mb-1">Date & Time</label>
+                  <input
+                    type="text"
+                    value={meetingTime}
+                    onChange={(e) => setMeetingTime(e.target.value)}
+                    placeholder="Today • 04:30 PM"
+                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 font-medium"
+                    required
+                  />
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-600 block mb-1">Location</label>
+                  <label className="font-bold text-slate-600 block mb-1">Meeting Platform</label>
                   <input
                     type="text"
                     value={meetingLocation}
                     onChange={(e) => setMeetingLocation(e.target.value)}
-                    placeholder="Bay A / Meet"
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800"
+                    placeholder="In-App Video Room"
+                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-600 block mb-1">Date & Time</label>
-                <input
-                  type="text"
-                  value={meetingTime}
-                  onChange={(e) => setMeetingTime(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-600 block mb-1">Agenda Points</label>
+                <label className="font-bold text-slate-600 block mb-1">Agenda / Discussion Goals</label>
                 <textarea
                   value={meetingAgenda}
                   onChange={(e) => setMeetingAgenda(e.target.value)}
-                  placeholder="Points to discuss..."
+                  placeholder="Key topics, lead objections, or strategy to discuss..."
                   className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 h-20"
                 />
               </div>
@@ -926,14 +1625,14 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-xl bg-[#00C9A7] text-[#0A2540] font-black shadow-md shadow-[#00C9A7]/25"
+                  className="flex-1 py-3 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black shadow-md shadow-[#00C9A7]/25 transition-all text-xs"
                 >
-                  Schedule Standup
+                  Schedule & Send Invites
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsMeetingModalOpen(false)}
-                  className="py-3 px-4 rounded-xl bg-slate-100 text-slate-600 font-bold"
+                  className="py-3 px-4 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
                 >
                   Cancel
                 </button>
@@ -976,6 +1675,13 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Telecaller Activity & Leads Bucket Drawer */}
+      <TelecallerDetailDrawer
+        member={selectedMemberForDetail}
+        isOpen={!!selectedMemberForDetail}
+        onClose={() => setSelectedMemberForDetail(null)}
+      />
 
     </div>
   );

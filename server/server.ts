@@ -24,6 +24,7 @@ import biometricsRoutes from './routes/biometrics.js';
 import offerLettersRoutes from './routes/offerLetters.js';
 import paymentsRoutes from './routes/payments.js';
 import employeeDocumentsRoutes from './routes/employeeDocuments.js';
+import authRoutes from './routes/auth.js';
 
 // Initialize SQLite DB
 initializeDatabaseSchema();
@@ -58,6 +59,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/call-logs', callLogsRoutes);

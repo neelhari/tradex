@@ -24,6 +24,29 @@ function mergedProfile() {
     .prepare('SELECT leaderName FROM team_groups WHERE name = ?')
     .get(roster.groupName) as { leaderName?: string } | undefined;
 
+  // Real-time synchronization with today's attendance in SQLite
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayAtt = db.prepare(`
+    SELECT * FROM attendance_records 
+    WHERE (employeeId = ? OR id LIKE ?) AND date = ?
+    ORDER BY createdAt DESC LIMIT 1
+  `).get(profile.id, `%${todayStr}%`, todayStr) as any;
+
+  let dynamicFaceIdStatus = profile.faceIdStatus || 'NOT_CHECKED_IN';
+  let dynamicCheckInTime = profile.checkInTime || '';
+  let dynamicCheckOutTime = profile.checkOutTime || '';
+
+  if (todayAtt) {
+    if (todayAtt.checkOut) {
+      dynamicFaceIdStatus = 'ON_BREAK';
+      dynamicCheckInTime = todayAtt.checkIn || dynamicCheckInTime;
+      dynamicCheckOutTime = todayAtt.checkOut;
+    } else if (todayAtt.checkIn) {
+      dynamicFaceIdStatus = 'VERIFIED_PRESENT';
+      dynamicCheckInTime = todayAtt.checkIn;
+    }
+  }
+
   return {
     ...profile,
     name: roster.name ?? profile.name,
@@ -32,6 +55,9 @@ function mergedProfile() {
     email: roster.email ?? profile.email,
     teamName: roster.groupName ?? profile.teamName,
     teamLeaderName: group?.leaderName ?? profile.teamLeaderName,
+    faceIdStatus: dynamicFaceIdStatus,
+    checkInTime: dynamicCheckInTime,
+    checkOutTime: dynamicCheckOutTime,
     active: roster.active ?? 1,
   };
 }
