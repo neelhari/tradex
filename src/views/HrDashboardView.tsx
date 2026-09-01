@@ -772,13 +772,7 @@ export const HrDashboardView: React.FC = () => {
         onClose={() => setIsGenerateOfferLetterModalOpen(false)}
       />
 
-      {/* 3. Official Offer Letter Preview Modal */}
-      <OfferLetterModal />
-
-      {/* 4. Digital ID Card Modal (Image 1 Template with Photo Upload) */}
-      <DigitalIdCardModal />
-
-      {/* 5. Face Registration Modal */}
+      {/* 3. Face Registration Modal */}
       <FaceRegistrationModal />
 
       {/* 6. Payslip Generator Modal */}

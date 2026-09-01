@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   X, 
@@ -18,6 +18,14 @@ export const OfferLetterModal: React.FC = () => {
     selectedOfferLetter,
     triggerToast
   } = useApp();
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOfferLetterModalOpen && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [isOfferLetterModalOpen]);
 
   if (!isOfferLetterModalOpen || !selectedOfferLetter) return null;
 
@@ -43,7 +51,7 @@ export const OfferLetterModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[95vh]">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[96vh]">
         
         {/* Modal Top Control Bar (Hidden on print) */}
         <div className="bg-[#06152B] px-4 sm:px-6 py-3 text-white flex items-center justify-between border-b border-slate-800 print:hidden flex-shrink-0">
@@ -72,7 +80,10 @@ export const OfferLetterModal: React.FC = () => {
         </div>
 
         {/* Scrollable Document Container */}
-        <div className="overflow-y-auto flex-1 p-2 sm:p-6 bg-slate-100/60 flex justify-center">
+        <div 
+          ref={scrollContainerRef}
+          className="overflow-y-auto flex-1 p-2 sm:p-5 bg-slate-100/70 flex justify-center"
+        >
           
           {/* Printable Letter Sheet (Exact Template from Image 4) */}
           <div 
@@ -82,7 +93,7 @@ export const OfferLetterModal: React.FC = () => {
           >
             
             {/* Top Navy Header Banner with Diagonal Teal Wedge (Matching Image 4) */}
-            <div className="relative bg-[#06152B] text-white px-4 sm:px-7 pt-5 sm:pt-7 pb-4 sm:pb-6 overflow-hidden">
+            <div className="relative bg-[#06152B] text-white px-4 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5 overflow-hidden flex-shrink-0">
               
               {/* Teal angled bottom line accent */}
               <div className="absolute -bottom-1 left-0 right-0 h-2 bg-[#00A88B]" />
@@ -121,7 +132,7 @@ export const OfferLetterModal: React.FC = () => {
             </div>
 
             {/* Document Body */}
-            <div className="p-4 sm:p-8 space-y-4 sm:space-y-6 flex-1 relative">
+            <div className="p-4 sm:p-7 space-y-4 sm:space-y-5 flex-1 relative">
               
               {/* Background Watermark (Bottom Right) */}
               <div className="absolute right-4 bottom-12 opacity-5 pointer-events-none select-none">
@@ -223,7 +234,7 @@ export const OfferLetterModal: React.FC = () => {
             </div>
 
             {/* Bottom Navy Bar with Contact Links (Matching Image 4) */}
-            <div className="bg-[#06152B] text-white px-4 sm:px-6 py-2.5 sm:py-3 border-t-2 border-[#00A88B] flex items-center justify-between text-[9px] sm:text-[11px] gap-2 font-medium">
+            <div className="bg-[#06152B] text-white px-4 sm:px-6 py-2.5 sm:py-3 border-t-2 border-[#00A88B] flex items-center justify-between text-[9px] sm:text-[11px] gap-2 font-medium flex-shrink-0">
               <span className="flex items-center gap-1 text-slate-200">
                 <Phone className="w-3 h-3 text-[#00C9A7]" />
                 +91 98765 43210
