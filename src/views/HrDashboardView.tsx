@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useListDefault } from '../hooks/useListDefault';
 import { useScreenData } from '../hooks/useScreenData';
@@ -33,7 +33,9 @@ import {
   Video,
   Send,
   Upload,
-  User
+  User,
+  Search,
+  Clock
 } from 'lucide-react';
 import { OnboardingEmployee, ExitEmployee, TeamMember } from '../types';
 import { AddEmployeeModal } from '../components/modals/AddEmployeeModal';
@@ -42,6 +44,13 @@ import { GenerateOfferLetterModal } from '../components/modals/GenerateOfferLett
 import { DigitalIdCardModal } from '../components/modals/DigitalIdCardModal';
 import { FaceRegistrationModal } from '../components/modals/FaceRegistrationModal';
 import { Employee360ProfileView } from './Employee360ProfileView';
+
+const formatInLakhs = (val: number) => {
+  if (val >= 100000) {
+    return `₹${(val / 100000).toFixed(2).replace(/\.00$/, '')} L`;
+  }
+  return `₹${val.toLocaleString('en-IN')}`;
+};
 
 export const HrDashboardView: React.FC = () => {
   const {
@@ -76,6 +85,10 @@ export const HrDashboardView: React.FC = () => {
   const [activeHrNav, setActiveHrNav] = useState<'home' | 'employees' | 'approvals' | 'reports' | 'more'>('home');
   const [selectedEmployeeFor360, setSelectedEmployeeFor360] = useState<TeamMember | null>(null);
   
+  // Search & Filter for Team Roster
+  const [searchQuery, setSearchQuery] = useState('');
+  const [attendanceFilter, setAttendanceFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'ON_LEAVE'>('ALL');
+
   // Modals
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isGenerateOfferLetterModalOpen, setIsGenerateOfferLetterModalOpen] = useState(false);
@@ -83,13 +96,13 @@ export const HrDashboardView: React.FC = () => {
   const [isPayslipGenModalOpen, setIsPayslipGenModalOpen] = useState(false);
   const [selectedIdCardEmpId, setSelectedIdCardEmpId] = useState('');
 
-  // Payslip Generator States (Image 2 Enhancement)
+  // Payslip Generator States
   const [payrollMonth, setPayrollMonth] = useState('May');
   const [payrollYear, setPayrollYear] = useState('2025');
   const [payslipSelectionMode, setPayslipSelectionMode] = useState<'ALL' | 'SPECIFIC'>('ALL');
   const [selectedEmpIdsForPayroll, setSelectedEmpIdsForPayroll] = useState<string[]>(teamMembers.map(m => m.id));
 
-  // Schedule Interview States (Image 3 Enhancement)
+  // Schedule Interview States
   const [candName, setCandName] = useState('');
   const [candRole, setCandRole] = useState('Senior Telecaller Specialist');
   const [candExp, setCandExp] = useState('2+ Years in B2B Sales');
@@ -101,6 +114,19 @@ export const HrDashboardView: React.FC = () => {
 
   const idCardEmp = teamMembers.find((m) => m.id === selectedIdCardEmpId);
   useListDefault(selectedIdCardEmpId, setSelectedIdCardEmpId, teamMembers, (m) => m.id);
+
+  // Filtered members for Team Roster
+  const filteredMembers = useMemo(() => {
+    return teamMembers.filter((m) => {
+      const matchSearch =
+        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.empCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.group && m.group.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchFilter =
+        attendanceFilter === 'ALL' || m.attendanceStatus === attendanceFilter;
+      return matchSearch && matchFilter;
+    });
+  }, [teamMembers, searchQuery, attendanceFilter]);
 
   // Org stats derived from live backend data
   const totalTeams = teamGroups.length;
@@ -186,7 +212,7 @@ export const HrDashboardView: React.FC = () => {
   // If 360 Dossier is open, render Employee360ProfileView
   if (selectedEmployeeFor360) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] pb-24 px-3 sm:px-6 pt-4">
+      <div className="min-h-screen bg-[#F8FAFC] pb-24 px-3 sm:px-6 pt-2">
         <Employee360ProfileView
           member={selectedEmployeeFor360}
           onBack={() => setSelectedEmployeeFor360(null)}
@@ -198,42 +224,6 @@ export const HrDashboardView: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 text-slate-800 animate-in fade-in duration-150">
       
-      {/* Top Mobile/Tablet App Bar */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0A2540] to-[#0F3258] text-[#00C9A7] flex items-center justify-center font-black shadow-xs">
-              <TrendingUp className="w-5 h-5 stroke-[2.5]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-display font-black text-sm text-[#0A2540] tracking-tight">
-                  TRADE NEXUS
-                </h1>
-                <span className="text-[9px] bg-teal-50 text-teal-700 font-extrabold px-1.5 py-0.5 rounded border border-teal-200 uppercase tracking-wider">
-                  HR Portal
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
-                Human Resources &amp; People Ops
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveHrNav('approvals')}
-              className="relative p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-[#0A2540] hover:bg-slate-200 transition-colors"
-            >
-              <Bell className="w-4 h-4" />
-              {pendingApprovalsCount > 0 && (
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="p-4 space-y-4 max-w-lg mx-auto">
 
         {/* --- TAB 1: HR HOME / PULSE --- */}
@@ -474,100 +464,131 @@ export const HrDashboardView: React.FC = () => {
           </div>
         )}
 
-        {/* --- TAB 2: EMPLOYEES & TEAM LEADERS (Matching Team Leader 360 Flow - Image 5) --- */}
+        {/* --- TAB 2: TEAM ROSTER (Exact Screenshot 2 Pixel-Perfect Implementation) --- */}
         {activeHrNav === 'employees' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
+          <div className="space-y-3.5 animate-in fade-in duration-150">
+            
+            {/* Header with Title and Filter Pills */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-display font-black text-lg text-[#0A2540]">Employee Directory ({totalEmployees})</h2>
-                <p className="text-xs text-slate-500">Supervision across all {totalTeams} squads &amp; Team Leaders</p>
+                <h2 className="font-display font-black text-lg text-[#0A2540]">Team Roster ({teamMembers.length})</h2>
+                <p className="text-xs text-slate-500">Tap any telecaller to view performance profile</p>
               </div>
-              <button
-                onClick={() => setIsAddEmployeeModalOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-[#00C9A7] text-[#0A2540] font-bold text-xs flex items-center gap-1.5 shadow-xs"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>+ Add</span>
-              </button>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                {(['ALL', 'PRESENT', 'LATE', 'ON_LEAVE'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setAttendanceFilter(f)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                      attendanceFilter === f ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {f === 'ALL' ? 'All' : f === 'ON_LEAVE' ? 'Leave' : f}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Rich Workforce Roster Cards with 360 Flow */}
-            <div className="space-y-3">
-              {teamMembers.map((member) => (
-                <div 
-                  key={member.id} 
-                  onClick={() => setSelectedEmployeeFor360(member)}
-                  className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-3xl p-4 shadow-sm space-y-3 cursor-pointer transition-all active:scale-98 group"
-                >
-                  
-                  {/* Card Header: Avatar, Name, Role & Status */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-11 h-11 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs">
-                          {member.name.substring(0, 2).toUpperCase()}
-                        </div>
-                        {/* Live Presence Dot */}
-                        <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
-                          member.attendanceStatus === 'PRESENT' ? 'bg-emerald-500' :
-                          member.attendanceStatus === 'LATE' ? 'bg-amber-500' : 'bg-rose-500'
-                        }`} />
-                      </div>
+            {/* Mobile Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search telecaller by name or employee code..."
+                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
+              />
+            </div>
 
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <strong className="font-display font-black text-sm text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
-                            {member.name}
-                          </strong>
-                          <span className="text-[9px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                            {member.empCode}
+            {/* List of Telecallers - Exact Screenshot 2 Layout */}
+            <div className="space-y-3">
+              {filteredMembers.map((member) => {
+                const isPresent = member.attendanceStatus === 'PRESENT';
+                const isLate = member.attendanceStatus === 'LATE';
+
+                return (
+                  <div 
+                    key={member.id}
+                    onClick={() => setSelectedEmployeeFor360(member)}
+                    className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-2xs hover:shadow-md flex flex-col gap-2.5 cursor-pointer active:scale-[0.98] transition-all group relative overflow-hidden"
+                  >
+                    {/* Subtle Top Status Accent Line */}
+                    <div className={`absolute top-0 left-0 right-0 h-1 ${
+                      isPresent ? 'bg-gradient-to-r from-emerald-400 to-[#00C9A7]' :
+                      isLate ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
+                      'bg-gradient-to-r from-rose-400 to-rose-500'
+                    }`} />
+
+                    {/* Member Header */}
+                    <div className="flex items-center justify-between pt-0.5">
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex-shrink-0">
+                          <div className="w-11 h-11 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs group-hover:scale-105 transition-transform">
+                            {member.avatar || member.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                            isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-rose-500'
+                          }`} />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <strong className="text-xs font-bold text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                              {member.name}
+                            </strong>
+                            <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded-md border border-slate-200/80">
+                              {member.group}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {member.empCode} • {member.role || 'Telecaller'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 font-medium">
-                          {member.role} • <span className="text-[#0A2540] font-semibold">{member.group || 'Alpha Team'}</span>
-                        </p>
+                      </div>
+
+                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                        isPresent ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200/80' :
+                        isLate ? 'bg-amber-100/90 text-amber-800 border border-amber-200/80' :
+                        'bg-rose-100/90 text-rose-800 border border-rose-200/80'
+                      }`}>
+                        {member.attendanceStatus}
+                      </span>
+                    </div>
+
+                    {/* 3 Metric Matrix - Clean Elevated Micro-Cards */}
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50/90 p-1.5 rounded-xl border border-slate-100 text-center">
+                      <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Dials</span>
+                        <strong className="text-xs font-mono font-black text-[#0A2540]">{member.dialsToday}</strong>
+                      </div>
+                      <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                        <span className="text-[9px] text-[#00A88B] block font-bold uppercase tracking-wider">Sales</span>
+                        <strong className="text-xs font-mono font-black text-[#00A88B]">{formatInLakhs(member.salesAchieved)}</strong>
+                      </div>
+                      <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                        <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Interested</span>
+                        <strong className="text-xs font-mono font-black text-emerald-700">{member.interested || 12}</strong>
                       </div>
                     </div>
 
-                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider ${
-                      member.attendanceStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
-                      member.attendanceStatus === 'LATE' ? 'bg-amber-100 text-amber-800' :
-                      'bg-rose-100 text-rose-800'
-                    }`}>
-                      {member.attendanceStatus}
-                    </span>
-                  </div>
-
-                  {/* 3-Metric Matrix (Calls, Sales, Interested) */}
-                  <div className="grid grid-cols-3 gap-2 bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100 text-center">
-                    <div>
-                      <span className="text-[9px] font-bold text-slate-400 block uppercase">Calls Today</span>
-                      <span className="font-mono font-black text-xs text-[#0A2540]">{member.dialsToday || 45} / 100</span>
+                    {/* Footer: Check-in Time + Clean Interactive Pill Button */}
+                    <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100">
+                      <span className="text-slate-500 font-mono flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        In: {member.checkInTime || '09:12 AM'}
+                      </span>
+                      <span className="px-2.5 py-1 rounded-xl bg-[#E6FAF6] text-[#00A88B] font-bold group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors flex items-center gap-1 shadow-2xs">
+                        <span>View Profile</span>
+                        <span>→</span>
+                      </span>
                     </div>
-                    <div>
-                      <span className="text-[9px] font-bold text-slate-400 block uppercase">Achieved</span>
-                      <span className="font-mono font-black text-xs text-emerald-700">₹{(member.salesAchieved / 100000).toFixed(1)}L</span>
-                    </div>
-                    <div>
-                      <span className="text-[9px] font-bold text-slate-400 block uppercase">Interested</span>
-                      <span className="font-mono font-black text-xs text-[#00A88B]">12 Leads</span>
-                    </div>
-                  </div>
 
-                  {/* 1-Tap 360 Profile Dossier Trigger */}
-                  <div className="flex items-center justify-between text-[11px] font-bold text-[#00A88B] pt-1 border-t border-slate-100">
-                    <span className="flex items-center gap-1 text-slate-500">
-                      <span>Shift Check-in:</span>
-                      <strong className="font-mono text-slate-800">{member.checkInTime || '09:15 AM'}</strong>
-                    </span>
-                    <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                      <span>View 360 Profile</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
                   </div>
-
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -709,8 +730,8 @@ export const HrDashboardView: React.FC = () => {
         <div className="flex justify-around items-center max-w-lg mx-auto">
           {[
             { id: 'home', label: 'Home', icon: Home },
-            { id: 'employees', label: 'Employees', icon: Users },
-            { id: 'approvals', label: 'Approvals', icon: UserCheck, badge: pendingApprovalsCount },
+            { id: 'employees', label: 'Team', icon: Users },
+            { id: 'approvals', label: 'Leaves', icon: UserCheck, badge: pendingApprovalsCount },
             { id: 'reports', label: 'Reports', icon: TrendingUp },
             { id: 'more', label: 'More', icon: MoreHorizontal },
           ].map((item) => {
@@ -739,7 +760,7 @@ export const HrDashboardView: React.FC = () => {
 
       {/* --- MODALS & DIALOGS --- */}
       
-      {/* 1. Add Employee Modal (With Password & Welcome Dispatch) */}
+      {/* 1. Add Employee Modal */}
       <AddEmployeeModal
         isOpen={isAddEmployeeModalOpen}
         onClose={() => setIsAddEmployeeModalOpen(false)}
@@ -760,7 +781,7 @@ export const HrDashboardView: React.FC = () => {
       {/* 5. Face Registration Modal */}
       <FaceRegistrationModal />
 
-      {/* 6. Payslip Generator Modal (Enhanced with Employee Selector & Salary Breakdown - Image 2) */}
+      {/* 6. Payslip Generator Modal */}
       {isPayslipGenModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95 max-h-[92vh] overflow-y-auto">
@@ -908,7 +929,7 @@ export const HrDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* 7. Schedule Candidate Interview & Meeting Modal (Image 3 Enhancement) */}
+      {/* 7. Schedule Candidate Interview Modal */}
       {isInterviewModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95 max-h-[92vh] overflow-y-auto">
