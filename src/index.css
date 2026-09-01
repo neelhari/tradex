@@ -110,3 +110,29 @@
 .pt-safe {
   padding-top: max(0.5rem, env(safe-area-inset-top));
 }
+
+.font-signature {
+  font-family: 'Caveat', 'Great Vibes', 'Dancing Script', cursive;
+}
+
+/* Print Styles: Force full color background & graphic printing */
+@media print {
+  body, html {
+    background: #FFFFFF !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}
+
