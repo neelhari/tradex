@@ -261,6 +261,7 @@ export interface FaceBiometricProfile {
 export interface OfferLetterData {
   id: string;
   candidateName: string;
+  candidateAddress?: string;
   candidateEmail: string;
   candidatePhone: string;
   roleTitle: string;
@@ -271,6 +272,9 @@ export interface OfferLetterData {
   reportingManager: string;
   location: string;
   issuedDate: string;
+  acceptanceDeadline?: string;
+  signatoryName?: string;
+  signatoryRole?: string;
 }
 
 export interface NewEmployeeInput {

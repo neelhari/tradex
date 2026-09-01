@@ -4,11 +4,11 @@ import {
   X, 
   Printer, 
   Download, 
-  Award, 
-  Building2, 
-  Calendar, 
-  CheckCircle2,
-  FileCheck
+  TrendingUp,
+  MapPin,
+  Phone,
+  Mail,
+  Globe
 } from 'lucide-react';
 
 export const OfferLetterModal: React.FC = () => {
@@ -22,205 +22,237 @@ export const OfferLetterModal: React.FC = () => {
   if (!isOfferLetterModalOpen || !selectedOfferLetter) return null;
 
   const letter = selectedOfferLetter;
-  const basicMonthly = Math.round(letter.monthlyGross * 0.5);
-  const hraMonthly = Math.round(letter.monthlyGross * 0.3);
-  const specialAllowance = letter.monthlyGross - (basicMonthly + hraMonthly);
+  const firstName = letter.candidateName.split(' ')[0] || letter.candidateName;
+  const formattedSalary = letter.monthlyGross 
+    ? `INR ${letter.monthlyGross.toLocaleString('en-IN')}` 
+    : 'INR 7,00,000';
+  const address = letter.candidateAddress || '123 Anywhere St., Any City, ST 12345';
+  const deadline = letter.acceptanceDeadline || 'August 30, 2025';
+  const signatory = letter.signatoryName || 'Arun Leob';
+  const signatoryRole = letter.signatoryRole || 'HR Manager';
 
   const handlePrint = () => {
     window.print();
-    triggerToast('✓ Opening print dialog for Offer Letter...');
+    triggerToast('✓ Opening print dialog for Job Offer Letter...');
   };
 
   const handleDownload = () => {
-    triggerToast(`✓ Offer letter for ${letter.candidateName} downloaded (PDF)`);
+    triggerToast(`✓ Offer letter for ${letter.candidateName} ready to print/save as PDF`);
+    window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[94vh]">
         
-        {/* Header Bar */}
-        <div className="bg-[#0A192F] px-5 py-4 text-white flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-white tracking-tight flex items-center gap-2">
-                Employment Offer Letter
-                <span className="text-[10px] bg-emerald-500/30 text-emerald-300 font-mono px-2 py-0.5 rounded-full uppercase tracking-wider">Verified Official</span>
-              </h3>
-              <p className="text-xs text-slate-400">{letter.candidateName} • {letter.roleTitle}</p>
-            </div>
+        {/* Modal Top Control Bar */}
+        <div className="bg-[#0A192F] px-5 py-3 text-white flex items-center justify-between border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00C9A7] animate-pulse" />
+            <span className="font-bold text-xs sm:text-sm tracking-wide text-slate-200">
+              Official Job Offer Letter Document
+            </span>
           </div>
           
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-              title="Print Document"
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print / PDF</span>
             </button>
             <button 
               onClick={() => setIsOfferLetterModalOpen(false)}
-              className="w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Document Body (Printable Letterhead) */}
-        <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-slate-800 text-xs sm:text-sm font-sans bg-slate-50/50">
+        {/* Document Sheet (Exact Image 4 Pixel-Perfect Template) */}
+        <div className="overflow-y-auto p-4 sm:p-8 bg-slate-100/70 flex justify-center">
           
-          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div 
+            id="offer-letter-sheet"
+            className="w-full max-w-[650px] bg-white text-slate-800 shadow-xl rounded-2xl overflow-hidden relative border border-slate-200 flex flex-col justify-between"
+            style={{ minHeight: '850px' }}
+          >
             
-            {/* Company Letterhead */}
-            <div className="flex items-start justify-between border-b border-slate-200 pb-5">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#00C9A7] flex items-center justify-center text-slate-950 font-black text-xs font-mono">
-                    TN
+            {/* Top Navy Header Banner with Diagonal Teal Wedge (Matching Image 4) */}
+            <div className="relative bg-[#06152B] text-white px-6 sm:px-8 pt-7 pb-6 overflow-hidden">
+              
+              {/* Teal angled bottom line banner */}
+              <div className="absolute -bottom-1 left-0 right-0 h-2.5 bg-[#00A88B]" />
+              <div className="absolute bottom-1 left-0 w-2/3 h-1 bg-[#38E1B7]" />
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+                {/* Left: Brand Logo & Title */}
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#00C9A7] to-[#0A2540] p-0.5 shadow-md shadow-[#00C9A7]/40 flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-[#06152B] flex items-center justify-center text-[#00C9A7]">
+                      <TrendingUp className="w-6 h-6 stroke-[2.5]" />
+                    </div>
                   </div>
-                  <span className="font-black text-lg text-[#0A2540] tracking-tight">TRADE NEXUS</span>
+                  <div>
+                    <h1 className="font-display font-black text-xl sm:text-2xl text-white tracking-wider leading-none">
+                      TRADE NEXUS
+                    </h1>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="h-px w-5 bg-[#00C9A7]" />
+                      <span className="text-[10px] font-extrabold tracking-[0.2em] text-[#00C9A7]">
+                        TRADE SMART
+                      </span>
+                      <span className="h-px w-5 bg-[#00C9A7]" />
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium">Enterprise Management & Operations Suite</p>
-                <p className="text-[10px] text-slate-400">Bangalore Corporate Towers, Outer Ring Road, Bengaluru 560103</p>
-              </div>
 
-              <div className="text-right space-y-1">
-                <span className="text-[11px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-                  REF: TNX/HR/{letter.id.slice(-6).toUpperCase()}
-                </span>
-                <p className="text-[11px] text-slate-500">Date: <strong>{letter.issuedDate}</strong></p>
+                {/* Right: Document Title */}
+                <div className="sm:text-right">
+                  <h2 className="font-display font-black text-lg sm:text-xl text-white tracking-wider uppercase">
+                    JOB OFFER LETTER
+                  </h2>
+                  <div className="h-0.5 w-full bg-[#00C9A7] mt-1" />
+                </div>
               </div>
             </div>
 
-            {/* Candidate Address Line */}
-            <div className="space-y-1 text-slate-700">
-              <p className="font-bold text-slate-900 text-sm">To,</p>
-              <p className="font-bold text-[#0A2540]">{letter.candidateName}</p>
-              <p className="text-xs text-slate-500">{letter.candidateEmail} | {letter.candidatePhone}</p>
-            </div>
-
-            {/* Subject */}
-            <div className="bg-teal-50/70 border-l-4 border-[#00C9A7] p-3 rounded-r-xl">
-              <p className="font-bold text-teal-900">
-                SUBJECT: LETTER OF EMPLOYMENT OFFER FOR THE POSITION OF {letter.roleTitle.toUpperCase()}
-              </p>
-            </div>
-
-            {/* Body Text */}
-            <div className="space-y-3 text-slate-600 leading-relaxed text-xs sm:text-[13px]">
-              <p>
-                Dear <strong>{letter.candidateName}</strong>,
-              </p>
-              <p>
-                We are delighted to extend an offer of employment to you for the position of <strong>{letter.roleTitle}</strong> at Trade Nexus in the <strong>{letter.department}</strong> department.
-              </p>
-              <p>
-                Your Date of Joining is confirmed for <strong>{letter.joiningDate}</strong> at our <strong>{letter.location}</strong> office. You will be reporting to <strong>{letter.reportingManager}</strong>.
-              </p>
-            </div>
-
-            {/* Compensation Table */}
-            <div className="space-y-2">
-              <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-teal-600" />
-                Compensation & Benefits Structure (CTC)
-              </h4>
-
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="py-2.5 px-3">Salary Component</th>
-                      <th className="py-2.5 px-3 text-right">Monthly (INR)</th>
-                      <th className="py-2.5 px-3 text-right">Annual (INR)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-mono text-slate-700 text-xs">
-                    <tr>
-                      <td className="py-2 px-3 font-sans">Basic Salary (50%)</td>
-                      <td className="py-2 px-3 text-right">₹{basicMonthly.toLocaleString('en-IN')}</td>
-                      <td className="py-2 px-3 text-right">₹{(basicMonthly * 12).toLocaleString('en-IN')}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-3 font-sans">House Rent Allowance (HRA 30%)</td>
-                      <td className="py-2 px-3 text-right">₹{hraMonthly.toLocaleString('en-IN')}</td>
-                      <td className="py-2 px-3 text-right">₹{(hraMonthly * 12).toLocaleString('en-IN')}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-3 font-sans">Special & Operational Allowance</td>
-                      <td className="py-2 px-3 text-right">₹{specialAllowance.toLocaleString('en-IN')}</td>
-                      <td className="py-2 px-3 text-right">₹{(specialAllowance * 12).toLocaleString('en-IN')}</td>
-                    </tr>
-                    <tr className="bg-teal-50/60 font-bold text-teal-900 border-t border-teal-200">
-                      <td className="py-2.5 px-3 font-sans">Total Target Gross CTC</td>
-                      <td className="py-2.5 px-3 text-right">₹{letter.monthlyGross.toLocaleString('en-IN')}</td>
-                      <td className="py-2.5 px-3 text-right">₹{letter.annualCtc.toLocaleString('en-IN')}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Terms Summary & Signatures */}
-            <div className="pt-4 border-t border-slate-200 grid grid-cols-2 gap-6">
-              <div className="space-y-6">
-                <div className="space-y-1">
-                  <p className="text-[11px] text-slate-500">Authorized Signatory</p>
-                  <p className="font-bold text-slate-800 text-xs">Head of Human Resources</p>
-                  <p className="text-[10px] text-teal-700 font-mono">Trade Nexus Global Ops</p>
-                </div>
-                <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Digitally Verified
+            {/* Document Body */}
+            <div className="p-6 sm:p-9 space-y-6 flex-1 relative">
+              
+              {/* Background Watermark (Bottom Right) */}
+              <div className="absolute right-6 bottom-16 opacity-5 pointer-events-none select-none">
+                <div className="w-64 h-64 rounded-full border-8 border-[#0A2540] flex items-center justify-center">
+                  <TrendingUp className="w-40 h-40 text-[#0A2540] stroke-[2]" />
                 </div>
               </div>
 
-              <div className="space-y-6 text-right">
-                <div className="space-y-1">
-                  <p className="text-[11px] text-slate-500">Candidate Acceptance</p>
-                  <p className="font-bold text-slate-800 text-xs">{letter.candidateName}</p>
-                  <p className="text-[10px] text-slate-400">Signature / Date</p>
+              {/* Company Info & Issue Date */}
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-100 pb-4 text-xs">
+                <div className="space-y-1.5 text-slate-700">
+                  <p className="font-display font-extrabold text-sm text-[#0A2540]">Trade Nexus</p>
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <MapPin className="w-3.5 h-3.5 text-[#00A88B] flex-shrink-0" />
+                    <span>123 Business Avenue, Financial District, Your City, 500001</span>
+                  </p>
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <Phone className="w-3.5 h-3.5 text-[#00A88B] flex-shrink-0" />
+                    <span>+91 98765 43210</span>
+                  </p>
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <Mail className="w-3.5 h-3.5 text-[#00A88B] flex-shrink-0" />
+                    <span>info@tradenexus.com</span>
+                  </p>
+                  <p className="flex items-center gap-2 text-slate-600">
+                    <Globe className="w-3.5 h-3.5 text-[#00A88B] flex-shrink-0" />
+                    <span>www.tradenexus.com</span>
+                  </p>
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono">
-                  Doc ID: {letter.id}
+
+                <div className="sm:text-right font-semibold text-slate-700 text-xs">
+                  <span>{letter.issuedDate || '24 August 2025'}</span>
                 </div>
               </div>
+
+              {/* Recipient Address */}
+              <div className="space-y-1 text-xs">
+                <p className="font-semibold text-slate-500">To,</p>
+                <p className="font-display font-black text-sm sm:text-base text-[#0A2540]">
+                  {letter.candidateName}
+                </p>
+                <p className="text-slate-600">{address}</p>
+                <p className="text-slate-500 text-[11px] font-mono">{letter.candidateEmail} • {letter.candidatePhone}</p>
+              </div>
+
+              {/* Salutation & Offer Letter Text (Exact Copy from Image 4) */}
+              <div className="space-y-3.5 text-xs sm:text-[13px] text-slate-700 leading-relaxed">
+                <p>Dear <strong className="text-[#0A2540]">{firstName}</strong>,</p>
+
+                <p>
+                  We are pleased to offer you the position of{' '}
+                  <strong className="text-[#00A88B] font-bold">{letter.roleTitle}</strong> at{' '}
+                  <strong className="text-[#0A2540] font-bold">Trade Nexus</strong>, starting on{' '}
+                  <strong className="text-[#00A88B] font-bold">{letter.joiningDate}</strong>. In this role, you will report to{' '}
+                  <strong className="text-[#00A88B] font-bold">{letter.reportingManager}</strong> and will be based at our corporate office.
+                </p>
+
+                <p>
+                  Your monthly salary will be <strong className="text-[#0A2540] font-bold">{formattedSalary}</strong>, along with benefits including health insurance, paid leave, internet allowance, and performance bonuses. Full details will be shared upon confirmation.
+                </p>
+
+                <p>
+                  Please confirm your acceptance by signing and returning this letter by{' '}
+                  <strong className="text-[#00A88B] font-bold">{deadline}</strong>.
+                </p>
+
+                <p>
+                  We look forward to having you onboard and seeing your strategic ideas come to life!
+                </p>
+              </div>
+
+              {/* Sign-off & Signature Seal */}
+              <div className="pt-4 space-y-2">
+                <p className="text-xs font-semibold text-slate-600">Warm Regards,</p>
+                
+                {/* Handwritten Signature SVG Simulation */}
+                <div className="py-1">
+                  <svg className="w-36 h-10 text-[#0A2540]" viewBox="0 0 150 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 28C25 10 35 32 45 15C55 5 60 30 75 18C85 10 95 32 110 20C120 12 135 25 145 15" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M25 35C45 33 80 34 135 31" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </div>
+
+                <div className="space-y-0.5">
+                  <p className="font-display font-black text-sm text-[#00A88B]">{signatory}</p>
+                  <p className="text-xs font-semibold text-slate-700">{signatoryRole}</p>
+                  <p className="text-xs text-slate-500">Trade Nexus</p>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Bottom Navy Bar with Contact Links (Matching Image 4) */}
+            <div className="bg-[#06152B] text-white px-6 py-3.5 border-t-2 border-[#00A88B] flex flex-wrap items-center justify-between text-[11px] gap-2 font-medium">
+              <span className="flex items-center gap-1.5 text-slate-200">
+                <Phone className="w-3.5 h-3.5 text-[#00C9A7]" />
+                +91 98765 43210
+              </span>
+              <span className="hidden sm:inline text-slate-600">|</span>
+              <span className="flex items-center gap-1.5 text-slate-200">
+                <Mail className="w-3.5 h-3.5 text-[#00C9A7]" />
+                info@tradenexus.com
+              </span>
+              <span className="hidden sm:inline text-slate-600">|</span>
+              <span className="flex items-center gap-1.5 text-slate-200">
+                <Globe className="w-3.5 h-3.5 text-[#00C9A7]" />
+                www.tradenexus.com
+              </span>
             </div>
 
           </div>
 
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+        {/* Modal Footer Controls */}
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
           <button
             type="button"
             onClick={() => setIsOfferLetterModalOpen(false)}
-            className="px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-100 transition-colors text-xs"
+            className="px-4 py-2 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-100 text-xs"
           >
             Close
           </button>
-          
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 transition-colors text-xs"
-            >
-              <Printer className="w-3.5 h-3.5" /> Print
-            </button>
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold shadow-md transition-all text-xs"
-            >
-              <Download className="w-3.5 h-3.5" /> Download PDF
-            </button>
-          </div>
+
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs shadow-sm hover:brightness-105 flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            <span>Download &amp; Dispatch PDF</span>
+          </button>
         </div>
 
       </div>

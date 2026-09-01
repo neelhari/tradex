@@ -68,6 +68,18 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
   const [dateOfJoining, setDateOfJoining] = useState('2025-06-01');
   const [salaryDate, setSalaryDate] = useState('1st of every month');
 
+  // 9. Login Credentials & Success Modal State
+  const [password, setPassword] = useState(`TNX@${Math.floor(1000 + Math.random() * 9000)}`);
+  const [showPassword, setShowPassword] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    empCode: string;
+    position: string;
+  } | null>(null);
+
   useListDefault(teamGroup, setTeamGroup, teamGroups, (g) => g.name);
 
   // The reporting leader is never typed — it is whoever leads the chosen team.
@@ -110,6 +122,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
     if (!firstName.trim()) return;
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    const finalEmail = emailAddress.trim() || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@tradenexus.io`;
     const basic = Math.round(salary * 0.5);
     const hra = Math.round(salary * 0.3);
     const allowance = salary - (basic + hra);
@@ -118,7 +131,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       name: fullName,
-      email: emailAddress.trim() || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@tradenexus.io`,
+      email: finalEmail,
       phone: mobileNumber.trim() || '+91 98450 12345',
       role,
       roleTitle: position,
@@ -141,8 +154,73 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
       salaryDate,
     });
 
-    onClose();
+    setCreatedCredentials({
+      name: fullName,
+      email: finalEmail,
+      password,
+      role,
+      empCode: employeeId,
+      position,
+    });
   };
+
+  // If credentials just generated, render the Dispatch Card
+  if (createdCredentials) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95">
+          <div className="bg-[#0A192F] px-6 py-5 text-white text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 mx-auto flex items-center justify-center">
+              <CheckCircle2 className="w-7 h-7" />
+            </div>
+            <h3 className="font-display font-black text-lg text-white">Employee Onboarded!</h3>
+            <p className="text-xs text-slate-300">Login credentials generated &amp; welcome email dispatched</p>
+          </div>
+
+          <div className="p-6 space-y-4 text-xs">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 font-mono">
+              <div>
+                <span className="text-[10px] text-slate-400 font-sans uppercase font-bold block">Employee Name</span>
+                <span className="font-sans font-bold text-sm text-[#0A2540]">{createdCredentials.name}</span>
+                <span className="text-[11px] text-slate-500 font-sans block">{createdCredentials.position} ({createdCredentials.empCode})</span>
+              </div>
+
+              <div className="border-t border-slate-200 pt-2.5 space-y-1">
+                <span className="text-[10px] text-slate-400 font-sans uppercase font-bold block">Assigned Portal Role</span>
+                <span className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 font-bold font-sans text-xs inline-block border border-teal-200 uppercase">
+                  {createdCredentials.role.replace('_', ' ')}
+                </span>
+              </div>
+
+              <div className="border-t border-slate-200 pt-2.5 space-y-1">
+                <span className="text-[10px] text-slate-400 font-sans uppercase font-bold block">Login Email</span>
+                <span className="text-slate-800 font-bold block bg-white px-2.5 py-1.5 rounded-xl border border-slate-200">{createdCredentials.email}</span>
+              </div>
+
+              <div className="border-t border-slate-200 pt-2.5 space-y-1">
+                <span className="text-[10px] text-slate-400 font-sans uppercase font-bold block">Initial Password</span>
+                <span className="text-emerald-700 font-bold block bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200">{createdCredentials.password}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+              ✓ An automated welcome email containing these credentials and a direct portal access link has been dispatched to <strong>{createdCredentials.email}</strong>.
+            </p>
+
+            <button
+              onClick={() => {
+                setCreatedCredentials(null);
+                onClose();
+              }}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs shadow-md hover:brightness-105 transition-all"
+            >
+              Done / Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
@@ -236,6 +314,43 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Login Password Field */}
+            <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-200 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-[11px] font-bold text-[#0A2540]">
+                  INITIAL LOGIN PASSWORD *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setPassword(`TNX@${Math.floor(1000 + Math.random() * 9000)}`)}
+                  className="text-[10px] font-bold text-[#00A88B] hover:underline flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>🎲 Generate Password</span>
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Set initial password (e.g. TNX@8492)"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2 text-[10px] font-bold text-slate-400 hover:text-slate-700"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500">
+                Employee can log in immediately with their email and this password, or use "Forgot Password" on the login screen.
+              </p>
             </div>
 
             {/* Address */}

@@ -1,100 +1,281 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Download, ShieldCheck, QrCode, TrendingUp } from 'lucide-react';
+import { 
+  X, 
+  Download, 
+  Printer, 
+  Upload, 
+  TrendingUp, 
+  MapPin, 
+  Mail, 
+  Globe, 
+  Phone, 
+  UserCheck,
+  Sparkles
+} from 'lucide-react';
+import { TeamMember } from '../../types';
 
 export const DigitalIdCardModal: React.FC = () => {
-  const { isIdCardModalOpen, setIsIdCardModalOpen, profile, triggerToast } = useApp();
+  const { 
+    isIdCardModalOpen, 
+    setIsIdCardModalOpen, 
+    profile, 
+    teamMembers, 
+    triggerToast 
+  } = useApp();
+
+  const [selectedEmpId, setSelectedEmpId] = useState<string>(profile.id || 'emp-101');
+  const [customPhotoUrl, setCustomPhotoUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isIdCardModalOpen) return null;
 
+  // Selected Employee or current user profile
+  const matchedEmp = teamMembers.find(m => m.id === selectedEmpId);
+  const empName = matchedEmp?.name || profile.name || 'Arjun Kumar';
+  const empRole = (matchedEmp?.role || profile.roleTitle || 'Sales Executive').toUpperCase();
+  const empCode = matchedEmp?.empCode || profile.empCode || '001';
+  const bloodGroup = (matchedEmp as any)?.bloodGroup || profile.bloodGroup || 'O+ ve';
+  const dob = (matchedEmp as any)?.dob || '05/11/1997';
+  const cellNumber = matchedEmp?.phone || profile.phone || '+91 98450 12345';
+  const initials = empName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        setCustomPhotoUrl(uploadEvent.target?.result as string);
+        triggerToast(`✓ Photo updated for ${empName}'s ID card`);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+    triggerToast('✓ Opening print dialogue for ID Card...');
+  };
+
   const handleDownload = () => {
-    triggerToast('✓ Trade Nexus ID Card PDF downloaded!');
+    triggerToast(`✓ Official Digital ID Card for ${empName} ready to print/save`);
+    window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-150">
-      <div className="w-full sm:max-w-xs bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-5 shadow-2xl border border-slate-200 animate-in slide-in-from-bottom duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col max-h-[94vh]">
         
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-3">
-          <h3 className="font-display font-bold text-sm text-[#0A2540]">Digital Employee ID Card</h3>
-          <button
+        {/* Top Header */}
+        <div className="bg-[#0A192F] px-5 py-3.5 text-white flex items-center justify-between border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00C9A7] animate-pulse" />
+            <h3 className="font-display font-bold text-sm text-white">Official Identity Card Studio</h3>
+          </div>
+
+          <button 
             onClick={() => setIsIdCardModalOpen(false)}
-            className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
+            className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Realistic Physical ID Card Mockup */}
-        <div className="bg-gradient-to-b from-[#0A2540] via-[#0F3258] to-[#0A2540] rounded-2xl p-4 text-white shadow-lg relative overflow-hidden border border-[#00C9A7]/30">
+        {/* Employee Switcher & Photo Upload Controls */}
+        <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 text-xs">
+          <div className="flex-1">
+            <select
+              value={selectedEmpId}
+              onChange={(e) => {
+                setSelectedEmpId(e.target.value);
+                setCustomPhotoUrl(null);
+              }}
+              className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 font-bold text-[#0A2540] text-xs focus:outline-none focus:border-[#00C9A7]"
+            >
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>{m.name} ({m.empCode} • {m.group || 'Sales'})</option>
+              ))}
+            </select>
+          </div>
+
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handlePhotoUpload} 
+            accept="image/*" 
+            className="hidden" 
+          />
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-[#00C9A7] text-slate-700 font-bold flex items-center gap-1.5 shadow-2xs transition-all flex-shrink-0"
+          >
+            <Upload className="w-3.5 h-3.5 text-[#00A88B]" />
+            <span>Upload Photo</span>
+          </button>
+        </div>
+
+        {/* Vertical Printable ID Card (Exact Image 1 Pixel-Perfect Template) */}
+        <div className="p-4 sm:p-6 overflow-y-auto bg-slate-100 flex justify-center items-center">
           
-          {/* Lanyard Hole Mockup */}
-          <div className="w-10 h-2 bg-black/40 rounded-full mx-auto mb-3 border border-white/20" />
-
-          {/* Top Brand */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-full bg-[#00C9A7] flex items-center justify-center text-[#0A2540]">
-                <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
-              </div>
-              <span className="font-display font-black text-xs tracking-wider text-white">TRADE NEXUS</span>
-            </div>
-            <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[#00C9A7]/20 text-[#38E1B7] border border-[#00C9A7]/30">
-              OFFICIAL ID
-            </span>
-          </div>
-
-          {/* Photo & Identity */}
-          <div className="flex flex-col items-center text-center my-2">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#00C9A7] to-[#00B4D8] p-0.5 shadow-md shadow-[#00C9A7]/30 mb-1.5">
-              <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center text-[#0A2540] font-black text-xl">
-                {profile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+          <div 
+            id="digital-id-card-sheet"
+            className="w-[320px] bg-[#06172E] text-white rounded-[28px] overflow-hidden shadow-2xl relative border-2 border-[#00C9A7]/40 flex flex-col justify-between"
+            style={{ minHeight: '530px' }}
+          >
+            
+            {/* Lanyard Clip Slot */}
+            <div className="pt-3 flex justify-center">
+              <div className="w-16 h-3 bg-white/20 rounded-full border border-white/40 shadow-inner flex items-center justify-center">
+                <div className="w-12 h-1.5 bg-[#06172E] rounded-full" />
               </div>
             </div>
-            <h4 className="font-display font-extrabold text-sm text-white">{profile.name}</h4>
-            <p className="text-[11px] font-semibold text-[#38E1B7]">{profile.roleTitle}</p>
-            <span className="text-[9px] text-slate-300 font-mono mt-0.5">ID: {profile.empCode}</span>
+
+            {/* Top Brand Logo & Header */}
+            <div className="pt-2 pb-1 text-center flex flex-col items-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#00C9A7] to-[#0A2540] p-0.5 shadow-lg shadow-[#00C9A7]/40 mb-1.5 flex items-center justify-center">
+                <div className="w-full h-full rounded-full bg-[#06172E] flex items-center justify-center text-[#00C9A7]">
+                  <TrendingUp className="w-6 h-6 stroke-[2.5]" />
+                </div>
+              </div>
+
+              <h2 className="font-display font-black text-lg text-white tracking-widest leading-none">
+                TRADE NEXUS
+              </h2>
+              
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="h-px w-4 bg-[#00C9A7]" />
+                <span className="text-[8px] font-extrabold tracking-[0.25em] text-[#00C9A7]">
+                  TRADE SMART
+                </span>
+                <span className="h-px w-4 bg-[#00C9A7]" />
+              </div>
+            </div>
+
+            {/* Circular Photo with Glowing Cyan Concentric Border */}
+            <div className="flex justify-center my-2">
+              <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-[#00C9A7] via-[#38E1B7] to-[#0A2540] shadow-xl shadow-[#00C9A7]/30">
+                <div className="w-full h-full rounded-full overflow-hidden bg-slate-800 flex items-center justify-center border-2 border-[#06172E]">
+                  {customPhotoUrl ? (
+                    <img src={customPhotoUrl} alt={empName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-b from-slate-700 to-slate-900 flex items-center justify-center text-[#00C9A7] font-display font-black text-2xl">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Employee Name & Designation */}
+            <div className="text-center px-4 space-y-0.5">
+              <h3 className="font-display font-black text-base text-white tracking-wider uppercase">
+                {empName}
+              </h3>
+              <p className="text-[10px] font-extrabold tracking-widest text-[#00C9A7] uppercase">
+                {empRole}
+              </p>
+              <div className="w-8 h-0.5 bg-[#00C9A7] mx-auto rounded-full" />
+            </div>
+
+            {/* Clean Key Details Matrix */}
+            <div className="px-6 py-2 text-xs font-medium space-y-1 text-slate-200">
+              <div className="grid grid-cols-12 gap-1">
+                <span className="col-span-5 text-slate-300 font-semibold">Emp. ID</span>
+                <span className="col-span-1 text-slate-400">:</span>
+                <span className="col-span-6 font-mono font-bold text-white">{empCode}</span>
+              </div>
+              <div className="grid grid-cols-12 gap-1">
+                <span className="col-span-5 text-slate-300 font-semibold">Blood Group</span>
+                <span className="col-span-1 text-slate-400">:</span>
+                <span className="col-span-6 font-mono font-bold text-white">{bloodGroup}</span>
+              </div>
+              <div className="grid grid-cols-12 gap-1">
+                <span className="col-span-5 text-slate-300 font-semibold">D.O.B.</span>
+                <span className="col-span-1 text-slate-400">:</span>
+                <span className="col-span-6 font-mono font-bold text-white">{dob}</span>
+              </div>
+              <div className="grid grid-cols-12 gap-1">
+                <span className="col-span-5 text-slate-300 font-semibold">Cell</span>
+                <span className="col-span-1 text-slate-400">:</span>
+                <span className="col-span-6 font-mono font-bold text-white truncate">{cellNumber}</span>
+              </div>
+            </div>
+
+            {/* Bottom Curved Wave with Corporate Details (Exact Image 1) */}
+            <div className="relative bg-white text-[#0A2540] px-5 py-4 rounded-t-[36px] mt-2 border-t-4 border-[#00C9A7] shadow-lg">
+              
+              {/* Watermark in bottom right */}
+              <div className="absolute right-2 bottom-2 opacity-10 pointer-events-none">
+                <TrendingUp className="w-20 h-20 text-[#00C9A7]" />
+              </div>
+
+              <div className="space-y-1.5 text-[9px] relative z-10 font-semibold text-slate-700">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-[#0A2540] text-[#00C9A7] flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-3 h-3" />
+                  </div>
+                  <span className="truncate">123 Business Avenue, Financial District, 500001</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-[#0A2540] text-[#00C9A7] flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-3 h-3" />
+                  </div>
+                  <span className="truncate">info@tradenexus.com</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-[#0A2540] text-[#00C9A7] flex items-center justify-center flex-shrink-0">
+                    <Globe className="w-3 h-3" />
+                  </div>
+                  <span className="truncate">www.tradenexus.com</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-[#0A2540] text-[#00C9A7] flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-3 h-3" />
+                  </div>
+                  <span className="truncate">+91 98765 43210</span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          {/* Details Table */}
-          <div className="grid grid-cols-2 gap-1.5 text-[9px] bg-black/30 p-2.5 rounded-xl border border-white/10 my-2 font-mono">
-            <div>
-              <span className="text-slate-400 block">Department:</span>
-              <span className="text-white font-bold truncate block">{profile.department}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block">Team:</span>
-              <span className="text-white font-bold truncate block">{profile.teamName}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block">Blood Group:</span>
-              <span className="text-white font-bold">{profile.bloodGroup}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block">Joined Date:</span>
-              <span className="text-white font-bold truncate block">{profile.joinDate}</span>
-            </div>
-          </div>
+        </div>
 
-          {/* Bottom QR Code verification */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[9px] text-slate-300">
-            <div className="flex items-center gap-1 text-[#38E1B7] font-bold">
-              <ShieldCheck className="w-3 h-3" />
-              <span>HR Verified Active</span>
-            </div>
-            <QrCode className="w-5 h-5 text-white" />
+        {/* Modal Footer */}
+        <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setIsIdCardModalOpen(false)}
+            className="px-3.5 py-2 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-100 text-xs"
+          >
+            Close
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 text-xs flex items-center gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs shadow-sm hover:brightness-105 flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download PDF</span>
+            </button>
           </div>
         </div>
 
-        {/* Download Button - Compact & Mobile Scaled */}
-        <button
-          onClick={handleDownload}
-          className="w-full mt-3 py-2.5 rounded-xl bg-[#00C29F] hover:bg-[#00B4D8] text-white font-bold text-xs shadow-xs active:scale-98 transition-all flex items-center justify-center gap-1.5"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Download Print-Ready ID (PDF)</span>
-        </button>
       </div>
     </div>
   );
