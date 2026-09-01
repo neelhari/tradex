@@ -150,6 +150,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ isOpen, onCl
       bankAccountNumber: bankAccountNumber.trim() || '50100482910482',
       bankIfscCode: bankIfscCode.trim() || 'HDFC0001234',
       empCode: employeeId,
+      password,
       joiningDate: dateOfJoining,
       salaryDate,
     });

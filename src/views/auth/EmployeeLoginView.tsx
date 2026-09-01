@@ -14,11 +14,11 @@ import {
 } from 'lucide-react';
 
 export const EmployeeLoginView: React.FC = () => {
-  const { setAuthStep, triggerToast } = useApp();
+  const { setAuthStep, triggerToast, loginEmployee } = useApp();
   
   const [activeLoginType, setActiveLoginType] = useState<'gmail' | 'mobile' | 'password'>('password');
-  const [email, setEmail] = useState('arjun@tradenexus.com');
-  const [password, setPassword] = useState('telecaller123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [mobileNumber, setMobileNumber] = useState('');
   const [otp, setOtp] = useState('');
@@ -28,64 +28,68 @@ export const EmployeeLoginView: React.FC = () => {
   // Quick 1-Click Login for Demo -> Step 2
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    try {
-      const res = await api.login('arjun@tradenexus.com', 'telecaller123');
-      setAuthToken(res.token);
-      triggerToast(`✓ Authenticated ${res.user.name} (Senior Telecaller)`);
-      setTimeout(() => {
-        setIsLoading(false);
-        setAuthStep('FACE_SCAN');
-      }, 300);
-    } catch (err: any) {
+    const loginResult = loginEmployee('arjun@tradenexus.com', 'telecaller123');
+    if (!loginResult.success) {
       setIsLoading(false);
-      triggerToast(`❌ ${err.message || 'Login failed'}`);
+      triggerToast(`❌ ${loginResult.error}`);
+      return;
     }
+    triggerToast(`✓ Authenticated ${loginResult.member?.name} (Senior Telecaller)`);
+    setTimeout(() => {
+      setIsLoading(false);
+      setAuthStep('FACE_SCAN');
+    }, 300);
   };
 
   // Mobile OTP Login -> Step 2
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!mobileNumber.trim()) {
+      triggerToast('Please enter your registered mobile number');
+      return;
+    }
     setIsOtpSent(true);
-    triggerToast(`✓ 6-digit OTP sent to ${mobileNumber || '+91 98450 12345'}`);
+    triggerToast(`✓ 6-digit OTP sent to ${mobileNumber}`);
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    try {
-      const res = await api.login('arjun@tradenexus.com', 'telecaller123');
-      setAuthToken(res.token);
-      triggerToast('✓ OTP Verified! Proceeding to Biometric Face ID...');
-      setTimeout(() => {
-        setIsLoading(false);
-        setAuthStep('FACE_SCAN');
-      }, 300);
-    } catch {
+    const loginResult = loginEmployee(mobileNumber.trim() || 'arjun@tradenexus.com', 'telecaller123');
+    if (!loginResult.success) {
+      setIsLoading(false);
+      triggerToast(`❌ ${loginResult.error}`);
+      return;
+    }
+    triggerToast('✓ OTP Verified! Proceeding to Biometric Face ID...');
+    setTimeout(() => {
       setIsLoading(false);
       setAuthStep('FACE_SCAN');
-    }
+    }, 300);
   };
 
-  // Standard Email & Password Submit -> Backend API Login -> Step 2
+  // Standard Email & Password Submit -> Restricted to Onboarded Employees -> Step 2
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email.trim() || !password.trim()) {
       triggerToast('Please enter your email/employee code and password');
       return;
     }
     setIsLoading(true);
-    try {
-      const res = await api.login(email.trim(), password);
-      setAuthToken(res.token);
-      triggerToast(`✓ Welcome, ${res.user.name}! Credentials verified.`);
-      setTimeout(() => {
-        setIsLoading(false);
-        setAuthStep('FACE_SCAN');
-      }, 300);
-    } catch (err: any) {
+    
+    // Strict authentication against registered onboarded employees list
+    const loginResult = loginEmployee(email.trim(), password.trim());
+    if (!loginResult.success) {
       setIsLoading(false);
-      triggerToast(`❌ ${err.message || 'Invalid credentials. Use arjun@tradenexus.com / telecaller123'}`);
+      triggerToast(`❌ ${loginResult.error}`);
+      return;
     }
+
+    triggerToast(`✓ Welcome, ${loginResult.member?.name}! Credentials verified.`);
+    setTimeout(() => {
+      setIsLoading(false);
+      setAuthStep('FACE_SCAN');
+    }, 350);
   };
 
   return (

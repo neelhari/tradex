@@ -136,6 +136,7 @@ export interface TeamMember {
   email?: string;
   /** Which of the four portals this person may enter. */
   portal?: UserRole;
+  password?: string;
   active?: number;
   deactivatedOn?: string;
 }
@@ -300,6 +301,7 @@ export interface NewEmployeeInput {
   bankAccountNumber: string;
   bankIfscCode: string;
   empCode: string;
+  password?: string;
   joiningDate: string;
   salaryDate: string;
 }

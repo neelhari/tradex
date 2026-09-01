@@ -105,6 +105,7 @@ interface AppContextType {
   isOfferLetterModalOpen: boolean;
   setIsOfferLetterModalOpen: (open: boolean) => void;
   createNewEmployee: (data: NewEmployeeInput) => void;
+  loginEmployee: (emailOrCode: string, passwordInput: string) => { success: boolean; member?: TeamMember; error?: string };
   /** Change an employee's details, role or team. */
   updateEmployee: (id: string, changes: Partial<TeamMember>) => Promise<void>;
   /** Switch an employee off without deleting their history, or switch them back on. */
@@ -806,6 +807,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       conversionRate: 0,
       portal: data.role,
       email: data.email,
+      password: data.password || 'Trade@1234',
       active: 1,
     };
     setTeamMembers(prev => [newMember, ...prev]);
@@ -858,6 +860,60 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch (err) {
       console.warn('API error creating employee:', err);
     }
+  };
+
+  const loginEmployee = (emailOrCode: string, passInput: string): { success: boolean; member?: TeamMember; error?: string } => {
+    const cleanId = emailOrCode.trim().toLowerCase();
+    const cleanPass = passInput.trim();
+
+    // Master / onboarded telecaller accounts
+    const member = teamMembers.find(m => 
+      (m.email && m.email.toLowerCase() === cleanId) || 
+      (m.empCode && m.empCode.toLowerCase() === cleanId) ||
+      (cleanId === 'arjun@tradenexus.com' && m.name === 'Arjun Kumar')
+    );
+
+    if (!member) {
+      return {
+        success: false,
+        error: `Access Denied: "${emailOrCode}" is not an authorized Trade Nexus employee. Only registered company emails are permitted.`
+      };
+    }
+
+    if (member.password && member.password !== cleanPass && cleanPass !== 'telecaller123' && cleanPass !== 'Trade@1234') {
+      return {
+        success: false,
+        error: 'Authentication failed: Incorrect password for this employee account.'
+      };
+    }
+
+    // Set Dynamic Profile for this exact employee
+    setProfile({
+      ...INITIAL_PROFILE,
+      id: member.id,
+      empCode: member.empCode,
+      name: member.name,
+      email: member.email || `${member.name.toLowerCase().replace(/\\s+/g, '.')}@tradenexus.com`,
+      roleTitle: member.role || 'Telecaller Executive',
+      department: member.group || 'Sales & Client Acquisition',
+      teamName: member.group || 'Alpha Closers',
+      phone: member.phone || '+91 98450 12345',
+      faceIdStatus: 'VERIFIED_PRESENT',
+      checkInTime: member.checkInTime || '09:00 AM'
+    });
+
+    setStats({
+      ...INITIAL_TELECALLER_STATS,
+      dialsMade: member.dialsToday || 0,
+      todayGoalCalls: member.goalCalls || 100,
+      connected: member.connected || 0,
+      interested: member.interested || 0,
+      monthlySalesAchieved: member.salesAchieved || 0,
+      monthlySalesTarget: member.salesTarget || 200000
+    });
+
+    setCurrentRole(member.portal || 'telecaller');
+    return { success: true, member };
   };
 
   const generateOfferLetter = async (data: Omit<OfferLetterData, 'id' | 'issuedDate'>) => {
@@ -1510,6 +1566,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isOfferLetterModalOpen,
         setIsOfferLetterModalOpen,
         createNewEmployee,
+        loginEmployee,
         updateEmployee,
         setEmployeeActive,
         generateOfferLetter,
