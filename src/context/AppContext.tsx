@@ -255,9 +255,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [deviceMode, setDeviceMode] = useState<'mobile' | 'desktop'>('desktop');
   const [authStep, setAuthStep] = useState<AuthStep>(() => {
     try {
-      return (localStorage.getItem('tnx_authStep') as AuthStep) || 'AUTHENTICATED';
+      return (localStorage.getItem('tnx_authStep') as AuthStep) || 'LOGIN';
     } catch {
-      return 'AUTHENTICATED';
+      return 'LOGIN';
     }
   });
 

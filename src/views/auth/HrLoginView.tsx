@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export const HrLoginView: React.FC = () => {
-  const { setAuthStep, triggerToast } = useApp();
+  const { setAuthStep, triggerToast, currentRole, setCurrentRole } = useApp();
   
   const [activeLoginType, setActiveLoginType] = useState<'gmail' | 'mobile' | 'password'>('gmail');
   const [email, setEmail] = useState('');
@@ -96,6 +96,34 @@ export const HrLoginView: React.FC = () => {
             <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />
             <span>HR PORTAL</span>
           </div>
+        </div>
+
+        {/* Portal Switcher Tabs */}
+        <div className="flex items-center justify-between bg-black/40 p-1 rounded-2xl border border-white/10 mt-4 text-[11px] font-bold relative z-10">
+          <button
+            onClick={() => setCurrentRole('telecaller')}
+            className={`flex-1 py-1.5 rounded-xl transition-all ${currentRole === 'telecaller' ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-300 hover:text-white'}`}
+          >
+            Caller
+          </button>
+          <button
+            onClick={() => setCurrentRole('team_leader')}
+            className={`flex-1 py-1.5 rounded-xl transition-all ${currentRole === 'team_leader' ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-300 hover:text-white'}`}
+          >
+            TL
+          </button>
+          <button
+            onClick={() => setCurrentRole('hr')}
+            className={`flex-1 py-1.5 rounded-xl transition-all ${currentRole === 'hr' ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-300 hover:text-white'}`}
+          >
+            HR
+          </button>
+          <button
+            onClick={() => setCurrentRole('admin')}
+            className={`flex-1 py-1.5 rounded-xl transition-all ${currentRole === 'admin' ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-300 hover:text-white'}`}
+          >
+            Admin
+          </button>
         </div>
       </div>
 
