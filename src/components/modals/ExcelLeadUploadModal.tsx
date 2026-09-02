@@ -7,24 +7,8 @@ import {
   FileSpreadsheet, 
   Users, 
   CheckCircle2, 
-  AlertCircle,
-  Sparkles,
-  Download,
-  Zap
+  AlertCircle
 } from 'lucide-react';
-
-const SAMPLE_LEADS = [
-  { name: 'Vikram Malhotra', phone: '+91 98201 11223', company: 'Malhotra Capital', city: 'Mumbai', email: 'vikram.m@malhotracap.com' },
-  { name: 'Ananya Deshmukh', phone: '+91 98450 33445', company: 'Deshmukh FinTech', city: 'Bengaluru', email: 'ananya@deshmukhft.in' },
-  { name: 'Rajesh Singhania', phone: '+91 98110 55667', company: 'Singhania Enterprises', city: 'Delhi NCR', email: 'rajesh@singhaniagroup.com' },
-  { name: 'Meera Iyer', phone: '+91 98840 77889', company: 'Iyer Wealth Advisors', city: 'Chennai', email: 'meera.iyer@iyerwealth.com' },
-  { name: 'Karan Oberoi', phone: '+91 98300 99001', company: 'Oberoi Equities', city: 'Kolkata', email: 'karan.oberoi@oberoiequities.com' },
-  { name: 'Sunita Agarwal', phone: '+91 97120 22334', company: 'Agarwal Trading Hub', city: 'Ahmedabad', email: 'sunita@agarwalhub.com' },
-  { name: 'Rohan Mehra', phone: '+91 99001 44556', company: 'Mehra Tech Solutions', city: 'Pune', email: 'rohan@mehratech.io' },
-  { name: 'Deepak Verma', phone: '+91 94150 66778', company: 'Verma Global Logistics', city: 'Hyderabad', email: 'deepak.v@vermalogistics.com' },
-  { name: 'Pooja Hegde', phone: '+91 98230 88990', company: 'Hegde Retail Ventures', city: 'Jaipur', email: 'pooja@hegderetail.com' },
-  { name: 'Sameer Kulkarni', phone: '+91 97690 12345', company: 'Kulkarni Agro Exports', city: 'Nagpur', email: 'sameer@kulkarniagro.in' },
-];
 
 export const ExcelLeadUploadModal: React.FC = () => {
   const { 
@@ -43,36 +27,12 @@ export const ExcelLeadUploadModal: React.FC = () => {
   const [pastedData, setPastedData] = useState('');
   const [parseError, setParseError] = useState<string | null>(null);
 
-  // Populated only from a file the user picks, rows they paste, or 1-click sample button
+  // Populated only from a file the user picks or rows they paste
   const [parsedLeads, setParsedLeads] = useState<Array<{ name: string; phone: string; company: string; city: string; email: string }>>([]);
 
   useListDefault(selectedEmployeeId, setSelectedEmployeeId, telecallers, (m) => m.id);
 
   if (!isExcelUploadModalOpen) return null;
-
-  // 1-Click Browser Download for Sample CSV
-  const handleDownloadSampleCSV = () => {
-    const csvHeader = 'Name,Phone,Company,City,Email\n';
-    const csvRows = SAMPLE_LEADS.map(l => `"${l.name}","${l.phone}","${l.company}","${l.city}","${l.email}"`).join('\n');
-    const blob = new Blob([csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'Sample_10_Leads.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    triggerToast('✓ Downloaded Sample_10_Leads.csv to your downloads!');
-  };
-
-  // 1-Click Auto-Fill 10 Leads for Quick Testing
-  const handleAutoFillSampleLeads = () => {
-    setParsedLeads(SAMPLE_LEADS);
-    setFileName('Sample_10_Leads.csv');
-    setParseError(null);
-    triggerToast('✓ Loaded 10 verified sample leads ready to allocate!');
-  };
 
   // Rows are name, phone, company, city, email — separated by comma, tab or pipe.
   const parseRows = (text: string) => {
@@ -87,7 +47,6 @@ export const ExcelLeadUploadModal: React.FC = () => {
 
     return rows
       .map((line) => {
-        // Handle CSV quotes
         const cleaned = line.replace(/^"|"$/g, '');
         const parts = cleaned.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)|\t|\|/).map((p) => p.trim().replace(/^"|"$/g, ''));
         const [name, phone, company, city, email] = parts;
@@ -116,7 +75,7 @@ export const ExcelLeadUploadModal: React.FC = () => {
       if (!rows.length) {
         setParseError('No usable rows found. Expected format: Name, Phone, Company, City, Email');
       } else {
-        triggerToast(`✓ Parsed ${rows.length} leads from ${file.name}`);
+        triggerToast(`✓ Loaded ${rows.length} leads from ${file.name}`);
       }
     };
     reader.onerror = () => setParseError('Could not read that file.');
@@ -177,35 +136,6 @@ export const ExcelLeadUploadModal: React.FC = () => {
         {/* Modal Body */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-slate-800 text-xs sm:text-sm">
           
-          {/* Quick Helper Actions: Download Sample CSV & 1-Click Load */}
-          <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/80 rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#00A88B] flex-shrink-0" />
-              <div>
-                <strong className="text-xs font-bold text-[#0A2540] block">Testing with Leads?</strong>
-                <span className="text-[11px] text-slate-600">Download the CSV or 1-click auto fill 10 leads</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={handleDownloadSampleCSV}
-                className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white border border-teal-300 text-teal-800 font-bold text-xs hover:bg-teal-50 shadow-2xs flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <Download className="w-3.5 h-3.5 text-[#00A88B]" />
-                <span>Download .CSV</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleAutoFillSampleLeads}
-                className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs shadow-xs hover:brightness-105 flex items-center justify-center gap-1.5 transition-all"
-              >
-                <Zap className="w-3.5 h-3.5 fill-[#0A2540]" />
-                <span>1-Click Fill 10 Leads</span>
-              </button>
-            </div>
-          </div>
-
           {/* Step 1: Target Telecaller Selection */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
@@ -250,7 +180,7 @@ export const ExcelLeadUploadModal: React.FC = () => {
               <p className="text-xs font-bold text-slate-700 group-hover:text-teal-700">
                 Click to browse or drop .csv file
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Supports: Name, Phone, Company, City, Email</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Supports standard lead columns: Name, Phone, Company, City, Email</p>
             </label>
 
             {/* Quick Paste Area */}
@@ -310,7 +240,7 @@ export const ExcelLeadUploadModal: React.FC = () => {
               </div>
             ) : (
               <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs">
-                No leads loaded yet. Click <strong>"1-Click Fill 10 Leads"</strong> above or upload a CSV.
+                No file chosen yet. Click the box above and select your <strong>.csv</strong> file.
               </div>
             )}
           </div>
