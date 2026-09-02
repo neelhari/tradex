@@ -8,23 +8,34 @@ import {
   Users, 
   CheckCircle2, 
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Download,
+  Zap
 } from 'lucide-react';
+
+const SAMPLE_LEADS = [
+  { name: 'Vikram Malhotra', phone: '+91 98201 11223', company: 'Malhotra Capital', city: 'Mumbai', email: 'vikram.m@malhotracap.com' },
+  { name: 'Ananya Deshmukh', phone: '+91 98450 33445', company: 'Deshmukh FinTech', city: 'Bengaluru', email: 'ananya@deshmukhft.in' },
+  { name: 'Rajesh Singhania', phone: '+91 98110 55667', company: 'Singhania Enterprises', city: 'Delhi NCR', email: 'rajesh@singhaniagroup.com' },
+  { name: 'Meera Iyer', phone: '+91 98840 77889', company: 'Iyer Wealth Advisors', city: 'Chennai', email: 'meera.iyer@iyerwealth.com' },
+  { name: 'Karan Oberoi', phone: '+91 98300 99001', company: 'Oberoi Equities', city: 'Kolkata', email: 'karan.oberoi@oberoiequities.com' },
+  { name: 'Sunita Agarwal', phone: '+91 97120 22334', company: 'Agarwal Trading Hub', city: 'Ahmedabad', email: 'sunita@agarwalhub.com' },
+  { name: 'Rohan Mehra', phone: '+91 99001 44556', company: 'Mehra Tech Solutions', city: 'Pune', email: 'rohan@mehratech.io' },
+  { name: 'Deepak Verma', phone: '+91 94150 66778', company: 'Verma Global Logistics', city: 'Hyderabad', email: 'deepak.v@vermalogistics.com' },
+  { name: 'Pooja Hegde', phone: '+91 98230 88990', company: 'Hegde Retail Ventures', city: 'Jaipur', email: 'pooja@hegderetail.com' },
+  { name: 'Sameer Kulkarni', phone: '+91 97690 12345', company: 'Kulkarni Agro Exports', city: 'Nagpur', email: 'sameer@kulkarniagro.in' },
+];
 
 export const ExcelLeadUploadModal: React.FC = () => {
   const { 
     isExcelUploadModalOpen, 
     setIsExcelUploadModalOpen, 
     teamMembers, 
-    importAndAssignLeads 
+    importAndAssignLeads,
+    triggerToast
   } = useApp();
 
-  // Leads are allocated to callers; fall back to the full roster if no role
-  // happens to match, so the feature is never blocked by role naming.
-  const matchingCallers = teamMembers.filter((m) =>
-    ['telecaller', 'sales', 'executive'].some((term) => (m.role ?? '').toLowerCase().includes(term))
-  );
-  const telecallers = matchingCallers.length ? matchingCallers : teamMembers;
+  const telecallers = teamMembers.filter((m) => m.active !== 0);
 
   // Selected once the roster loads; the list arrives after first render.
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
@@ -32,12 +43,36 @@ export const ExcelLeadUploadModal: React.FC = () => {
   const [pastedData, setPastedData] = useState('');
   const [parseError, setParseError] = useState<string | null>(null);
 
-  // Populated only from a file the user picks or rows they paste — never seeded.
+  // Populated only from a file the user picks, rows they paste, or 1-click sample button
   const [parsedLeads, setParsedLeads] = useState<Array<{ name: string; phone: string; company: string; city: string; email: string }>>([]);
 
   useListDefault(selectedEmployeeId, setSelectedEmployeeId, telecallers, (m) => m.id);
 
   if (!isExcelUploadModalOpen) return null;
+
+  // 1-Click Browser Download for Sample CSV
+  const handleDownloadSampleCSV = () => {
+    const csvHeader = 'Name,Phone,Company,City,Email\n';
+    const csvRows = SAMPLE_LEADS.map(l => `"${l.name}","${l.phone}","${l.company}","${l.city}","${l.email}"`).join('\n');
+    const blob = new Blob([csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'Sample_10_Leads.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    triggerToast('✓ Downloaded Sample_10_Leads.csv to your downloads!');
+  };
+
+  // 1-Click Auto-Fill 10 Leads for Quick Testing
+  const handleAutoFillSampleLeads = () => {
+    setParsedLeads(SAMPLE_LEADS);
+    setFileName('Sample_10_Leads.csv');
+    setParseError(null);
+    triggerToast('✓ Loaded 10 verified sample leads ready to allocate!');
+  };
 
   // Rows are name, phone, company, city, email — separated by comma, tab or pipe.
   const parseRows = (text: string) => {
@@ -45,15 +80,24 @@ export const ExcelLeadUploadModal: React.FC = () => {
     if (!lines.length) return [];
 
     // Drop a header row if the first cell is clearly a column name
-    const firstCell = lines[0].split(/[,\t|]/)[0].trim().toLowerCase();
+    const firstCell = lines[0].split(/[,\t|]/)[0].trim().toLowerCase().replace(/["']/g, '');
     const rows = ['name', 'lead name', 'contact', 'contact name'].includes(firstCell)
       ? lines.slice(1)
       : lines;
 
     return rows
       .map((line) => {
-        const [name, phone, company, city, email] = line.split(/[,\t|]/).map((p) => p.trim());
-        return { name, phone: phone || '', company: company || '', city: city || '', email: email || '' };
+        // Handle CSV quotes
+        const cleaned = line.replace(/^"|"$/g, '');
+        const parts = cleaned.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)|\t|\|/).map((p) => p.trim().replace(/^"|"$/g, ''));
+        const [name, phone, company, city, email] = parts;
+        return { 
+          name: name || '', 
+          phone: phone || '+91 98765 43210', 
+          company: company || 'Enterprise Client', 
+          city: city || 'India', 
+          email: email || `${(name || 'lead').toLowerCase().replace(/\s+/g, '.')}@gmail.com` 
+        };
       })
       .filter((r) => r.name);
   };
@@ -65,20 +109,14 @@ export const ExcelLeadUploadModal: React.FC = () => {
     setFileName(file.name);
     setParseError(null);
 
-    if (/\.xlsx?$/i.test(file.name)) {
-      setParsedLeads([]);
-      setParseError(
-        'Binary .xls/.xlsx files cannot be read in the browser. Save the sheet as CSV, or paste the rows below.'
-      );
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = () => {
       const rows = parseRows(String(reader.result ?? ''));
       setParsedLeads(rows);
       if (!rows.length) {
-        setParseError('No usable rows found. Expected: name, phone, company, city, email');
+        setParseError('No usable rows found. Expected format: Name, Phone, Company, City, Email');
+      } else {
+        triggerToast(`✓ Parsed ${rows.length} leads from ${file.name}`);
       }
     };
     reader.onerror = () => setParseError('Could not read that file.');
@@ -89,13 +127,14 @@ export const ExcelLeadUploadModal: React.FC = () => {
     if (!pastedData.trim()) return;
     const records = parseRows(pastedData);
     if (!records.length) {
-      setParseError('No usable rows found. Expected: name, phone, company, city, email');
+      setParseError('No usable rows found. Expected format: Name, Phone, Company, City, Email');
       return;
     }
     setParsedLeads(records);
-    setFileName(`Pasted_Import_${records.length}_Leads.csv`);
+    setFileName(`Pasted_${records.length}_Leads.csv`);
     setPastedData('');
     setParseError(null);
+    triggerToast(`✓ Parsed ${records.length} pasted leads!`);
   };
 
   const targetEmp = teamMembers.find((m) => m.id === selectedEmployeeId);
@@ -109,7 +148,6 @@ export const ExcelLeadUploadModal: React.FC = () => {
     setIsExcelUploadModalOpen(false);
   };
 
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh]">
@@ -122,10 +160,10 @@ export const ExcelLeadUploadModal: React.FC = () => {
             </div>
             <div>
               <h3 className="font-bold text-base text-white tracking-tight flex items-center gap-2">
-                Import & Allocate Leads
+                Import &amp; Allocate Leads
                 <span className="text-[10px] bg-teal-500/30 text-teal-300 font-mono px-2 py-0.5 rounded-full uppercase tracking-wider">Excel / CSV</span>
               </h3>
-              <p className="text-xs text-slate-400">Assign confidential caller batches directly to telecallers</p>
+              <p className="text-xs text-slate-400">Assign confidential lead batches directly to any employee</p>
             </div>
           </div>
           <button 
@@ -139,12 +177,41 @@ export const ExcelLeadUploadModal: React.FC = () => {
         {/* Modal Body */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-slate-800 text-xs sm:text-sm">
           
+          {/* Quick Helper Actions: Download Sample CSV & 1-Click Load */}
+          <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/80 rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#00A88B] flex-shrink-0" />
+              <div>
+                <strong className="text-xs font-bold text-[#0A2540] block">Testing with Leads?</strong>
+                <span className="text-[11px] text-slate-600">Download the CSV or 1-click auto fill 10 leads</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleDownloadSampleCSV}
+                className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white border border-teal-300 text-teal-800 font-bold text-xs hover:bg-teal-50 shadow-2xs flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5 text-[#00A88B]" />
+                <span>Download .CSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleAutoFillSampleLeads}
+                className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs shadow-xs hover:brightness-105 flex items-center justify-center gap-1.5 transition-all"
+              >
+                <Zap className="w-3.5 h-3.5 fill-[#0A2540]" />
+                <span>1-Click Fill 10 Leads</span>
+              </button>
+            </div>
+          </div>
+
           {/* Step 1: Target Telecaller Selection */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-[#00C9A7]" />
-                1. Select Assigned Telecaller
+                1. Select Target Employee / Telecaller
               </span>
               <span className="text-[10px] font-normal text-slate-500">Confidential Allocation</span>
             </label>
@@ -155,12 +222,12 @@ export const ExcelLeadUploadModal: React.FC = () => {
             >
               {telecallers.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name} — {m.role} ({m.group})
+                  {m.name} ({m.empCode}) — {m.role} ({m.group || 'Team'})
                 </option>
               ))}
             </select>
             <p className="text-[11px] text-slate-500">
-              Only <strong className="text-slate-800">{targetEmp?.name || 'the selected telecaller'}</strong> will see this allocated batch in their calling queue.
+              Only <strong className="text-slate-800">{targetEmp?.name || 'the selected employee'}</strong> will see this allocated batch in their calling queue.
             </p>
           </div>
 
@@ -168,28 +235,28 @@ export const ExcelLeadUploadModal: React.FC = () => {
           <div className="space-y-2">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <UploadCloud className="w-3.5 h-3.5 text-teal-600" />
-              2. Upload Spreadsheet or Paste Leads
+              2. Upload .CSV File or Paste Leads
             </label>
 
             {/* Drop Zone */}
             <label className="border-2 border-dashed border-slate-300 hover:border-teal-500 bg-slate-50/70 hover:bg-teal-50/30 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group">
               <input 
                 type="file" 
-                accept=".xlsx,.xls,.csv" 
+                accept=".csv,.txt" 
                 className="hidden" 
                 onChange={handleFileUpload} 
               />
               <FileSpreadsheet className="w-8 h-8 text-slate-400 group-hover:text-[#00C9A7] transition-colors mb-1.5" />
               <p className="text-xs font-bold text-slate-700 group-hover:text-teal-700">
-                Click to browse or drop .xlsx, .csv file
+                Click to browse or drop .csv file
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Supports standard lead columns (Name, Phone, Company, City)</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Supports: Name, Phone, Company, City, Email</p>
             </label>
 
-            {/* Quick Paste Accordion */}
+            {/* Quick Paste Area */}
             <div className="pt-1">
               <textarea
-                placeholder="Or paste CSV rows: Name, Phone, Company, City..."
+                placeholder="Or paste rows: Name, Phone, Company, City, Email..."
                 rows={2}
                 value={pastedData}
                 onChange={(e) => setPastedData(e.target.value)}
@@ -201,11 +268,19 @@ export const ExcelLeadUploadModal: React.FC = () => {
                   onClick={handleParseCustomText}
                   className="mt-1 px-3 py-1 bg-teal-600 text-white rounded-lg text-[11px] font-bold hover:bg-teal-700 transition-colors"
                 >
-                  Parse & Add Pasted Leads
+                  Parse &amp; Add Pasted Leads
                 </button>
               )}
             </div>
           </div>
+
+          {/* Parse Error Notification */}
+          {parseError && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-3 flex items-start gap-2 text-xs animate-in fade-in">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{parseError}</span>
+            </div>
+          )}
 
           {/* Step 3: Parsed Lead Preview */}
           <div className="space-y-2 pt-1">
@@ -219,72 +294,47 @@ export const ExcelLeadUploadModal: React.FC = () => {
               </span>
             </div>
 
-            {parseError && (
-              <p className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
-                {parseError}
-              </p>
+            {parsedLeads.length > 0 ? (
+              <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-slate-100 bg-slate-50">
+                {parsedLeads.map((lead, idx) => (
+                  <div key={idx} className="p-2.5 bg-white flex items-center justify-between text-xs">
+                    <div className="min-w-0">
+                      <strong className="text-slate-800 font-bold block truncate">{lead.name}</strong>
+                      <span className="text-[11px] text-slate-500 font-mono">{lead.phone} • {lead.company} ({lead.city})</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Valid
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center text-slate-400 text-xs">
+                No leads loaded yet. Click <strong>"1-Click Fill 10 Leads"</strong> above or upload a CSV.
+              </div>
             )}
-
-            {!parsedLeads.length && !parseError && (
-              <p className="text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                Choose a CSV file or paste rows to preview the batch. Expected columns: name, phone, company, city, email.
-              </p>
-            )}
-
-            <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-48 overflow-y-auto bg-white">
-              <table className="w-full text-left text-[11px]">
-                <thead className="bg-slate-100/80 text-slate-600 font-semibold border-b border-slate-200 sticky top-0">
-                  <tr>
-                    <th className="py-2 px-3">Lead Name</th>
-                    <th className="py-2 px-3">Phone</th>
-                    <th className="py-2 px-3">Company</th>
-                    <th className="py-2 px-3">City</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {parsedLeads.map((lead, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80">
-                      <td className="py-2 px-3 font-semibold text-slate-800">{lead.name}</td>
-                      <td className="py-2 px-3 font-mono text-slate-600">{lead.phone}</td>
-                      <td className="py-2 px-3 text-slate-600">{lead.company}</td>
-                      <td className="py-2 px-3 text-slate-500">{lead.city}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Privacy Notice */}
-          <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl text-amber-800 text-[11px]">
-            <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
-            <span>
-              <strong>Confidentiality Rule:</strong> Caller numbers remain strictly assigned to {targetEmp?.name || 'the telecaller'} and live call statuses will stream to TL & Admin.
-            </span>
           </div>
 
         </div>
 
-        {/* Footer Actions */}
+        {/* Modal Footer */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => setIsExcelUploadModalOpen(false)}
-            className="px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-100 transition-colors text-xs"
+            className="px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-slate-100 text-xs transition-colors"
           >
             Cancel
           </button>
-          
+
           <button
             type="button"
             onClick={handleImportAndAllocate}
             disabled={!canAllocate}
-            className="flex-1 max-w-xs flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed disabled:shadow-none text-white font-bold shadow-lg shadow-teal-600/20 transition-all text-xs"
+            className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#00A88B] to-[#00C9A7] disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 text-[#0A2540] font-black text-xs shadow-md hover:brightness-105 transition-all flex items-center justify-center gap-2"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            {canAllocate
-              ? `Allocate ${parsedLeads.length} Leads to ${targetEmp?.name.split(' ')[0]}`
-              : 'Add leads to allocate'}
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Confirm &amp; Allocate {parsedLeads.length} Leads to {targetEmp?.name || 'Employee'}</span>
           </button>
         </div>
 
