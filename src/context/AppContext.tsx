@@ -261,44 +261,49 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
-  // All domain data comes from the SQLite backend. Lists start empty and are
-  // filled on demand by the resource loader below, so an unreachable API shows
-  // as empty screens rather than silently falling back to mock records.
-  // profile/stats keep their shape as a blank skeleton because the whole UI
-  // reads their fields directly; both are replaced by the API response.
-  const [profile, setProfile] = useState<EmployeeProfile>(INITIAL_PROFILE);
-  const [stats, setStats] = useState<TelecallerStats>(INITIAL_TELECALLER_STATS);
-  const [callLogs, setCallLogs] = useState<CallLogItem[]>(INITIAL_CALL_LOGS);
-  const [clients, setClients] = useState<ClientLead[]>(INITIAL_CLIENT_LEADS);
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE_LOGS);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
-  const [payslips, setPayslips] = useState<PayslipItem[]>(INITIAL_PAYSLIPS);
+  const getStoredState = <T,>(key: string, defaultValue: T): T => {
+    try {
+      const saved = localStorage.getItem(`tnx_${key}`);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return defaultValue;
+  };
+
+  const [profile, setProfile] = useState<EmployeeProfile>(() => getStoredState('profile', INITIAL_PROFILE));
+  const [stats, setStats] = useState<TelecallerStats>(() => getStoredState('stats', INITIAL_TELECALLER_STATS));
+  const [callLogs, setCallLogs] = useState<CallLogItem[]>(() => getStoredState('callLogs', INITIAL_CALL_LOGS));
+  const [clients, setClients] = useState<ClientLead[]>(() => getStoredState('clients', INITIAL_CLIENT_LEADS));
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(() => getStoredState('attendanceLogs', INITIAL_ATTENDANCE_LOGS));
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => getStoredState('leaveRequests', INITIAL_LEAVE_REQUESTS));
+  const [payslips, setPayslips] = useState<PayslipItem[]>(() => getStoredState('payslips', INITIAL_PAYSLIPS));
 
   // Dynamic Lead Management State
-  const [assignedLeads, setAssignedLeads] = useState<AssignedLead[]>(INITIAL_ASSIGNED_LEADS);
-  const [leadBatches, setLeadBatches] = useState<LeadBatch[]>(INITIAL_LEAD_BATCHES);
+  const [assignedLeads, setAssignedLeads] = useState<AssignedLead[]>(() => getStoredState('assignedLeads', INITIAL_ASSIGNED_LEADS));
+  const [leadBatches, setLeadBatches] = useState<LeadBatch[]>(() => getStoredState('leadBatches', INITIAL_LEAD_BATCHES));
 
   // Face Biometric State
-  const [faceProfiles, setFaceProfiles] = useState<FaceBiometricProfile[]>([]);
+  const [faceProfiles, setFaceProfiles] = useState<FaceBiometricProfile[]>(() => getStoredState('faceProfiles', []));
 
   // Offer Letters State
-  const [offerLetters, setOfferLetters] = useState<OfferLetterData[]>(INITIAL_OFFER_LETTERS);
+  const [offerLetters, setOfferLetters] = useState<OfferLetterData[]>(() => getStoredState('offerLetters', INITIAL_OFFER_LETTERS));
   const [selectedOfferLetter, setSelectedOfferLetter] = useState<OfferLetterData | null>(null);
   const [isOfferLetterModalOpen, setIsOfferLetterModalOpen] = useState(false);
 
   // Team Leader Module State
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(INITIAL_TEAM_MEMBERS);
-  const [teamGroups, setTeamGroups] = useState<TeamGroup[]>(INITIAL_TEAM_GROUPS);
-  const [teamTasks, setTeamTasks] = useState<TeamTask[]>(INITIAL_TEAM_TASKS);
-  const [teamMeetings, setTeamMeetings] = useState<TeamMeeting[]>(INITIAL_TEAM_MEETINGS);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => getStoredState('teamMembers', INITIAL_TEAM_MEMBERS));
+  const [teamGroups, setTeamGroups] = useState<TeamGroup[]>(() => getStoredState('teamGroups', INITIAL_TEAM_GROUPS));
+  const [teamTasks, setTeamTasks] = useState<TeamTask[]>(() => getStoredState('teamTasks', INITIAL_TEAM_TASKS));
+  const [teamMeetings, setTeamMeetings] = useState<TeamMeeting[]>(() => getStoredState('teamMeetings', INITIAL_TEAM_MEETINGS));
   const [isLiveRoomOpen, setIsLiveRoomOpen] = useState(false);
   const [activeMeetingRoom, setActiveMeetingRoom] = useState<TeamMeeting | null>(null);
 
   // HR Module State
-  const [candidates, setCandidates] = useState<CandidateInterview[]>(INITIAL_CANDIDATES);
-  const [onboardingList, setOnboardingList] = useState<OnboardingEmployee[]>(INITIAL_ONBOARDING);
-  const [exitList, setExitList] = useState<ExitEmployee[]>(INITIAL_EXIT_LIST);
-  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerificationItem[]>(INITIAL_PAYMENT_VERIFICATIONS);
+  const [candidates, setCandidates] = useState<CandidateInterview[]>(() => getStoredState('candidates', INITIAL_CANDIDATES));
+  const [onboardingList, setOnboardingList] = useState<OnboardingEmployee[]>(() => getStoredState('onboardingList', INITIAL_ONBOARDING));
+  const [exitList, setExitList] = useState<ExitEmployee[]>(() => getStoredState('exitList', INITIAL_EXIT_LIST));
+  const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerificationItem[]>(() => getStoredState('paymentVerifications', INITIAL_PAYMENT_VERIFICATIONS));
 
   // Backend connection state
   const [backendError, setBackendError] = useState<string | null>(null);
@@ -471,6 +476,66 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.setItem('tnx_activeTab', activeTab);
     } catch {}
   }, [activeTab]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_teamMembers', JSON.stringify(teamMembers));
+    } catch {}
+  }, [teamMembers]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_assignedLeads', JSON.stringify(assignedLeads));
+    } catch {}
+  }, [assignedLeads]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_leadBatches', JSON.stringify(leadBatches));
+    } catch {}
+  }, [leadBatches]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_onboardingList', JSON.stringify(onboardingList));
+    } catch {}
+  }, [onboardingList]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_offerLetters', JSON.stringify(offerLetters));
+    } catch {}
+  }, [offerLetters]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_callLogs', JSON.stringify(callLogs));
+    } catch {}
+  }, [callLogs]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_stats', JSON.stringify(stats));
+    } catch {}
+  }, [stats]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_profile', JSON.stringify(profile));
+    } catch {}
+  }, [profile]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_leaveRequests', JSON.stringify(leaveRequests));
+    } catch {}
+  }, [leaveRequests]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tnx_payslips', JSON.stringify(payslips));
+    } catch {}
+  }, [payslips]);
 
   /** Drop every cached resource so the next screen re-fetches from the API. */
   const invalidateAll = useCallback(() => {
