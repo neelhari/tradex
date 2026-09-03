@@ -63,6 +63,7 @@ import {
   TrendingUp,
   CheckCircle2,
   ShieldCheck,
+  Award,
   Crown,
   FileSpreadsheet,
   FileText,
@@ -203,7 +204,7 @@ export const App: React.FC = () => {
     return [
       { id: 'home', label: 'Home Dashboard', icon: Home },
       { id: 'calling', label: 'My Calls', icon: PhoneCall },
-      { id: 'clients', label: 'My Leads', icon: Users },
+      { id: 'clients', label: 'Won Deals', icon: Award },
       { id: 'leaves', label: 'Attendance & Leave', icon: CalendarCheck },
       { id: 'profile', label: 'Me', icon: User },
     ];

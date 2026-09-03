@@ -92,6 +92,8 @@ interface AppContextType {
   activeCallingLead: AssignedLead | null;
   setActiveCallingLead: (lead: AssignedLead | null) => void;
   openCallModalForLead: (lead: AssignedLead) => void;
+  clientPipelineTab: 'TO_CALL' | 'CALLBACK' | 'INTERESTED' | 'WON' | 'BUSY' | 'NOT_INTERESTED' | 'ALL';
+  setClientPipelineTab: (tab: 'TO_CALL' | 'CALLBACK' | 'INTERESTED' | 'WON' | 'BUSY' | 'NOT_INTERESTED' | 'ALL') => void;
 
   // Face Recognition Biometric System
   faceProfiles: FaceBiometricProfile[];
@@ -253,6 +255,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
   const [deviceMode, setDeviceMode] = useState<'mobile' | 'desktop'>('desktop');
+  const [clientPipelineTab, setClientPipelineTab] = useState<'TO_CALL' | 'CALLBACK' | 'INTERESTED' | 'WON' | 'BUSY' | 'NOT_INTERESTED' | 'ALL'>('TO_CALL');
   const [authStep, setAuthStep] = useState<AuthStep>(() => {
     try {
       return (localStorage.getItem('tnx_authStep') as AuthStep) || 'LOGIN';
@@ -931,17 +934,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const cleanId = emailOrCode.trim().toLowerCase();
     const cleanPass = passInput.trim();
 
+    const digitsOnly = cleanId.replace(/[^0-9]/g, '');
+
     // Master / onboarded telecaller accounts
     const member = teamMembers.find(m => 
       (m.email && m.email.toLowerCase() === cleanId) || 
       (m.empCode && m.empCode.toLowerCase() === cleanId) ||
+      (digitsOnly.length >= 7 && m.phone && m.phone.replace(/[^0-9]/g, '').includes(digitsOnly)) ||
       (cleanId === 'arjun@tradenexus.com' && m.name === 'Arjun Kumar')
     );
 
     if (!member) {
       return {
         success: false,
-        error: `Access Denied: "${emailOrCode}" is not an authorized Trade Nexus employee. Only registered company emails are permitted.`
+        error: `Access Denied: "${emailOrCode}" is not an authorized Trade Nexus employee. Only registered company emails or numbers are permitted.`
       };
     }
 
@@ -1608,6 +1614,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCurrentRole,
         activeTab,
         setActiveTab,
+        clientPipelineTab,
+        setClientPipelineTab,
         deviceMode,
         setDeviceMode,
         profile,

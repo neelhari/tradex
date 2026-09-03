@@ -18,7 +18,7 @@ export const QuickCallLogModal: React.FC = () => {
   const [clientName, setClientName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [phone, setPhone] = useState('');
-  const [outcome, setOutcome] = useState<CallOutcome>('CONNECTED');
+  const [outcome, setOutcome] = useState<CallOutcome>('INTERESTED');
   const [durationMin, setDurationMin] = useState('2');
   const [notes, setNotes] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
@@ -32,7 +32,7 @@ export const QuickCallLogModal: React.FC = () => {
     setFollowUpDate('');
     setDealAmount('');
     setDurationMin('2');
-    setOutcome('CONNECTED');
+    setOutcome('INTERESTED');
   };
 
   useEffect(() => {
@@ -42,13 +42,15 @@ export const QuickCallLogModal: React.FC = () => {
       setPhone(activeCallingLead.phone);
       setNotes(activeCallingLead.notes || '');
       setOutcome(
-        activeCallingLead.status === 'INTERESTED'
-          ? 'INTERESTED'
-          : activeCallingLead.status === 'CONVERTED'
+        activeCallingLead.status === 'CONVERTED'
           ? 'DEAL_CLOSED'
           : activeCallingLead.status === 'CALLBACK'
           ? 'CALLBACK'
-          : 'CONNECTED'
+          : activeCallingLead.status === 'BUSY'
+          ? 'BUSY'
+          : activeCallingLead.status === 'NOT_INTERESTED'
+          ? 'NOT_INTERESTED'
+          : 'INTERESTED'
       );
       if (activeCallingLead.dealValue) {
         setDealAmount(String(activeCallingLead.dealValue));
@@ -92,7 +94,7 @@ export const QuickCallLogModal: React.FC = () => {
           ? 'BUSY'
           : outcome === 'NOT_INTERESTED'
           ? 'NOT_INTERESTED'
-          : 'CONNECTED';
+          : 'INTERESTED';
 
       updateAssignedLeadStatus(
         activeCallingLead.id,
@@ -125,15 +127,6 @@ export const QuickCallLogModal: React.FC = () => {
     border: string;
     icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   }[] = [
-    {
-      id: 'CONNECTED',
-      label: 'Spoke / General',
-      description: 'Discussed requirements',
-      color: '#0A2540',
-      bg: '#F8FAFC',
-      border: 'border-slate-200',
-      icon: CheckCircle2,
-    },
     {
       id: 'INTERESTED',
       label: '🟢 Interested',
@@ -204,17 +197,16 @@ export const QuickCallLogModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Lead Summary Badge (if opened for an assigned lead) */}
+        {/* Lead Summary Badge: ONLY Phone Number displayed */}
         {activeCallingLead ? (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 mb-3.5 space-y-0.5">
-            <div className="flex items-center justify-between">
-              <span className="font-display font-bold text-sm text-[#0A2540]">{activeCallingLead.name}</span>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-[#00C9A7]/15 text-[#00876f]">
-                {activeCallingLead.status.replace('_', ' ')}
-              </span>
+          <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 mb-3.5 flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Phone Number</span>
+              <span className="font-mono font-black text-lg text-[#0A2540]">{activeCallingLead.phone}</span>
             </div>
-            <p className="text-xs text-slate-600 font-medium">{activeCallingLead.company}</p>
-            <p className="text-xs font-mono text-slate-700 pt-0.5">{activeCallingLead.phone}</p>
+            <span className="text-[10px] font-mono font-extrabold px-2.5 py-1 rounded-lg bg-[#00C9A7]/15 text-[#00876f] border border-[#00C9A7]/30">
+              {activeCallingLead.status.replace('_', ' ')}
+            </span>
           </div>
         ) : (
           /* Manual Lead Selector or Freeform Entry */
@@ -239,38 +231,15 @@ export const QuickCallLogModal: React.FC = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Name</label>
-                <input
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                  placeholder="Person name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Company</label>
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                  placeholder="Company name"
-                />
-              </div>
-            </div>
-
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Phone</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Phone Number</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7] font-mono"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:border-[#00C9A7] font-mono"
                 placeholder="+91 ..."
+                required
               />
             </div>
           </div>

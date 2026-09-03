@@ -11,7 +11,8 @@ import {
   UserCheck, 
   FileText, 
   ShieldCheck, 
-  FileSpreadsheet 
+  FileSpreadsheet,
+  Award
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -58,7 +59,7 @@ export const BottomNav: React.FC = () => {
     return [
       { id: 'home', label: 'Home', icon: Home },
       { id: 'calling', label: 'My Calls', icon: PhoneCall },
-      { id: 'clients', label: 'My Leads', icon: Users },
+      { id: 'clients', label: 'Won Deals', icon: Award },
       { id: 'leaves', label: 'Attendance', icon: CalendarCheck },
       { id: 'profile', label: 'Profile', icon: User },
     ];

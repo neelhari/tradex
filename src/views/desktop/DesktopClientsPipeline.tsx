@@ -1,273 +1,317 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useScreenData } from '../../hooks/useScreenData';
 import { 
-  Users, 
+  Award, 
   Search, 
-  Phone, 
-  Clock, 
+  Download, 
+  Calendar, 
+  TrendingUp, 
   CheckCircle2, 
-  Download,
-  PhoneForwarded,
-  Award,
-  ThumbsDown,
+  Filter, 
+  Clock, 
+  X,
   Layers
 } from 'lucide-react';
-import { AssignedLead } from '../../types';
 
 export const DesktopClientsPipeline: React.FC = () => {
   const { 
     assignedLeads, 
     profile, 
-    openCallModalForLead, 
+    stats,
     triggerToast 
   } = useApp();
 
   useScreenData('clientsPipeline');
+
+  const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'THIS_MONTH' | 'CUSTOM'>('ALL');
+  const [customDate, setCustomDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'ALL' | 'TO_CALL' | 'CALLBACK' | 'INTERESTED' | 'WON' | 'BUSY' | 'NOT_INTERESTED'>('ALL');
 
-  // Leads assigned to the active telecaller
-  const myLeads = assignedLeads.filter((l) => {
-    const isMine =
-      l.assignedToEmployeeId === profile.id ||
-      (l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === profile.name.toLowerCase()) ||
-      l.assignedToEmployeeId === 'emp-101';
-    return isMine;
-  });
+  // Won leads converted by this telecaller
+  const myWonLeads = useMemo(() => {
+    return assignedLeads.filter((l) => {
+      const isMine =
+        !l.assignedToEmployeeId ||
+        l.assignedToEmployeeId === profile.id ||
+        (l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === profile.name.toLowerCase()) ||
+        l.assignedToEmployeeId === 'emp-101';
+      return isMine && l.status === 'CONVERTED';
+    });
+  }, [assignedLeads, profile]);
 
-  const filteredLeads = myLeads.filter((lead) => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      lead.name.toLowerCase().includes(q) ||
-      lead.company.toLowerCase().includes(q) ||
-      lead.phone.includes(q);
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const yesterdayStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }, []);
 
-    if (!matchesSearch) return false;
-    if (activeFilter === 'TO_CALL') return lead.status === 'PENDING';
-    if (activeFilter === 'CALLBACK') return lead.status === 'CALLBACK';
-    if (activeFilter === 'INTERESTED') return lead.status === 'INTERESTED';
-    if (activeFilter === 'WON') return lead.status === 'CONVERTED';
-    if (activeFilter === 'BUSY') return lead.status === 'BUSY';
-    if (activeFilter === 'NOT_INTERESTED') return lead.status === 'NOT_INTERESTED';
-    return true;
-  });
+  // Filter won leads by date & search query
+  const filteredWonLeads = useMemo(() => {
+    return myWonLeads.filter((lead) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (q && !lead.phone.includes(q)) {
+        return false;
+      }
 
-  const getStatusBadge = (status: AssignedLead['status'], callCount: number) => {
-    switch (status) {
-      case 'PENDING':
-        return (
-          <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
-            {callCount === 0 ? 'Fresh Lead' : 'Pending'}
-          </span>
-        );
-      case 'INTERESTED':
-        return (
-          <span className="bg-sky-50 text-sky-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-sky-200 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-sky-600" />
-            Interested
-          </span>
-        );
-      case 'CALLBACK':
-        return (
-          <span className="bg-amber-50 text-amber-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
-            <PhoneForwarded className="w-3 h-3 text-amber-600" />
-            Follow-Up
-          </span>
-        );
-      case 'CONVERTED':
-        return (
-          <span className="bg-emerald-50 text-emerald-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-600" />
-            Won Deal
-          </span>
-        );
-      case 'NOT_INTERESTED':
-        return (
-          <span className="bg-rose-50 text-rose-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-rose-200 flex items-center gap-1">
-            <ThumbsDown className="w-3 h-3 text-rose-500" />
-            Not Interested
-          </span>
-        );
-      case 'CONNECTED':
-      default:
-        return (
-          <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
-            Called
-          </span>
-        );
-    }
-  };
+      const leadDateStr = lead.updatedAt ? lead.updatedAt.split('T')[0] : todayStr;
 
-  const handleCallLead = (lead: AssignedLead) => {
-    openCallModalForLead(lead);
-    window.location.href = `tel:${lead.phone}`;
-    triggerToast(`📞 Dialing ${lead.name}...`);
-  };
+      if (dateFilter === 'TODAY') return leadDateStr === todayStr;
+      if (dateFilter === 'YESTERDAY') return leadDateStr === yesterdayStr;
+      if (dateFilter === 'THIS_MONTH') {
+        const currentMonth = todayStr.slice(0, 7);
+        return leadDateStr.startsWith(currentMonth);
+      }
+      if (dateFilter === 'CUSTOM' && customDate) return leadDateStr === customDate;
+      return true;
+    });
+  }, [myWonLeads, dateFilter, customDate, searchQuery, todayStr, yesterdayStr]);
+
+  // Calculate dynamic revenue for active filter
+  const totalSelectedRevenue = useMemo(() => {
+    return filteredWonLeads.reduce((sum, lead) => {
+      return sum + (lead.dealValue || 25000);
+    }, 0);
+  }, [filteredWonLeads]);
+
+  const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
   const handleExportCsv = () => {
-    const header = 'Lead Name,Company,City,Phone,Status,Calls Made,Notes,Follow Up';
-    const rows = filteredLeads.map((l) =>
-      `"${l.name}","${l.company}","${l.city || ''}","${l.phone}","${l.status}",${l.callCount},"${(l.notes || '').replace(/"/g, '""')}","${l.followUpDate || ''}"`
+    const header = 'Phone,Deal Value,Closed Date,Status,Dials,Notes';
+    const rows = filteredWonLeads.map((l) =>
+      `"${l.phone}",${l.dealValue || 25000},"${l.updatedAt ? l.updatedAt.split('T')[0] : 'Today'}","Won Deal",${l.callCount || 1},"${(l.notes || '').replace(/"/g, '""')}"`
     );
     const csv = `data:text/csv;charset=utf-8,${header}\n${rows.join('\n')}`;
     const link = document.createElement('a');
     link.setAttribute('href', encodeURI(csv));
-    link.setAttribute('download', `My_Leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `Won_Deals_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    triggerToast('✓ Leads exported to CSV');
+    triggerToast('✓ Won Deals exported to CSV');
   };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       
-      {/* Top Header */}
+      {/* 1. Desktop Top Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
-            My Leads & Pipeline
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
+              Won Deals &amp; Revenue Hub
+            </h2>
+            <Award className="w-6 h-6 text-emerald-600" />
+          </div>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Admin assigned client leads · Call, record outcomes, and track conversions
+            Verified conversions register · Track daily earnings and closed deal values
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={handleExportCsv}
-            className="flex items-center gap-2 bg-white border border-slate-200 hover:border-[#00C9A7] text-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all"
+            className="flex items-center gap-2 bg-white border border-slate-200 hover:border-emerald-500 text-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer"
           >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export CSV</span>
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Export Won Deals CSV</span>
           </button>
         </div>
       </div>
 
-      {/* Filter Tabs & Search */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
-        <div className="flex gap-2">
-          {[
-            { id: 'ALL', label: 'All Leads', count: myLeads.length },
-            { id: 'TO_CALL', label: 'To Call Today', count: myLeads.filter((l) => l.status === 'PENDING').length },
-            { id: 'CALLBACK', label: 'Follow-Ups', count: myLeads.filter((l) => l.status === 'CALLBACK').length },
-            { id: 'INTERESTED', label: 'Interested', count: myLeads.filter((l) => l.status === 'INTERESTED').length },
-            { id: 'WON', label: 'Won Deals', count: myLeads.filter((l) => l.status === 'CONVERTED').length },
-            { id: 'BUSY', label: 'No Answer', count: myLeads.filter((l) => l.status === 'BUSY').length },
-            { id: 'NOT_INTERESTED', label: 'Not Interested', count: myLeads.filter((l) => l.status === 'NOT_INTERESTED').length },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveFilter(tab.id as any)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeFilter === tab.id
-                  ? 'bg-[#0A2540] text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  activeFilter === tab.id ? 'bg-white/20 text-white' : 'bg-white text-slate-600 border border-slate-200'
-                }`}
-              >
-                {tab.count}
-              </span>
-            </button>
-          ))}
+      {/* 2. Desktop Widescreen FinTech Hero (2 Columns: Revenue + Calendar Filter) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left 2 Cols: Luxury Light FinTech Total Revenue Card */}
+        <div className="lg:col-span-2 relative overflow-hidden bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-white p-6 rounded-3xl border border-emerald-200/90 shadow-sm flex flex-col justify-between">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-emerald-300/20 via-teal-200/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex items-center justify-between relative z-10 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-xs">
+                <TrendingUp className="w-6 h-6 stroke-[2.3]" />
+              </div>
+              <div>
+                <span className="text-xs font-mono uppercase tracking-widest text-emerald-800 font-black block">
+                  Total Verified Revenue
+                </span>
+                <span className="text-xs text-slate-500 font-medium">
+                  {dateFilter === 'ALL' && 'All-Time Cumulative Conversions'}
+                  {dateFilter === 'TODAY' && 'Earned Today'}
+                  {dateFilter === 'YESTERDAY' && 'Earned Yesterday'}
+                  {dateFilter === 'THIS_MONTH' && 'This Month Revenue'}
+                  {dateFilter === 'CUSTOM' && `Date: ${customDate}`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-baseline gap-3 relative z-10 pt-2">
+            <span className="font-display font-black text-5xl text-[#0A2540] tracking-tight">
+              {inr(dateFilter === 'ALL' ? (totalSelectedRevenue || stats.monthlySalesAchieved) : totalSelectedRevenue)}
+            </span>
+          </div>
         </div>
 
-        <div className="relative w-80">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+        {/* Right 1 Col: Integrated Calendar & Date Filter Panel */}
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+              <Filter className="w-4 h-4 text-emerald-600" />
+              <span>Filter by Period</span>
+            </span>
+            {dateFilter !== 'ALL' && (
+              <button
+                onClick={() => { setDateFilter('ALL'); setCustomDate(''); }}
+                className="text-xs text-emerald-600 hover:underline font-bold cursor-pointer"
+              >
+                Reset All
+              </button>
+            )}
+          </div>
+
+          {/* Quick Date Pills */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { id: 'ALL', label: 'All Time' },
+              { id: 'TODAY', label: 'Today' },
+              { id: 'YESTERDAY', label: 'Yesterday' },
+              { id: 'THIS_MONTH', label: 'This Month' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setDateFilter(tab.id as any);
+                  setCustomDate('');
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
+                  dateFilter === tab.id
+                    ? 'bg-[#0A2540] text-white shadow-xs'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/70'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Date Picker Input */}
+          <div className="relative flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            <Calendar className="w-4 h-4 text-emerald-600 mr-2 flex-shrink-0 pointer-events-none" />
+            <input
+              type="date"
+              value={customDate}
+              onChange={(e) => {
+                setCustomDate(e.target.value);
+                if (e.target.value) setDateFilter('CUSTOM');
+                else setDateFilter('ALL');
+              }}
+              className="w-full bg-transparent text-xs font-mono font-bold text-slate-800 focus:outline-none"
+            />
+            {customDate && (
+              <button
+                onClick={() => { setCustomDate(''); setDateFilter('ALL'); }}
+                className="ml-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Search Bar */}
+      <div className="flex items-center justify-between gap-4 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="relative w-full max-w-md">
+          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, company, phone..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+            placeholder="Search by phone number..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-8 py-2.5 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
+
+        <span className="text-xs font-mono font-bold text-slate-500">
+          Showing {filteredWonLeads.length} won deals
+        </span>
       </div>
 
-      {/* Grid of Leads */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredLeads.map((lead) => (
-          <div
-            key={lead.id}
-            className="nexus-card p-5 bg-white border border-slate-200 shadow-sm hover:border-[#00C9A7] transition-all space-y-3 flex flex-col justify-between"
-          >
-            <div className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h4 className="font-display font-black text-base text-[#0A2540]">{lead.name}</h4>
-                  <p className="text-xs font-semibold text-slate-600">
-                    {lead.company} {lead.city ? `· ${lead.city}` : ''}
-                  </p>
-                </div>
-                {getStatusBadge(lead.status, lead.callCount)}
-              </div>
-
-              <div className="flex items-center justify-between text-xs font-mono text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <span className="font-bold">{lead.phone}</span>
-                <span className="text-[11px] text-slate-500">
-                  {lead.callCount === 0 ? 'Fresh' : `Dials: ${lead.callCount}`}
-                </span>
-              </div>
-
-              {lead.followUpDate && (
-                <div className="flex items-center gap-1.5 text-xs text-amber-800 font-bold bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200">
-                  <Clock className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                  <span>Scheduled Callback: {lead.followUpDate}</span>
-                </div>
+      {/* 4. Desktop Rich Data Table */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-3.5 px-6">Client Phone</th>
+                <th className="py-3.5 px-6">Deal Revenue</th>
+                <th className="py-3.5 px-6">Closed Date</th>
+                <th className="py-3.5 px-6">Status</th>
+                <th className="py-3.5 px-6">Dials</th>
+                <th className="py-3.5 px-6">Notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filteredWonLeads.length > 0 ? (
+                filteredWonLeads.map((lead) => (
+                  <tr key={lead.id} className="hover:bg-emerald-50/30 transition-colors">
+                    <td className="py-4 px-6 font-mono font-black text-sm text-[#0A2540]">
+                      {lead.phone}
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="inline-flex items-center gap-1 font-mono font-black text-sm text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+                        <Award className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>+{inr(lead.dealValue || 25000)}</span>
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 font-medium text-slate-600">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{lead.updatedAt ? lead.updatedAt.split('T')[0] : 'Today'}</span>
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        Deal Closed
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 font-mono text-slate-500">
+                      {lead.callCount || 1}
+                    </td>
+                    <td className="py-4 px-6 text-slate-500 italic max-w-xs truncate">
+                      {lead.notes && 
+                       !lead.notes.toLowerCase().includes('test suite') && 
+                       !lead.notes.toLowerCase().includes('automated_test')
+                        ? `"${lead.notes}"`
+                        : '—'}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center">
+                    <Layers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <h4 className="font-bold text-sm text-slate-700">No won deals for this date</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {searchQuery ? 'No deals match your search.' : 'Deals closed on this date will appear here.'}
+                    </p>
+                  </td>
+                </tr>
               )}
-
-              {lead.notes && (
-                <p className="text-xs text-slate-500 italic bg-slate-50/70 p-2.5 rounded-xl border border-slate-100">
-                  "{lead.notes}"
-                </p>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-100">
-              <button
-                onClick={() => handleCallLead(lead)}
-                className="py-2.5 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>Call Lead</span>
-              </button>
-
-              <button
-                onClick={() => openCallModalForLead(lead)}
-                className="py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                <span>Record Result</span>
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {!filteredLeads.length && (
-        <div className="nexus-card p-12 bg-white border border-slate-200 text-center space-y-2">
-          <Layers className="w-10 h-10 text-slate-300 mx-auto" />
-          <h4 className="font-display font-bold text-base text-[#0A2540]">No leads found</h4>
-          <p className="text-xs text-slate-400">
-            {searchQuery ? 'No leads matched your search query.' : 'Leads assigned by Admin will appear here.'}
-          </p>
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
     </div>
   );

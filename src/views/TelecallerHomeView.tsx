@@ -14,7 +14,10 @@ import {
   Camera,
   Check,
   RotateCcw,
-  Video
+  Video,
+  Award,
+  ArrowRight,
+  ArrowUpRight
 } from 'lucide-react';
 
 export const TelecallerHomeView: React.FC = () => {
@@ -32,7 +35,8 @@ export const TelecallerHomeView: React.FC = () => {
     openPunchIn,
     openPunchOut,
     triggerToast,
-    setActiveTab 
+    setActiveTab,
+    setClientPipelineTab
   } = useApp();
 
   const { isLoading } = useScreenData('telecallerHome');
@@ -44,6 +48,17 @@ export const TelecallerHomeView: React.FC = () => {
 
   const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const remainingToTarget = Math.max(0, stats.monthlySalesTarget - stats.monthlySalesAchieved);
+
+  // User's assigned leads & pipeline breakdown
+  const userLeads = assignedLeads.filter(l => 
+    !l.assignedToEmployeeId || 
+    l.assignedToEmployeeId === profile.id || 
+    (l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === profile.name.toLowerCase()) || 
+    l.assignedToEmployeeId === 'emp-101'
+  );
+  const wonCount = userLeads.filter(l => l.status === 'CONVERTED').length;
+  const followUpCount = userLeads.filter(l => l.status === 'CALLBACK').length;
+  const toCallCount = userLeads.filter(l => l.status === 'PENDING').length;
 
   const isPunchedIn = profile.faceIdStatus === 'VERIFIED_PRESENT' && !!profile.checkInTime;
   const isShiftEnded = profile.faceIdStatus === 'ON_BREAK';
@@ -340,58 +355,92 @@ export const TelecallerHomeView: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Next Follow-up Lead Card */}
-      {urgentLead ? (
-        <div className="nexus-card p-4 bg-gradient-to-br from-[#FFFBEB] via-white to-white border border-amber-300/60 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-300">
-              <Clock className="w-3 h-3 text-amber-600" />
-              <span>{urgentLead.dueTime || 'Due for Callback'}</span>
-            </span>
-            <span className="text-[11px] font-bold text-slate-400">Next Priority Lead</span>
+      {/* 5. Premium App Quick-Actions Grid: Won Deals & Due Callbacks */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Tile 1: Won Deals */}
+        <div 
+          onClick={() => {
+            setClientPipelineTab('WON');
+            setActiveTab('clients');
+          }}
+          className="group relative bg-white hover:bg-emerald-50/25 border border-slate-200/90 hover:border-emerald-300 rounded-3xl p-3.5 shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer flex flex-col justify-between min-h-[134px] overflow-hidden"
+        >
+          {/* Subtle ambient luxury aura */}
+          <div className="absolute -top-6 -right-6 w-20 h-20 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
+
+          {/* Top Row: Icon + Arrow Chip */}
+          <div className="flex items-center justify-between relative z-10">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200/70 flex items-center justify-center shadow-2xs">
+              <Award className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <div className="w-7 h-7 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-colors">
+              <ArrowUpRight className="w-4 h-4" />
+            </div>
           </div>
 
-          <div className="mb-3">
-            <h4 className="font-display font-bold text-base text-[#0A2540]">{urgentLead.name}</h4>
-            <p className="text-xs font-semibold text-slate-700">{urgentLead.company}</p>
-            <p className="text-xs font-mono text-slate-500 mt-0.5">{urgentLead.phone}</p>
-          </div>
+          {/* Bottom Area: Large Metric + Label + Revenue Tag */}
+          <div className="space-y-1 relative z-10 mt-3">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display font-black text-2xl text-[#0A2540] tracking-tight leading-none">
+                {wonCount}
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">
+                / {userLeads.length} leads
+              </span>
+            </div>
+            
+            <h4 className="font-display font-bold text-xs text-[#0A2540] tracking-tight">
+              Won Deals
+            </h4>
 
-          {/* Action Triggers */}
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <button
-              onClick={handleInstantCall}
-              className="py-2.5 px-3 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs shadow-md shadow-[#00C9A7]/25 flex items-center justify-center gap-2 active:scale-95 transition-all"
-            >
-              <Phone className="w-3.5 h-3.5" />
-              <span>Call Lead</span>
-            </button>
-
-            <button
-              onClick={() => {
-                const matched = assignedLeads.find((l) => l.id === urgentLead.id || l.phone === urgentLead.phone);
-                if (matched) {
-                  openCallModalForLead(matched);
-                } else {
-                  setActiveCallingLead(null);
-                  setIsQuickCallModalOpen(true);
-                }
-              }}
-              className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xs"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-              <span>Record Result</span>
-            </button>
+            <div className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/70 mt-0.5">
+              <span>{inr(stats.monthlySalesAchieved)}</span>
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="nexus-card p-4 bg-white border border-slate-200 shadow-sm text-center space-y-1">
-          <h4 className="font-display font-bold text-sm text-[#0A2540]">No callbacks due right now</h4>
-          <p className="text-xs text-slate-500">
-            {isLoading ? 'Loading your leads…' : 'Leads requiring follow-up will appear here.'}
-          </p>
+
+        {/* Tile 2: Due Callbacks */}
+        <div 
+          onClick={() => {
+            setClientPipelineTab('CALLBACK');
+            setActiveTab('clients');
+          }}
+          className="group relative bg-white hover:bg-amber-50/25 border border-slate-200/90 hover:border-amber-300 rounded-3xl p-3.5 shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.97] cursor-pointer flex flex-col justify-between min-h-[134px] overflow-hidden"
+        >
+          {/* Subtle ambient warm aura */}
+          <div className="absolute -top-6 -right-6 w-20 h-20 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
+
+          {/* Top Row: Icon + Notification / Arrow Chip */}
+          <div className="flex items-center justify-between relative z-10">
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200/70 flex items-center justify-center shadow-2xs">
+              <Clock className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <div className="w-7 h-7 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-center text-slate-400 group-hover:text-amber-700 group-hover:bg-amber-50 group-hover:border-amber-200 transition-colors">
+              <ArrowUpRight className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Bottom Area: Large Metric + Label + Status Tag */}
+          <div className="space-y-1 relative z-10 mt-3 select-none">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display font-black text-2xl text-[#0A2540] tracking-tight leading-none">
+                {followUpCount}
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">
+                / {userLeads.length} leads
+              </span>
+            </div>
+            
+            <h4 className="font-display font-bold text-xs text-[#0A2540] tracking-tight">
+              Due for Callback
+            </h4>
+
+            <div className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/70 mt-0.5">
+              <span>{toCallCount} calls scheduled</span>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* 6. Clean Primary Log Call Action */}
       <button
