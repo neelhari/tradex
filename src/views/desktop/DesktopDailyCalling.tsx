@@ -70,23 +70,24 @@ export const DesktopDailyCalling: React.FC = () => {
   const totalAssigned = myAssignedLeads.length;
   const dialsDone = myAssignedLeads.filter((l) => l.status !== 'PENDING').length;
 
-  // Date calculation utilities
-  const todayIso = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const yesterdayIso = useMemo(() => {
+  // Local date calculation utilities
+  const getLocalDateStr = (daysAgo: number = 0): string => {
     const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
-  }, []);
-  const sevenDaysAgoIso = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  }, []);
-  const thirtyDaysAgoIso = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
-  }, []);
+    d.setDate(d.getDate() - daysAgo);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayIso = useMemo(() => getLocalDateStr(0), []);
+  const yesterdayIso = useMemo(() => getLocalDateStr(1), []);
+  const sevenDaysAgoIso = useMemo(() => getLocalDateStr(7), []);
+  const thirtyDaysAgoIso = useMemo(() => getLocalDateStr(30), []);
+
+  // Metric Filter State for interactive buttons
+  type MetricFilter = 'ALL' | 'INTERESTED' | 'CALLBACK' | 'NOT_ANSWERED';
+  const [selectedMetricFilter, setSelectedMetricFilter] = useState<MetricFilter>('ALL');
 
   // Yesterday / Overdue Callbacks detector
   const yesterdayCallbacksCount = useMemo(() => {
@@ -117,22 +118,25 @@ export const DesktopDailyCalling: React.FC = () => {
     triggerToast(`📞 Dialing ${lead.phone}...`);
   };
 
-  // Helper to extract ISO date from a call log item
+  // Helper to extract local YYYY-MM-DD date from a call log item
   const getLogDateIso = (log: CallLogItem): string => {
     if (log.date) return log.date;
-    if (log.createdAt) return log.createdAt.split('T')[0];
+    if (log.createdAt) {
+      try {
+        const d = new Date(log.createdAt);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      } catch {
+        return log.createdAt.split('T')[0];
+      }
+    }
     const ts = (log.timestamp || '').toLowerCase();
-    if (ts.includes('today')) return todayIso;
     if (ts.includes('yesterday')) return yesterdayIso;
-    if (ts.includes('4 days ago')) {
-      const d = new Date(); d.setDate(d.getDate() - 4); return d.toISOString().split('T')[0];
-    }
-    if (ts.includes('12 days ago')) {
-      const d = new Date(); d.setDate(d.getDate() - 12); return d.toISOString().split('T')[0];
-    }
-    if (ts.includes('20 days ago')) {
-      const d = new Date(); d.setDate(d.getDate() - 20); return d.toISOString().split('T')[0];
-    }
+    if (ts.includes('4 days ago') || ts.includes('5 days ago')) return getLocalDateStr(4);
+    if (ts.includes('12 days ago')) return getLocalDateStr(12);
+    if (ts.includes('20 days ago')) return getLocalDateStr(20);
     return todayIso;
   };
 
@@ -152,19 +156,33 @@ export const DesktopDailyCalling: React.FC = () => {
     });
   }, [callLogs, selectedPeriod, customDate, todayIso, yesterdayIso, sevenDaysAgoIso, thirtyDaysAgoIso]);
 
-  // 2. Period statistics
+  // 2. Reframed Period statistics: Total Calls, Interested, Callbacks, Not Answered
   const periodStats = useMemo(() => {
     const total = periodFilteredLogs.length;
-    const connected = periodFilteredLogs.filter((l) => l.outcome !== 'BUSY').length;
-    const interested = periodFilteredLogs.filter((l) => l.outcome === 'INTERESTED' || l.outcome === 'DEAL_CLOSED').length;
-    const dealsWon = periodFilteredLogs.filter((l) => l.outcome === 'DEAL_CLOSED').length;
-    return { total, connected, interested, dealsWon };
+    const interested = periodFilteredLogs.filter(
+      (l) => l.outcome === 'INTERESTED' || l.outcome === 'DEAL_CLOSED'
+    ).length;
+    const callbacks = periodFilteredLogs.filter(
+      (l) => l.outcome === 'CALLBACK'
+    ).length;
+    const notAnswered = periodFilteredLogs.filter(
+      (l) => l.outcome === 'BUSY' || l.outcome === 'NOT_INTERESTED'
+    ).length;
+
+    return { total, interested, callbacks, notAnswered };
   }, [periodFilteredLogs]);
 
-  // 3. Final Search & Outcome Filtered Logs
+  // 3. Final Search & Interactive Metric Filtered Logs
   const finalFilteredLogs = useMemo(() => {
     return periodFilteredLogs.filter((log) => {
-      if (selectedOutcome !== 'ALL' && log.outcome !== selectedOutcome) return false;
+      if (selectedMetricFilter === 'INTERESTED') {
+        if (log.outcome !== 'INTERESTED' && log.outcome !== 'DEAL_CLOSED') return false;
+      } else if (selectedMetricFilter === 'CALLBACK') {
+        if (log.outcome !== 'CALLBACK') return false;
+      } else if (selectedMetricFilter === 'NOT_ANSWERED') {
+        if (log.outcome !== 'BUSY' && log.outcome !== 'NOT_INTERESTED') return false;
+      }
+
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
       return (
@@ -174,7 +192,7 @@ export const DesktopDailyCalling: React.FC = () => {
         (log.notes && log.notes.toLowerCase().includes(q))
       );
     });
-  }, [periodFilteredLogs, selectedOutcome, searchQuery]);
+  }, [periodFilteredLogs, selectedMetricFilter, searchQuery]);
 
   const handleExportLogsCsv = () => {
     const header = 'Time,Phone,Client Name,Duration,Outcome,Notes,Follow Up';
@@ -570,64 +588,132 @@ export const DesktopDailyCalling: React.FC = () => {
             </button>
           </div>
 
-          {/* Dynamic Period Metrics Banner */}
+          {/* Interactive 4-Box Metric Filter Buttons: Total Calls, Interested, Callbacks, Not Answered */}
           <div className="grid grid-cols-4 gap-4">
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Dials</span>
-              <span className="font-mono font-black text-2xl text-[#0A2540] mt-1 block">
+            {/* 1. Total Calls */}
+            <button
+              type="button"
+              onClick={() => setSelectedMetricFilter('ALL')}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer text-left active:scale-[0.99] shadow-xs ${
+                selectedMetricFilter === 'ALL'
+                  ? 'bg-[#0A2540] text-white border-[#0A2540] ring-2 ring-[#0A2540]/20'
+                  : 'bg-white text-slate-700 border-slate-200/90 hover:border-slate-300'
+              }`}
+            >
+              <span className={`text-xs font-bold uppercase tracking-wider block ${
+                selectedMetricFilter === 'ALL' ? 'text-slate-300' : 'text-slate-400'
+              }`}>
+                Total Calls
+              </span>
+              <span className={`font-mono font-black text-2xl mt-1 block ${
+                selectedMetricFilter === 'ALL' ? 'text-[#00C9A7]' : 'text-[#0A2540]'
+              }`}>
                 {periodStats.total}
               </span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">Calls in selected period</span>
-            </div>
-
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-bold text-teal-600 uppercase tracking-wider block">Connected</span>
-              <span className="font-mono font-black text-2xl text-teal-700 mt-1 block">
-                {periodStats.connected}
+              <span className={`text-[11px] block mt-0.5 ${
+                selectedMetricFilter === 'ALL' ? 'text-slate-300' : 'text-slate-400'
+              }`}>
+                All calls in timeframe
               </span>
-              <span className="text-[11px] text-teal-600/70 block mt-0.5">Direct conversations</span>
-            </div>
+            </button>
 
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block">Interested</span>
-              <span className="font-mono font-black text-2xl text-sky-700 mt-1 block">
+            {/* 2. Interested */}
+            <button
+              type="button"
+              onClick={() => setSelectedMetricFilter('INTERESTED')}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer text-left active:scale-[0.99] shadow-xs ${
+                selectedMetricFilter === 'INTERESTED'
+                  ? 'bg-sky-600 text-white border-sky-600 ring-2 ring-sky-300'
+                  : 'bg-white text-slate-700 border-slate-200/90 hover:border-sky-300'
+              }`}
+            >
+              <span className={`text-xs font-bold uppercase tracking-wider block ${
+                selectedMetricFilter === 'INTERESTED' ? 'text-sky-100' : 'text-sky-600'
+              }`}>
+                Interested
+              </span>
+              <span className={`font-mono font-black text-2xl mt-1 block ${
+                selectedMetricFilter === 'INTERESTED' ? 'text-white' : 'text-sky-600'
+              }`}>
                 {periodStats.interested}
               </span>
-              <span className="text-[11px] text-sky-600/70 block mt-0.5">Hot opportunities</span>
-            </div>
-
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block">Won Deals</span>
-              <span className="font-mono font-black text-2xl text-emerald-700 mt-1 block">
-                {periodStats.dealsWon}
+              <span className={`text-[11px] block mt-0.5 ${
+                selectedMetricFilter === 'INTERESTED' ? 'text-sky-100' : 'text-sky-600/70'
+              }`}>
+                Hot leads &amp; closed deals
               </span>
-              <span className="text-[11px] text-emerald-600/70 block mt-0.5">Closed revenue</span>
-            </div>
+            </button>
+
+            {/* 3. Callbacks */}
+            <button
+              type="button"
+              onClick={() => setSelectedMetricFilter('CALLBACK')}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer text-left active:scale-[0.99] shadow-xs ${
+                selectedMetricFilter === 'CALLBACK'
+                  ? 'bg-amber-500 text-white border-amber-600 ring-2 ring-amber-300'
+                  : 'bg-white text-slate-700 border-slate-200/90 hover:border-amber-300'
+              }`}
+            >
+              <span className={`text-xs font-bold uppercase tracking-wider block ${
+                selectedMetricFilter === 'CALLBACK' ? 'text-amber-100' : 'text-amber-600'
+              }`}>
+                Callbacks
+              </span>
+              <span className={`font-mono font-black text-2xl mt-1 block ${
+                selectedMetricFilter === 'CALLBACK' ? 'text-white' : 'text-amber-600'
+              }`}>
+                {periodStats.callbacks}
+              </span>
+              <span className={`text-[11px] block mt-0.5 ${
+                selectedMetricFilter === 'CALLBACK' ? 'text-amber-100' : 'text-amber-600/70'
+              }`}>
+                Scheduled follow-ups
+              </span>
+            </button>
+
+            {/* 4. Not Answered */}
+            <button
+              type="button"
+              onClick={() => setSelectedMetricFilter('NOT_ANSWERED')}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer text-left active:scale-[0.99] shadow-xs ${
+                selectedMetricFilter === 'NOT_ANSWERED'
+                  ? 'bg-rose-500 text-white border-rose-600 ring-2 ring-rose-300'
+                  : 'bg-white text-slate-700 border-slate-200/90 hover:border-rose-300'
+              }`}
+            >
+              <span className={`text-xs font-bold uppercase tracking-wider block ${
+                selectedMetricFilter === 'NOT_ANSWERED' ? 'text-rose-100' : 'text-rose-600'
+              }`}>
+                Not Answered
+              </span>
+              <span className={`font-mono font-black text-2xl mt-1 block ${
+                selectedMetricFilter === 'NOT_ANSWERED' ? 'text-white' : 'text-rose-600'
+              }`}>
+                {periodStats.notAnswered}
+              </span>
+              <span className={`text-[11px] block mt-0.5 ${
+                selectedMetricFilter === 'NOT_ANSWERED' ? 'text-rose-100' : 'text-rose-600/70'
+              }`}>
+                Busy / No response
+              </span>
+            </button>
           </div>
 
-          {/* Filter Chips & Global Search Across Notes */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-              {[
-                { id: 'ALL', label: 'All Results' },
-                { id: 'INTERESTED', label: '🟢 Interested' },
-                { id: 'CALLBACK', label: '⏰ Callbacks' },
-                { id: 'DEAL_CLOSED', label: '🏆 Won Deals' },
-                { id: 'BUSY', label: '📵 No Answer' },
-                { id: 'NOT_INTERESTED', label: '🔴 Not Interested' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setSelectedOutcome(tab.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    selectedOutcome === tab.id
-                      ? 'bg-[#00C9A7] text-[#0A2540] shadow-2xs font-extrabold'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          {/* Search Across Notes & Phone */}
+          <div className="flex items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500">
+                Showing:
+              </span>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800">
+                {selectedMetricFilter === 'ALL' && 'All Logged Calls'}
+                {selectedMetricFilter === 'INTERESTED' && '🟢 Interested Leads'}
+                {selectedMetricFilter === 'CALLBACK' && '⏰ Callbacks Scheduled'}
+                {selectedMetricFilter === 'NOT_ANSWERED' && '🔴 Not Answered / Busy'}
+              </span>
+              <span className="text-xs text-slate-400 font-mono">
+                ({finalFilteredLogs.length} records)
+              </span>
             </div>
 
             <div className="relative w-80">

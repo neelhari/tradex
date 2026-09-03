@@ -278,7 +278,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [stats, setStats] = useState<TelecallerStats>(() => getStoredState('stats', INITIAL_TELECALLER_STATS));
   const [callLogs, setCallLogs] = useState<CallLogItem[]>(() => {
     const stored = getStoredState('callLogs', INITIAL_CALL_LOGS);
-    if (!Array.isArray(stored) || stored.length < INITIAL_CALL_LOGS.length) {
+    if (!Array.isArray(stored) || stored.length < INITIAL_CALL_LOGS.length || !stored.some((l: any) => l.date)) {
       return INITIAL_CALL_LOGS;
     }
     return stored;
