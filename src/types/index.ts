@@ -242,6 +242,7 @@ export interface AssignedLead {
   lastCallTimestamp?: string;
   dealValue?: number;
   followUpDate?: string;
+  updatedAt?: string;
 }
 
 export interface LeadBatch {

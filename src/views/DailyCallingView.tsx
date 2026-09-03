@@ -35,7 +35,6 @@ export const DailyCallingView: React.FC = () => {
     openCallModalForLead,
     setIsQuickCallModalOpen, 
     setActiveCallingLead,
-    recordCallLog,
     triggerToast
   } = useApp();
 
