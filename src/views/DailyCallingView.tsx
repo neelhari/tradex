@@ -85,28 +85,6 @@ export const DailyCallingView: React.FC = () => {
     return l.phone.includes(q);
   });
 
-  // Active lead for Mobile Power Dial Station
-  const activeLead = selectedLeadId
-    ? currentQueueLeads.find((l) => l.id === selectedLeadId) || currentQueueLeads[0]
-    : currentQueueLeads[0] || null;
-
-  const handleQuickPowerLog = async (lead: AssignedLead, outcome: CallOutcome) => {
-    try {
-      await recordCallLog(
-        lead.id,
-        lead.name,
-        lead.phone,
-        lead.company,
-        outcome,
-        outcome === 'INTERESTED' ? 'Client expressed interest' : outcome === 'CALLBACK' ? 'Requested follow-up call' : 'Mobile Power Dial logged',
-        outcome === 'CALLBACK' ? 'Today, 04:00 PM' : undefined
-      );
-      triggerToast(`✓ Result logged for ${lead.phone}`);
-    } catch (e) {
-      triggerToast('Result logged');
-    }
-  };
-
   const filteredLogs = callLogs.filter((log) => {
     const q = search.toLowerCase();
     const matchesSearch =
@@ -350,81 +328,6 @@ export const DailyCallingView: React.FC = () => {
             </button>
           </div>
 
-          {/* Mobile Power Dial Station */}
-          {activeLead && (
-            <div className="p-3.5 bg-gradient-to-br from-white to-emerald-50/40 border border-emerald-300/80 rounded-2xl shadow-xs space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <Zap className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </div>
-                  <span className="font-display font-black text-xs text-[#0A2540] uppercase tracking-wider">
-                    Mobile Power Dial
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">
-                  Target Ready
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="font-mono font-black text-xl text-[#0A2540] tracking-tight block truncate">
-                    {activeLead.phone}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium block">
-                    {activeLead.status === 'PENDING'
-                      ? 'Fresh Uncalled Lead'
-                      : activeLead.status === 'CALLBACK'
-                      ? 'Follow-Up Due'
-                      : 'Hot Prospect'}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => handleCallLead(activeLead)}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] hover:opacity-95 text-[#0A2540] font-black text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-xs cursor-pointer flex-shrink-0"
-                >
-                  <Phone className="w-3.5 h-3.5 fill-current" />
-                  <span>Call Now</span>
-                </button>
-              </div>
-
-              {/* Instant 1-Tap Result Bar */}
-              <div className="pt-2 border-t border-slate-100 space-y-1">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                  1-Tap Result &amp; Next Lead:
-                </span>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button
-                    onClick={() => handleQuickPowerLog(activeLead, 'INTERESTED')}
-                    className="py-1.5 px-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[10px] text-center cursor-pointer active:scale-95 transition-all"
-                  >
-                    🟢 Int
-                  </button>
-                  <button
-                    onClick={() => handleQuickPowerLog(activeLead, 'CALLBACK')}
-                    className="py-1.5 px-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-[10px] text-center cursor-pointer active:scale-95 transition-all"
-                  >
-                    ⏰ Callback
-                  </button>
-                  <button
-                    onClick={() => handleQuickPowerLog(activeLead, 'BUSY')}
-                    className="py-1.5 px-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-[10px] text-center cursor-pointer active:scale-95 transition-all"
-                  >
-                    📵 No Ans
-                  </button>
-                  <button
-                    onClick={() => handleQuickPowerLog(activeLead, 'NOT_INTERESTED')}
-                    className="py-1.5 px-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-[10px] text-center cursor-pointer active:scale-95 transition-all"
-                  >
-                    🔴 Not Int
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Search by Phone Number */}
           <div className="relative pt-1">
             <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
@@ -449,7 +352,6 @@ export const DailyCallingView: React.FC = () => {
           {currentQueueLeads.length > 0 ? (
             <div className="space-y-2">
               {currentQueueLeads.map((lead) => {
-                const isSelected = activeLead?.id === lead.id;
                 const isYesterdayCallback =
                   lead.status === 'CALLBACK' &&
                   ((lead.followUpDate || '').toLowerCase().includes('yesterday') ||
@@ -458,11 +360,8 @@ export const DailyCallingView: React.FC = () => {
                 return (
                   <div
                     key={lead.id}
-                    onClick={() => setSelectedLeadId(lead.id)}
-                    className={`nexus-card p-3.5 bg-white border rounded-2xl shadow-xs transition-all flex items-center justify-between gap-3 cursor-pointer ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-50/20 ring-2 ring-emerald-500/20'
-                        : isYesterdayCallback
+                    className={`nexus-card p-3.5 bg-white border rounded-2xl shadow-xs transition-all flex items-center justify-between gap-3 ${
+                      isYesterdayCallback
                         ? 'border-rose-300 ring-1 ring-rose-200'
                         : 'border-slate-200/90 hover:border-[#00C9A7]/60'
                     }`}

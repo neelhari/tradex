@@ -88,44 +88,9 @@ export const DesktopDailyCalling: React.FC = () => {
     return list.filter((l) => l.phone.includes(q));
   }, [myAssignedLeads, activeQueueFilter, callbackLeads, interestedLeads, searchQuery]);
 
-  // Active lead selected for the desktop right-hand power dial panel
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  const activeLead = useMemo(() => {
-    if (selectedLeadId) {
-      const found = currentQueueLeads.find((l) => l.id === selectedLeadId);
-      if (found) return found;
-    }
-    return currentQueueLeads[0] || null;
-  }, [selectedLeadId, currentQueueLeads]);
-
-  // Quick In-Place Result Logger States
-  const [stationOutcome, setStationOutcome] = useState<CallOutcome>('INTERESTED');
-  const [stationNotes, setStationNotes] = useState<string>('');
-  const [stationCallbackTime, setStationCallbackTime] = useState<string>('');
-
   const handleDialActive = (lead: AssignedLead) => {
     window.location.href = `tel:${lead.phone}`;
     triggerToast(`📞 Dialing ${lead.phone}...`);
-  };
-
-  const handleSaveStationResult = async () => {
-    if (!activeLead) return;
-    try {
-      await recordCallLog(
-        activeLead.id,
-        activeLead.name,
-        activeLead.phone,
-        activeLead.company,
-        stationOutcome,
-        stationNotes || (stationOutcome === 'INTERESTED' ? 'Customer expressed interest.' : 'Logged via Desktop Station'),
-        stationOutcome === 'CALLBACK' ? stationCallbackTime || 'Today, 04:00 PM' : undefined
-      );
-      setStationNotes('');
-      setStationCallbackTime('');
-      triggerToast(`✓ Result recorded for ${activeLead.phone}`);
-    } catch (e) {
-      triggerToast('Result logged successfully');
-    }
   };
 
   // Filtered history logs
@@ -341,275 +306,132 @@ export const DesktopDailyCalling: React.FC = () => {
             </button>
           </div>
 
-          {/* Desktop Split-Pane Power Workspace (60% Queue List + 40% Power Dial Station) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Desktop Queue Workspace */}
+          <div className="space-y-4">
             
-            {/* LEFT PANE (7 of 12 cols): Master Queue List */}
-            <div className="lg:col-span-7 space-y-4">
-              
-              {/* Search & Filter Bar */}
-              <div className="flex items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by phone number..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-8 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <span className="text-xs font-mono font-bold text-slate-500 whitespace-nowrap">
-                  {currentQueueLeads.length} Leads in Queue
-                </span>
+            {/* Search & Filter Bar */}
+            <div className="flex items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by phone number..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-8 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
-              {/* Lead Cards List */}
-              <div className="space-y-2.5">
-                {currentQueueLeads.length > 0 ? (
-                  currentQueueLeads.map((lead) => {
-                    const isSelected = activeLead?.id === lead.id;
-                    const isYesterdayCallback =
-                      lead.status === 'CALLBACK' &&
-                      ((lead.followUpDate || '').toLowerCase().includes('yesterday') ||
-                       (lead.followUpDate && lead.followUpDate.split(' ')[0] < todayIso));
+              <span className="text-xs font-mono font-bold text-slate-500 whitespace-nowrap">
+                {currentQueueLeads.length} Leads in Queue
+              </span>
+            </div>
 
-                    return (
-                      <div
-                        key={lead.id}
-                        onClick={() => setSelectedLeadId(lead.id)}
-                        className={`nexus-card p-4 bg-white border rounded-2xl shadow-xs transition-all cursor-pointer flex items-center justify-between gap-4 ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-50/20 ring-2 ring-emerald-500/20'
-                            : isYesterdayCallback
-                            ? 'border-rose-300 ring-1 ring-rose-200'
-                            : 'border-slate-200/90 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                            isYesterdayCallback
-                              ? 'bg-rose-50 text-rose-600 border border-rose-200'
-                              : lead.status === 'CALLBACK' 
-                              ? 'bg-amber-50 text-amber-600 border border-amber-200' 
-                              : lead.status === 'INTERESTED'
-                              ? 'bg-sky-50 text-sky-600 border border-sky-200'
-                              : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                          }`}>
-                            {lead.status === 'CALLBACK' ? (
-                              isYesterdayCallback ? <AlertCircle className="w-5 h-5 stroke-[2.4]" /> : <Clock className="w-5 h-5 stroke-[2.2]" />
+            {/* Lead Cards Grid (2-column desktop grid for comfortable reading) */}
+            {currentQueueLeads.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {currentQueueLeads.map((lead) => {
+                  const isYesterdayCallback =
+                    lead.status === 'CALLBACK' &&
+                    ((lead.followUpDate || '').toLowerCase().includes('yesterday') ||
+                     (lead.followUpDate && lead.followUpDate.split(' ')[0] < todayIso));
+
+                  return (
+                    <div
+                      key={lead.id}
+                      className={`nexus-card p-4 bg-white border rounded-2xl shadow-xs transition-all flex items-center justify-between gap-4 ${
+                        isYesterdayCallback
+                          ? 'border-rose-300 ring-1 ring-rose-200'
+                          : 'border-slate-200/90 hover:border-[#00C9A7]/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          isYesterdayCallback
+                            ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                            : lead.status === 'CALLBACK' 
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200' 
+                            : lead.status === 'INTERESTED'
+                            ? 'bg-sky-50 text-sky-600 border border-sky-200'
+                            : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                        }`}>
+                          {lead.status === 'CALLBACK' ? (
+                            isYesterdayCallback ? <AlertCircle className="w-5 h-5 stroke-[2.4]" /> : <Clock className="w-5 h-5 stroke-[2.2]" />
+                          ) : (
+                            <Phone className="w-5 h-5 stroke-[2.2]" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <span className="font-mono font-black text-base text-[#0A2540] tracking-tight block whitespace-nowrap">
+                            {lead.phone}
+                          </span>
+                          {lead.status === 'CALLBACK' ? (
+                            isYesterdayCallback ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black px-2 py-0.5 rounded-md mt-0.5 bg-rose-100 text-rose-800 border border-rose-200">
+                                <AlertCircle className="w-3 h-3 text-rose-600" />
+                                <span>⚠️ Yesterday's Callback (Call First!)</span>
+                              </span>
                             ) : (
-                              <Phone className="w-5 h-5 stroke-[2.2]" />
-                            )}
-                          </div>
-
-                          <div className="min-w-0">
-                            <span className="font-mono font-black text-base text-[#0A2540] tracking-tight block whitespace-nowrap">
-                              {lead.phone}
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-amber-100 text-amber-800 border border-amber-200">
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                <span>⏰ Callback: {lead.followUpDate || 'Today, 04:00 PM'}</span>
+                              </span>
+                            )
+                          ) : lead.status === 'INTERESTED' ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-sky-100 text-sky-800 border border-sky-200">
+                              <CheckCircle2 className="w-3 h-3 text-sky-600" />
+                              <span>🟢 Interested Prospect</span>
                             </span>
-                            {lead.status === 'CALLBACK' ? (
-                              isYesterdayCallback ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black px-2 py-0.5 rounded-md mt-0.5 bg-rose-100 text-rose-800 border border-rose-200">
-                                  <AlertCircle className="w-3 h-3 text-rose-600" />
-                                  <span>⚠️ Yesterday's Callback (Call First!)</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-amber-100 text-amber-800 border border-amber-200">
-                                  <Clock className="w-3 h-3 text-amber-600" />
-                                  <span>⏰ Callback: {lead.followUpDate || 'Today, 04:00 PM'}</span>
-                                </span>
-                              )
-                            ) : lead.status === 'INTERESTED' ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-sky-100 text-sky-800 border border-sky-200">
-                                <CheckCircle2 className="w-3 h-3 text-sky-600" />
-                                <span>🟢 Interested Prospect</span>
-                              </span>
-                            ) : (
-                              <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-slate-100 text-slate-600">
-                                Fresh Lead · Ready to Dial
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDialActive(lead);
-                            }}
-                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] hover:opacity-95 text-[#0A2540] font-black text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-xs cursor-pointer"
-                          >
-                            <Phone className="w-3.5 h-3.5 fill-current" />
-                            <span>Call</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openCallModalForLead(lead);
-                            }}
-                            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                            <span>Result</span>
-                          </button>
+                          ) : (
+                            <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-slate-100 text-slate-600">
+                              Fresh Lead · Ready to Dial
+                            </span>
+                          )}
                         </div>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="nexus-card p-12 bg-white border border-slate-200 rounded-3xl text-center space-y-2">
-                    <CheckCircle2 className="w-10 h-10 text-[#00C9A7] mx-auto" />
-                    <h4 className="font-display font-bold text-base text-[#0A2540]">Queue Completed!</h4>
-                    <p className="text-xs text-slate-400">
-                      No leads match this category right now. Great job!
-                    </p>
-                  </div>
-                )}
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleDialActive(lead)}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] hover:opacity-95 text-[#0A2540] font-black text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-xs cursor-pointer"
+                        >
+                          <Phone className="w-3.5 h-3.5 fill-current" />
+                          <span>Call</span>
+                        </button>
+                        <button
+                          onClick={() => openCallModalForLead(lead)}
+                          className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                          <span>Result</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-
-            {/* RIGHT PANE (5 of 12 cols): Desktop Power Dial Station */}
-            <div className="lg:col-span-5 sticky top-20">
-              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 space-y-5">
-                
-                {/* Station Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                      <Zap className="w-4 h-4 stroke-[2.5]" />
-                    </div>
-                    <div>
-                      <h3 className="font-display font-black text-sm text-[#0A2540]">
-                        Power Dial Station
-                      </h3>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        Keyboard logger enabled
-                      </span>
-                    </div>
-                  </div>
-
-                  <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                    Live
-                  </span>
-                </div>
-
-                {activeLead ? (
-                  <div className="space-y-4">
-                    {/* Active Contact Hero */}
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/60 border border-slate-200/80 space-y-2">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold block">
-                        Selected Target
-                      </span>
-                      <span className="font-mono font-black text-2xl text-[#0A2540] tracking-tight block">
-                        {activeLead.phone}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                          {activeLead.status}
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-400">
-                          Dials made: {activeLead.callCount || 0}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Big Direct Dial Button */}
-                    <button
-                      onClick={() => handleDialActive(activeLead)}
-                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] hover:opacity-95 text-[#0A2540] font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-[#00C9A7]/20 active:scale-[0.98] transition-all cursor-pointer"
-                    >
-                      <Phone className="w-4 h-4 fill-current" />
-                      <span>One-Tap Call {activeLead.phone}</span>
-                    </button>
-
-                    {/* Quick Outcome Selector */}
-                    <div className="space-y-1.5 pt-1">
-                      <label className="text-xs font-bold text-slate-600 block">
-                        Quick Outcome:
-                      </label>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {[
-                          { id: 'INTERESTED', label: '🟢 Interested', color: 'hover:border-sky-300' },
-                          { id: 'CALLBACK', label: '⏰ Call Back', color: 'hover:border-amber-300' },
-                          { id: 'DEAL_CLOSED', label: '🏆 Won Deal', color: 'hover:border-emerald-300' },
-                          { id: 'BUSY', label: '📵 No Answer', color: 'hover:border-slate-300' },
-                          { id: 'NOT_INTERESTED', label: '🔴 Not Interested', color: 'hover:border-rose-300' },
-                        ].map((opt) => (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => setStationOutcome(opt.id as CallOutcome)}
-                            className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer border ${
-                              stationOutcome === opt.id
-                                ? 'bg-[#0A2540] text-white border-[#0A2540] shadow-2xs'
-                                : `bg-white text-slate-700 border-slate-200 ${opt.color}`
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Callback time picker if Callback selected */}
-                    {stationOutcome === 'CALLBACK' && (
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-amber-800">
-                          Follow-Up Time:
-                        </label>
-                        <input
-                          type="text"
-                          value={stationCallbackTime}
-                          onChange={(e) => setStationCallbackTime(e.target.value)}
-                          placeholder="e.g. Today, 04:00 PM"
-                          className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none"
-                        />
-                      </div>
-                    )}
-
-                    {/* Quick Notes Textarea */}
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-600 block">
-                        Call Notes / Client Feedback:
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={stationNotes}
-                        onChange={(e) => setStationNotes(e.target.value)}
-                        placeholder="Type customer response notes..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 font-medium"
-                      />
-                    </div>
-
-                    {/* Save Result Button */}
-                    <button
-                      onClick={handleSaveStationResult}
-                      className="w-full py-2.5 rounded-xl bg-[#0A2540] hover:bg-[#12385f] text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xs cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5 text-[#00C9A7]" />
-                      <span>Save Result &amp; Next Lead</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="py-12 text-center text-slate-400">
-                    <PhoneCall className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p className="text-xs">Select a lead from the queue to start dialing</p>
-                  </div>
-                )}
-
+            ) : (
+              <div className="nexus-card p-12 bg-white border border-slate-200 rounded-3xl text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-[#00C9A7] mx-auto" />
+                <h4 className="font-display font-bold text-base text-[#0A2540]">
+                  {activeQueueFilter === 'ALL_ASSIGNED' ? 'All Fresh Calls Completed!' : 'Queue Completed!'}
+                </h4>
+                <p className="text-xs text-slate-400">
+                  {activeQueueFilter === 'ALL_ASSIGNED'
+                    ? '0 uncalled leads remaining. Great job! Check Callbacks or Interested to follow up.'
+                    : 'No leads match this category right now.'}
+                </p>
               </div>
-            </div>
-
+            )}
           </div>
 
         </div>
