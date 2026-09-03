@@ -17,8 +17,27 @@ import {
   AssignedLead,
   LeadBatch,
   FaceBiometricProfile,
-  OfferLetterData
+  OfferLetterData,
+  CompanyHoliday
 } from '../types';
+
+export const INITIAL_COMPANY_HOLIDAYS: CompanyHoliday[] = [
+  { id: 'hol-1', name: 'Republic Day', date: '2026-01-26', type: 'NATIONAL' },
+  { id: 'hol-2', name: 'Maha Shivratri', date: '2026-02-15', type: 'FESTIVAL' },
+  { id: 'hol-3', name: 'Holi Festival', date: '2026-03-03', type: 'FESTIVAL' },
+  { id: 'hol-4', name: 'Eid-ul-Fitr', date: '2026-03-20', type: 'FESTIVAL' },
+  { id: 'hol-5', name: 'Dr. Ambedkar Jayanti', date: '2026-04-14', type: 'NATIONAL' },
+  { id: 'hol-6', name: 'May Day', date: '2026-05-01', type: 'COMPANY' },
+  { id: 'hol-7', name: 'Bakrid / Eid al-Adha', date: '2026-05-27', type: 'FESTIVAL' },
+  { id: 'hol-8', name: 'Muharram', date: '2026-06-26', type: 'FESTIVAL' },
+  { id: 'hol-9', name: 'Independence Day', date: '2026-08-15', type: 'NATIONAL' },
+  { id: 'hol-10', name: 'Ganesh Chaturthi', date: '2026-09-14', type: 'FESTIVAL' },
+  { id: 'hol-11', name: 'Mahatma Gandhi Jayanti', date: '2026-10-02', type: 'NATIONAL' },
+  { id: 'hol-12', name: 'Dussehra / Vijayadashami', date: '2026-10-20', type: 'FESTIVAL' },
+  { id: 'hol-13', name: 'Diwali Festival', date: '2026-11-08', type: 'FESTIVAL' },
+  { id: 'hol-14', name: 'Guru Nanak Jayanti', date: '2026-11-24', type: 'FESTIVAL' },
+  { id: 'hol-15', name: 'Christmas Day', date: '2026-12-25', type: 'FESTIVAL' },
+];
 
 export const INITIAL_PROFILE: EmployeeProfile = {
   id: 'emp-101',

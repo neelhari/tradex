@@ -242,11 +242,6 @@ export const DesktopDailyCalling: React.FC = () => {
             >
               <Phone className="w-3.5 h-3.5 text-[#00C9A7]" />
               <span>Calling Queue</span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-                activeSection === 'QUEUE' ? 'bg-white/20 text-[#00C9A7]' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {currentQueueLeads.length}
-              </span>
             </button>
 
             <button
@@ -259,11 +254,6 @@ export const DesktopDailyCalling: React.FC = () => {
             >
               <History className="w-3.5 h-3.5 text-sky-400" />
               <span>Call Logs</span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-                activeSection === 'LOGS' ? 'bg-white/20 text-sky-300' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {callLogs.length}
-              </span>
             </button>
           </div>
 

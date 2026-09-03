@@ -23,7 +23,8 @@ import {
   LeadBatch,
   FaceBiometricProfile,
   OfferLetterData,
-  NewEmployeeInput
+  NewEmployeeInput,
+  CompanyHoliday
 } from '../types';
 import { api } from '../services/api';
 import {
@@ -53,6 +54,7 @@ import {
   INITIAL_EXIT_LIST,
   INITIAL_PAYMENT_VERIFICATIONS,
   INITIAL_OFFER_LETTERS,
+  INITIAL_COMPANY_HOLIDAYS,
 } from '../data/mockData';
 
 interface AppContextType {
@@ -159,6 +161,14 @@ interface AppContextType {
   toggleExitChecklist: (employeeId: string, itemKey: keyof ExitEmployee['checklist']) => void;
   verifyPayment: (paymentId: string, status: 'VERIFIED' | 'REJECTED') => void;
   generateBulkPayslips: (month: string, year: string) => void;
+
+  // Company Calendar & Holidays (Hierarchy-wide)
+  weeklyOffDays: number[];
+  setWeeklyOffDays: (days: number[]) => void;
+  toggleWeeklyOffDay: (dayIndex: number) => void;
+  companyHolidays: CompanyHoliday[];
+  addCompanyHoliday: (holiday: Omit<CompanyHoliday, 'id'>) => void;
+  deleteCompanyHoliday: (id: string) => void;
   
   // Authentication Flow
   authStep: AuthStep;
@@ -316,6 +326,63 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Backend connection state
   const [backendError, setBackendError] = useState<string | null>(null);
+
+  // Hierarchy-wide Company Calendar & Holidays State
+  const [weeklyOffDays, setWeeklyOffDaysState] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem('tnx_weekly_off_days');
+      return stored ? JSON.parse(stored) : [0]; // Default: Sunday (0)
+    } catch {
+      return [0];
+    }
+  });
+
+  const [companyHolidays, setCompanyHolidaysState] = useState<CompanyHoliday[]>(() => {
+    try {
+      const stored = localStorage.getItem('tnx_company_holidays');
+      return stored ? JSON.parse(stored) : INITIAL_COMPANY_HOLIDAYS;
+    } catch {
+      return INITIAL_COMPANY_HOLIDAYS;
+    }
+  });
+
+  const setWeeklyOffDays = (days: number[]) => {
+    setWeeklyOffDaysState(days);
+    try {
+      localStorage.setItem('tnx_weekly_off_days', JSON.stringify(days));
+    } catch {}
+    triggerToast('✓ Weekly off schedule updated across company calendars');
+  };
+
+  const toggleWeeklyOffDay = (dayIndex: number) => {
+    const updated = weeklyOffDays.includes(dayIndex)
+      ? weeklyOffDays.filter(d => d !== dayIndex)
+      : [...weeklyOffDays, dayIndex].sort();
+    setWeeklyOffDays(updated);
+  };
+
+  const addCompanyHoliday = (holiday: Omit<CompanyHoliday, 'id'>) => {
+    const newHol: CompanyHoliday = {
+      ...holiday,
+      id: `hol-${Date.now()}`
+    };
+    const updated = [...companyHolidays, newHol].sort((a, b) => a.date.localeCompare(b.date));
+    setCompanyHolidaysState(updated);
+    try {
+      localStorage.setItem('tnx_company_holidays', JSON.stringify(updated));
+    } catch {}
+    triggerToast(`✓ Added Holiday "${holiday.name}" to company calendar`);
+  };
+
+  const deleteCompanyHoliday = (id: string) => {
+    const target = companyHolidays.find(h => h.id === id);
+    const updated = companyHolidays.filter(h => h.id !== id);
+    setCompanyHolidaysState(updated);
+    try {
+      localStorage.setItem('tnx_company_holidays', JSON.stringify(updated));
+    } catch {}
+    triggerToast(`✓ Removed Holiday "${target?.name || ''}" from calendar`);
+  };
 
   // Modals & UI State
   const [isFaceIdModalOpen, setIsFaceIdModalOpen] = useState(false);
@@ -1685,6 +1752,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleExitChecklist,
         verifyPayment,
         generateBulkPayslips,
+        weeklyOffDays,
+        setWeeklyOffDays,
+        toggleWeeklyOffDay,
+        companyHolidays,
+        addCompanyHoliday,
+        deleteCompanyHoliday,
         authStep,
         setAuthStep,
         logout,

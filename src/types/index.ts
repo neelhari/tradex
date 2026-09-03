@@ -48,6 +48,13 @@ export interface ClientLead {
   lastContacted: string;
 }
 
+export interface CompanyHoliday {
+  id: string;
+  name: string;
+  date: string; // YYYY-MM-DD
+  type?: 'NATIONAL' | 'FESTIVAL' | 'COMPANY' | 'OPTIONAL';
+}
+
 export interface AttendanceRecord {
   id?: string;
   employeeId?: string;

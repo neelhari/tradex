@@ -284,7 +284,7 @@ export const DailyCallingView: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 pb-28 pt-2 px-3 sm:px-4 max-w-lg mx-auto">
       
-      {/* 1. Primary Calling Mode Segment Switch */}
+      {/* 1. Primary Calling Mode Segment Switch (Clean labels, NO number badges) */}
       <div className="bg-slate-200/70 p-1 rounded-2xl flex items-center gap-1 shadow-2xs">
         <button
           onClick={() => { setActiveSection('FRESH_CALLS'); setSearch(''); }}
@@ -296,13 +296,6 @@ export const DailyCallingView: React.FC = () => {
         >
           <Phone className="w-3.5 h-3.5 text-[#00C9A7]" />
           <span>Fresh Calls</span>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ml-1 ${
-            activeSection === 'FRESH_CALLS'
-              ? 'bg-white/20 text-[#00C9A7]'
-              : 'bg-slate-300 text-slate-700'
-          }`}>
-            {freshLeads.length}
-          </span>
         </button>
 
         <button
@@ -315,13 +308,6 @@ export const DailyCallingView: React.FC = () => {
         >
           <History className="w-3.5 h-3.5 text-sky-400" />
           <span>Call Logs</span>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ml-1 ${
-            activeSection === 'CALL_LOGS'
-              ? 'bg-white/20 text-sky-300'
-              : 'bg-slate-300 text-slate-700'
-          }`}>
-            {callLogs.length}
-          </span>
         </button>
       </div>
 

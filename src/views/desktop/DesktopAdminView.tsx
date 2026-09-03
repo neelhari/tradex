@@ -35,6 +35,7 @@ import { CreateTeamModal } from '../../components/modals/CreateTeamModal';
 import { ManageTeamMembersModal } from '../../components/modals/ManageTeamMembersModal';
 import { TeamGroup } from '../../types';
 import { Employee360ProfileView } from '../Employee360ProfileView';
+import { AdminCalendarConfig } from '../../components/common/AdminCalendarConfig';
 
 interface DesktopAdminViewProps {
   currentTab?: string;
@@ -649,6 +650,9 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
             <span>Download to Excel</span>
           </button>
         </PageHead>
+
+        {/* Hierarchy Company Calendar & Holidays Configuration */}
+        <AdminCalendarConfig />
 
         {/* Date Navigation & Problem Filter Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">

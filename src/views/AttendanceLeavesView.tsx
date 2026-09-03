@@ -14,7 +14,14 @@ import {
 } from 'lucide-react';
 
 export const AttendanceLeavesView: React.FC = () => {
-  const { attendanceLogs, leaveRequests, setIsFaceIdModalOpen, setIsLeaveModalOpen, profile } = useApp();
+  const { 
+    attendanceLogs, 
+    leaveRequests, 
+    setIsLeaveModalOpen, 
+    profile,
+    weeklyOffDays,
+    companyHolidays 
+  } = useApp();
 
   useScreenData('attendanceLeaves');
   const [activeSubTab, setActiveSubTab] = useState<'attendance' | 'leaves'>('attendance');
@@ -77,7 +84,7 @@ export const AttendanceLeavesView: React.FC = () => {
 
       {activeSubTab === 'attendance' ? (
         <div className="space-y-4">
-          {/* Biometric Card */}
+          {/* Biometric Card (Verify button removed as requested) */}
           <div className="nexus-card p-3.5 bg-gradient-to-r from-[#E6FAF6]/90 via-white to-white border border-[#00C9A7]/30 flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#00C9A7]/15 text-[#00A88B] flex items-center justify-center flex-shrink-0">
@@ -88,12 +95,9 @@ export const AttendanceLeavesView: React.FC = () => {
                 <p className="text-[11px] text-slate-500 font-mono">Today: {profile.checkInTime} (Present)</p>
               </div>
             </div>
-            <button
-              onClick={() => setIsFaceIdModalOpen(true)}
-              className="py-2 px-3 rounded-xl bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs shadow-xs active:scale-95 transition-all"
-            >
-              Verify
-            </button>
+            <span className="text-[11px] font-bold font-mono px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+              ✓ Verified
+            </span>
           </div>
 
           {/* Monthly Calendar View Card */}
@@ -111,7 +115,7 @@ export const AttendanceLeavesView: React.FC = () => {
               <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
             </div>
 
-            {/* Days Grid with clean vertical separation */}
+            {/* Days Grid with clean vertical separation & Admin Weekly Off/Holiday reflection */}
             <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-mono font-bold">
               {[...Array(leadingBlanks)].map((_, i) => (
                 <div key={`blank-${i}`} />
@@ -121,25 +125,42 @@ export const AttendanceLeavesView: React.FC = () => {
                 const status = statusByDay.get(day);
                 const isLatest = day === latestDay;
 
+                const year = monthAnchor.getFullYear();
+                const month = monthAnchor.getMonth();
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayOfWeek = new Date(year, month, day).getDay();
+                const holidayMatch = companyHolidays.find((h) => h.date === dateStr);
+                const isWeeklyOff = weeklyOffDays.includes(dayOfWeek);
+
                 return (
                   <div
                     key={day}
-                    className={`h-11 rounded-xl flex flex-col items-center justify-center relative ${
-                      isLatest ? 'bg-[#00C9A7] text-[#0A2540] shadow-md shadow-[#00C9A7]/30 font-extrabold' :
+                    title={holidayMatch ? `Holiday: ${holidayMatch.name}` : isWeeklyOff ? 'Weekly Off' : undefined}
+                    className={`h-11 rounded-xl flex flex-col items-center justify-center relative transition-all ${
+                      isLatest ? 'bg-[#00C9A7] text-[#0A2540] shadow-md shadow-[#00C9A7]/30 font-extrabold ring-2 ring-[#00C9A7]/50' :
                       status === 'LEAVE' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
                       status === 'ABSENT' ? 'bg-rose-100 text-rose-900 border border-rose-300' :
-                      status === 'HOLIDAY' ? 'bg-slate-50 text-slate-400' :
-                      status === 'HALF_DAY' ? 'bg-sky-50 text-sky-900 border border-sky-200' :
                       status === 'PRESENT' ? 'bg-emerald-50/80 text-emerald-900 border border-emerald-200' :
-                      'text-slate-400'
+                      status === 'HALF_DAY' ? 'bg-sky-50 text-sky-900 border border-sky-200' :
+                      holidayMatch || status === 'HOLIDAY' ? 'bg-purple-100 text-purple-900 border border-purple-300 shadow-2xs font-black' :
+                      isWeeklyOff ? 'bg-slate-100 text-slate-400 border border-slate-200/80' :
+                      'text-slate-400 hover:bg-slate-50'
                     }`}
                   >
                     <span className="text-xs leading-none">{day}</span>
+                    {holidayMatch && (
+                      <span className="text-[8px] font-black leading-none text-purple-700 mt-0.5 max-w-[40px] truncate">
+                        ★
+                      </span>
+                    )}
                     {status === 'PRESENT' && !isLatest && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
                     )}
                     {status === 'LEAVE' && (
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1" />
+                    )}
+                    {isWeeklyOff && !holidayMatch && !status && (
+                      <span className="text-[8px] text-slate-400 mt-0.5 leading-none font-sans font-medium">OFF</span>
                     )}
                   </div>
                 );
@@ -151,7 +172,8 @@ export const AttendanceLeavesView: React.FC = () => {
               <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Present</span>
               <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Leave</span>
               <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500" /> Absent</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300" /> Weekly Off</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-400" /> Weekly Off</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-600" /> Holiday</span>
             </div>
           </div>
 

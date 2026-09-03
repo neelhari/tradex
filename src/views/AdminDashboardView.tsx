@@ -38,6 +38,7 @@ import { ManageTeamMembersModal } from '../components/modals/ManageTeamMembersMo
 import { OfficeSettings, TeamGroup, TeamMember, UserRole } from '../types';
 import { api } from '../services/api';
 import { Employee360ProfileView } from './Employee360ProfileView';
+import { AdminCalendarConfig } from '../components/common/AdminCalendarConfig';
 
 type AdminTab = 'home' | 'people' | 'attendance' | 'leads' | 'more' | 'approvals' | 'reports';
 
@@ -767,6 +768,9 @@ export const AdminDashboardView: React.FC = () => {
                 {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short' })}
               </p>
             </div>
+
+            {/* Company Calendar & Holiday Configuration */}
+            <AdminCalendarConfig />
 
             {/* Office location — the point every check-in is measured against */}
             <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">

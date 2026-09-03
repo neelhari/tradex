@@ -14,7 +14,15 @@ import {
 } from 'lucide-react';
 
 export const DesktopAttendanceLeaves: React.FC = () => {
-  const { profile, attendanceLogs, leaveRequests, setIsFaceIdModalOpen, setIsLeaveModalOpen, triggerToast } = useApp();
+  const { 
+    profile, 
+    attendanceLogs, 
+    leaveRequests, 
+    setIsLeaveModalOpen, 
+    weeklyOffDays,
+    companyHolidays,
+    triggerToast 
+  } = useApp();
 
   useScreenData('attendanceLeaves');
 
@@ -63,16 +71,8 @@ export const DesktopAttendanceLeaves: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsFaceIdModalOpen(true)}
-            className="flex items-center gap-2 bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00A88B] font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-[#00C9A7]/20 transition-all shadow-xs"
-          >
-            <UserCheck className="w-4 h-4" />
-            <span>Verify Face Recognition</span>
-          </button>
-
-          <button
             onClick={() => setIsLeaveModalOpen(true)}
-            className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
+            className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>+ Apply for Leave</span>
@@ -108,23 +108,37 @@ export const DesktopAttendanceLeaves: React.FC = () => {
               const status = statusByDay.get(day);
               const isLatest = day === latestDay;
 
+              const year = monthAnchor.getFullYear();
+              const month = monthAnchor.getMonth();
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const dayOfWeek = new Date(year, month, day).getDay();
+              const holidayMatch = companyHolidays.find((h) => h.date === dateStr);
+              const isWeeklyOff = weeklyOffDays.includes(dayOfWeek);
+
               return (
                 <div
                   key={day}
-                  title={status ? `${day}: ${status.replace('_', ' ')}` : `${day}: no record`}
+                  title={holidayMatch ? `Holiday: ${holidayMatch.name}` : isWeeklyOff ? 'Weekly Off' : status ? `${day}: ${status}` : `${day}`}
                   className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all ${
-                    isLatest ? 'bg-[#00C9A7] text-[#0A2540] shadow-md shadow-[#00C9A7]/30 font-extrabold' :
+                    isLatest ? 'bg-[#00C9A7] text-[#0A2540] shadow-md shadow-[#00C9A7]/30 font-extrabold ring-2 ring-[#00C9A7]/50' :
                     status === 'LEAVE' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
                     status === 'ABSENT' ? 'bg-rose-100 text-rose-900 border border-rose-300' :
-                    status === 'HOLIDAY' ? 'bg-slate-50 text-slate-400' :
-                    status === 'HALF_DAY' ? 'bg-sky-50 text-sky-800 border border-sky-200' :
                     status === 'PRESENT' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
-                    'text-slate-400'
+                    status === 'HALF_DAY' ? 'bg-sky-50 text-sky-800 border border-sky-200' :
+                    holidayMatch || status === 'HOLIDAY' ? 'bg-purple-100 text-purple-900 border border-purple-300 font-extrabold shadow-2xs' :
+                    isWeeklyOff ? 'bg-slate-100 text-slate-400 border border-slate-200/80' :
+                    'text-slate-400 hover:bg-slate-50'
                   }`}
                 >
                   <span>{day}</span>
+                  {holidayMatch && (
+                    <span className="text-[8px] font-black leading-none text-purple-700 mt-0.5">★</span>
+                  )}
                   {status === 'PRESENT' && !isLatest && (
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-0.5" />
+                  )}
+                  {isWeeklyOff && !holidayMatch && !status && (
+                    <span className="text-[8px] text-slate-400 mt-0.5 leading-none font-medium">OFF</span>
                   )}
                 </div>
               );
@@ -136,7 +150,8 @@ export const DesktopAttendanceLeaves: React.FC = () => {
             <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Present ({presentDays} Days)</span>
             <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Approved Leave ({leaveDays})</span>
             <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Absent ({absentDays} Days)</span>
-            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Week Off ({holidayDays} Days)</span>
+            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-slate-400" /> Weekly Off</span>
+            <span className="flex items-center gap-2 col-span-2"><span className="w-2.5 h-2.5 rounded-full bg-purple-600" /> Company Holiday</span>
           </div>
         </div>
 
