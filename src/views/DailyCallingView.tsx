@@ -555,60 +555,47 @@ export const DailyCallingView: React.FC = () => {
       {/* 3. SECTION B: CALL HISTORY & AUDIT ARCHIVE */}
       {activeSection === 'CALL_LOGS' && (
         <div className="space-y-3 pt-1">
-          {/* Top Control Bar: Timeframe Pills + Compact Log Call Button (NO bulky heading) */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
-              {[
-                { id: 'TODAY', label: 'Today' },
-                { id: 'YESTERDAY', label: 'Yesterday' },
-                { id: 'LAST_7', label: 'Last 7 Days' },
-                { id: 'LAST_30', label: 'Last 30 Days' },
-                { id: 'ALL', label: 'All Time' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setSelectedPeriod(tab.id as DatePeriod);
-                    setCustomDate('');
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                    selectedPeriod === tab.id
-                      ? 'bg-[#0A2540] text-white shadow-2xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          {/* Top Control Bar: Timeframe Pills (Full Width, NO bulky heading or Log button) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {[
+              { id: 'TODAY', label: 'Today' },
+              { id: 'YESTERDAY', label: 'Yesterday' },
+              { id: 'LAST_7', label: 'Last 7 Days' },
+              { id: 'LAST_30', label: 'Last 30 Days' },
+              { id: 'ALL', label: 'All Time' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setSelectedPeriod(tab.id as DatePeriod);
+                  setCustomDate('');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  selectedPeriod === tab.id
+                    ? 'bg-[#0A2540] text-white shadow-2xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
 
-              {/* Custom Date Input Pill */}
-              <div className="relative flex items-center flex-shrink-0">
-                <input
-                  type="date"
-                  value={customDate}
-                  onChange={(e) => {
-                    setCustomDate(e.target.value);
-                    setSelectedPeriod('CUSTOM');
-                  }}
-                  className={`px-2 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer focus:outline-none ${
-                    selectedPeriod === 'CUSTOM'
-                      ? 'bg-emerald-50 text-emerald-900 border-emerald-400 ring-1 ring-emerald-300'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-                />
-              </div>
+            {/* Custom Date Input Pill */}
+            <div className="relative flex items-center flex-shrink-0">
+              <input
+                type="date"
+                value={customDate}
+                onChange={(e) => {
+                  setCustomDate(e.target.value);
+                  setSelectedPeriod('CUSTOM');
+                }}
+                className={`px-2 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer focus:outline-none ${
+                  selectedPeriod === 'CUSTOM'
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-400 ring-1 ring-emerald-300'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              />
             </div>
-
-            <button
-              onClick={() => {
-                setActiveCallingLead(null);
-                setIsQuickCallModalOpen(true);
-              }}
-              className="flex items-center gap-1 bg-[#0A2540] hover:bg-[#12385f] text-white font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-2xs active:scale-95 transition-all flex-shrink-0 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5 text-[#00C9A7] stroke-[3]" />
-              <span>Log</span>
-            </button>
           </div>
 
           {/* Interactive 4-Box Metric Filter Buttons: Total Calls, Interested, Callbacks, Not Answered */}
