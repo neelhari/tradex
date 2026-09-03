@@ -276,7 +276,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [profile, setProfile] = useState<EmployeeProfile>(() => getStoredState('profile', INITIAL_PROFILE));
   const [stats, setStats] = useState<TelecallerStats>(() => getStoredState('stats', INITIAL_TELECALLER_STATS));
-  const [callLogs, setCallLogs] = useState<CallLogItem[]>(() => getStoredState('callLogs', INITIAL_CALL_LOGS));
+  const [callLogs, setCallLogs] = useState<CallLogItem[]>(() => {
+    const stored = getStoredState('callLogs', INITIAL_CALL_LOGS);
+    if (!Array.isArray(stored) || stored.length < INITIAL_CALL_LOGS.length) {
+      return INITIAL_CALL_LOGS;
+    }
+    return stored;
+  });
   const [clients, setClients] = useState<ClientLead[]>(() => getStoredState('clients', INITIAL_CLIENT_LEADS));
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(() => getStoredState('attendanceLogs', INITIAL_ATTENDANCE_LOGS));
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => getStoredState('leaveRequests', INITIAL_LEAVE_REQUESTS));
@@ -649,6 +655,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                  status === 'NOT_INTERESTED' ? 'NOT_INTERESTED' : 'CONNECTED',
         notes: notes || `Call outcome updated to ${status}`,
         timestamp: 'Just now',
+        date: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
         followUpDate,
       };
 
@@ -1421,6 +1429,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       notes: data.notes,
       followUpDate: data.followUpDate,
       timestamp: 'Just now',
+      date: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
     };
 
     setCallLogs((prev) => [newCallItem, ...prev]);

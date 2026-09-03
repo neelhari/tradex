@@ -48,13 +48,22 @@ export const INITIAL_TELECALLER_STATS: TelecallerStats = {
   monthlySalesAchieved: 145000,
 };
 
+const getRelativeDateStr = (daysAgo: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().split('T')[0];
+};
+
 export const INITIAL_CALL_LOGS: CallLogItem[] = [
+  // Today's Calls
   {
     id: 'call-1',
     clientName: 'Vikram Mehta',
     companyName: 'Apex Global Corp',
     phoneNumber: '+91 98765 43210',
-    timestamp: '09:45 AM',
+    timestamp: 'Today, 09:45 AM',
+    date: getRelativeDateStr(0),
+    createdAt: `${getRelativeDateStr(0)}T09:45:00.000Z`,
     durationSec: 240,
     outcome: 'INTERESTED',
     notes: 'Requested complete product pricing demo. Scheduled callback for 10:00 AM.',
@@ -65,7 +74,9 @@ export const INITIAL_CALL_LOGS: CallLogItem[] = [
     clientName: 'Pooja Agarwal',
     companyName: 'Zenith Logistics',
     phoneNumber: '+91 98111 22334',
-    timestamp: '09:32 AM',
+    timestamp: 'Today, 09:32 AM',
+    date: getRelativeDateStr(0),
+    createdAt: `${getRelativeDateStr(0)}T09:32:00.000Z`,
     durationSec: 320,
     outcome: 'DEAL_CLOSED',
     notes: 'Agreed on Annual Enterprise Plan. Payment confirmation pending.',
@@ -75,7 +86,9 @@ export const INITIAL_CALL_LOGS: CallLogItem[] = [
     clientName: 'Rahul Verma',
     companyName: 'Nova FinTech',
     phoneNumber: '+91 97222 33445',
-    timestamp: '09:20 AM',
+    timestamp: 'Today, 09:20 AM',
+    date: getRelativeDateStr(0),
+    createdAt: `${getRelativeDateStr(0)}T09:20:00.000Z`,
     durationSec: 45,
     outcome: 'BUSY',
     notes: 'Line busy. Set reminder to retry in afternoon.',
@@ -86,10 +99,130 @@ export const INITIAL_CALL_LOGS: CallLogItem[] = [
     clientName: 'Sanjay Reddy',
     companyName: 'Metro Health Systems',
     phoneNumber: '+91 96333 44556',
-    timestamp: '09:15 AM',
+    timestamp: 'Today, 09:15 AM',
+    date: getRelativeDateStr(0),
+    createdAt: `${getRelativeDateStr(0)}T09:15:00.000Z`,
     durationSec: 150,
     outcome: 'NOT_INTERESTED',
     notes: 'Already using another CRM solution. Re-contact in 6 months.',
+  },
+
+  // Yesterday's Calls (1 day ago)
+  {
+    id: 'call-y1',
+    clientName: 'Suresh Raina',
+    companyName: 'Chennai Trading Co',
+    phoneNumber: '+91 98451 11223',
+    timestamp: 'Yesterday, 11:42 AM',
+    date: getRelativeDateStr(1),
+    createdAt: `${getRelativeDateStr(1)}T11:42:00.000Z`,
+    durationSec: 215,
+    outcome: 'CALLBACK',
+    notes: 'Spoke with Procurement Head. Shared enterprise pricing proposal for 25 licenses.',
+    followUpDate: 'Yesterday, 03:30 PM',
+  },
+  {
+    id: 'call-y2',
+    clientName: 'Sunil Gavaskar',
+    companyName: 'Gavaskar Investments',
+    phoneNumber: '+91 98999 12345',
+    timestamp: 'Yesterday, 05:31 PM',
+    date: getRelativeDateStr(1),
+    createdAt: `${getRelativeDateStr(1)}T17:31:00.000Z`,
+    durationSec: 190,
+    outcome: 'INTERESTED',
+    notes: 'Reviewed mutual fund integration suite. Wants trial access for 3 team members.',
+  },
+  {
+    id: 'call-y3',
+    clientName: 'Rohan Sharma',
+    companyName: 'BlueSky Logistics',
+    phoneNumber: '+91 91234 56789',
+    timestamp: 'Yesterday, 02:15 PM',
+    date: getRelativeDateStr(1),
+    createdAt: `${getRelativeDateStr(1)}T14:15:00.000Z`,
+    durationSec: 310,
+    outcome: 'DEAL_CLOSED',
+    notes: 'Closed quarterly Pro subscription at ₹35,000. Invoice dispatched.',
+  },
+
+  // 4 Days Ago
+  {
+    id: 'call-d4-1',
+    clientName: 'Ananya Deshmukh',
+    companyName: 'Deshmukh & Associates',
+    phoneNumber: '+91 94567 89012',
+    timestamp: '4 days ago, 03:10 PM',
+    date: getRelativeDateStr(4),
+    createdAt: `${getRelativeDateStr(4)}T15:10:00.000Z`,
+    durationSec: 280,
+    outcome: 'INTERESTED',
+    notes: 'Detailed discussion on API webhook integration. Requested follow-up after board meeting.',
+    followUpDate: 'In 5 days',
+  },
+  {
+    id: 'call-d4-2',
+    clientName: 'Harsh Vardhan',
+    companyName: 'Vardhan Realty',
+    phoneNumber: '+91 97890 12345',
+    timestamp: '4 days ago, 11:05 AM',
+    date: getRelativeDateStr(4),
+    createdAt: `${getRelativeDateStr(4)}T11:05:00.000Z`,
+    durationSec: 65,
+    outcome: 'BUSY',
+    notes: 'Attending client site meeting. Left voicemail.',
+  },
+
+  // 12 Days Ago
+  {
+    id: 'call-d12-1',
+    clientName: 'Kavita Menon',
+    companyName: 'Kavita Designs',
+    phoneNumber: '+91 93456 78901',
+    timestamp: '12 days ago, 12:45 PM',
+    date: getRelativeDateStr(12),
+    createdAt: `${getRelativeDateStr(12)}T12:45:00.000Z`,
+    durationSec: 420,
+    outcome: 'INTERESTED',
+    notes: 'Very positive demo call. Discussed 10-seat rollout across regional branches.',
+  },
+  {
+    id: 'call-d12-2',
+    clientName: 'Mohit Chawla',
+    companyName: 'Chawla Exports',
+    phoneNumber: '+91 92345 67890',
+    timestamp: '12 days ago, 04:30 PM',
+    date: getRelativeDateStr(12),
+    createdAt: `${getRelativeDateStr(12)}T16:30:00.000Z`,
+    durationSec: 110,
+    outcome: 'NOT_INTERESTED',
+    notes: 'Budget postponed to Q4. Kept in dormant nurture campaign.',
+  },
+
+  // 20 Days Ago
+  {
+    id: 'call-d20-1',
+    clientName: 'Devendra Joshi',
+    companyName: 'Joshi Steels',
+    phoneNumber: '+91 91234 99887',
+    timestamp: '20 days ago, 10:15 AM',
+    date: getRelativeDateStr(20),
+    createdAt: `${getRelativeDateStr(20)}T10:15:00.000Z`,
+    durationSec: 360,
+    outcome: 'DEAL_CLOSED',
+    notes: 'Won Annual Tier-1 contract ₹60,000. Onboarded successfully.',
+  },
+  {
+    id: 'call-d20-2',
+    clientName: 'Ramesh Patel',
+    companyName: 'Patel Enterprise',
+    phoneNumber: '+91 95678 12340',
+    timestamp: '20 days ago, 02:50 PM',
+    date: getRelativeDateStr(20),
+    createdAt: `${getRelativeDateStr(20)}T14:50:00.000Z`,
+    durationSec: 175,
+    outcome: 'INTERESTED',
+    notes: 'Expressed high interest in automated lead assignment. Scheduled review.',
   }
 ];
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useScreenData } from '../hooks/useScreenData';
 import { 
@@ -17,9 +17,14 @@ import {
   History,
   ArrowUpRight,
   AlertCircle,
-  Zap
+  Zap,
+  Calendar,
+  CalendarDays,
+  FileText,
+  MessageSquare,
+  Filter
 } from 'lucide-react';
-import { CallOutcome, AssignedLead } from '../types';
+import { CallOutcome, AssignedLead, CallLogItem } from '../types';
 
 export const DailyCallingView: React.FC = () => {
   const { 
@@ -40,7 +45,11 @@ export const DailyCallingView: React.FC = () => {
   const [activeQueueFilter, setActiveQueueFilter] = useState<'ALL_ASSIGNED' | 'CALLBACKS' | 'INTERESTED'>('ALL_ASSIGNED');
   const [selectedOutcome, setSelectedOutcome] = useState<string>('ALL');
   const [search, setSearch] = useState('');
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+
+  // Historical Date Range Filter State
+  type DatePeriod = 'TODAY' | 'YESTERDAY' | 'LAST_7' | 'LAST_30' | 'ALL' | 'CUSTOM';
+  const [selectedPeriod, setSelectedPeriod] = useState<DatePeriod>('TODAY');
+  const [customDate, setCustomDate] = useState<string>('');
 
   // Leads allocated to this telecaller
   const myAssignedLeads = assignedLeads.filter((l) => {
@@ -60,16 +69,31 @@ export const DailyCallingView: React.FC = () => {
   const totalAssigned = myAssignedLeads.length;
   const dialsDone = myAssignedLeads.filter((l) => l.status !== 'PENDING').length;
 
-  // Yesterday / Overdue Callbacks detector
+  // Date calculation utilities
   const todayIso = new Date().toISOString().split('T')[0];
+  const yesterdayIso = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+  const sevenDaysAgoIso = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  }, []);
+  const thirtyDaysAgoIso = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  // Yesterday / Overdue Callbacks detector
   const yesterdayCallbacksCount = callbackLeads.filter((l) => {
     const d = (l.followUpDate || '').toLowerCase();
     return d.includes('yesterday') || (l.followUpDate && l.followUpDate.split(' ')[0] < todayIso);
   }).length;
 
   // Filtered queue based on active cube + search
-  // When activeQueueFilter is 'ALL_ASSIGNED', ONLY uncalled leads (PENDING) are shown,
-  // so whenever a lead is called, it immediately leaves the fresh queue (12345 -> 2345)!
   const currentQueueLeads = myAssignedLeads.filter((l) => {
     if (activeQueueFilter === 'CALLBACKS') {
       if (l.status !== 'CALLBACK') return false;
@@ -85,16 +109,98 @@ export const DailyCallingView: React.FC = () => {
     return l.phone.includes(q);
   });
 
-  const filteredLogs = callLogs.filter((log) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      log.phoneNumber.includes(q) ||
-      (log.clientName && log.clientName.toLowerCase().includes(q));
+  // Helper to extract ISO date from a call log item
+  const getLogDateIso = (log: CallLogItem): string => {
+    if (log.date) return log.date;
+    if (log.createdAt) return log.createdAt.split('T')[0];
+    const ts = (log.timestamp || '').toLowerCase();
+    if (ts.includes('today')) return todayIso;
+    if (ts.includes('yesterday')) return yesterdayIso;
+    if (ts.includes('4 days ago')) {
+      const d = new Date(); d.setDate(d.getDate() - 4); return d.toISOString().split('T')[0];
+    }
+    if (ts.includes('12 days ago')) {
+      const d = new Date(); d.setDate(d.getDate() - 12); return d.toISOString().split('T')[0];
+    }
+    if (ts.includes('20 days ago')) {
+      const d = new Date(); d.setDate(d.getDate() - 20); return d.toISOString().split('T')[0];
+    }
+    return todayIso;
+  };
 
-    if (!matchesSearch) return false;
-    if (selectedOutcome === 'ALL') return true;
-    return log.outcome === selectedOutcome;
-  });
+  // 1. Period-filtered logs (for historical lookup)
+  const periodFilteredLogs = useMemo(() => {
+    return callLogs.filter((log) => {
+      const logDate = getLogDateIso(log);
+      if (selectedPeriod === 'TODAY') return logDate === todayIso;
+      if (selectedPeriod === 'YESTERDAY') return logDate === yesterdayIso;
+      if (selectedPeriod === 'LAST_7') return logDate >= sevenDaysAgoIso;
+      if (selectedPeriod === 'LAST_30') return logDate >= thirtyDaysAgoIso;
+      if (selectedPeriod === 'CUSTOM') {
+        if (!customDate) return true;
+        return logDate === customDate;
+      }
+      return true; // ALL
+    });
+  }, [callLogs, selectedPeriod, customDate, todayIso, yesterdayIso, sevenDaysAgoIso, thirtyDaysAgoIso]);
+
+  // 2. Period statistics for the metric banner
+  const periodStats = useMemo(() => {
+    const total = periodFilteredLogs.length;
+    const connected = periodFilteredLogs.filter((l) => l.outcome !== 'BUSY').length;
+    const interested = periodFilteredLogs.filter((l) => l.outcome === 'INTERESTED' || l.outcome === 'DEAL_CLOSED').length;
+    const dealsWon = periodFilteredLogs.filter((l) => l.outcome === 'DEAL_CLOSED').length;
+    return { total, connected, interested, dealsWon };
+  }, [periodFilteredLogs]);
+
+  // 3. Final Search (phone, client, or past notes) + Outcome Filtered Logs
+  const finalFilteredLogs = useMemo(() => {
+    return periodFilteredLogs.filter((log) => {
+      if (selectedOutcome !== 'ALL' && log.outcome !== selectedOutcome) return false;
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        log.phoneNumber.includes(q) ||
+        (log.clientName && log.clientName.toLowerCase().includes(q)) ||
+        (log.companyName && log.companyName.toLowerCase().includes(q)) ||
+        (log.notes && log.notes.toLowerCase().includes(q))
+      );
+    });
+  }, [periodFilteredLogs, selectedOutcome, search]);
+
+  // 4. Grouped by Date for Timeline Display
+  const groupedLogs = useMemo(() => {
+    const groups: { [dateStr: string]: CallLogItem[] } = {};
+    finalFilteredLogs.forEach((log) => {
+      const dateKey = getLogDateIso(log);
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(log);
+    });
+
+    return Object.keys(groups)
+      .sort((a, b) => b.localeCompare(a))
+      .map((dateKey) => {
+        let label = dateKey;
+        if (dateKey === todayIso) label = 'Today';
+        else if (dateKey === yesterdayIso) label = 'Yesterday';
+        else {
+          try {
+            label = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            });
+          } catch (e) {
+            label = dateKey;
+          }
+        }
+        return {
+          dateKey,
+          label,
+          logs: groups[dateKey],
+        };
+      });
+  }, [finalFilteredLogs, todayIso, yesterdayIso]);
 
   const handleCallLead = (lead: AssignedLead) => {
     openCallModalForLead(lead);
@@ -451,17 +557,17 @@ export const DailyCallingView: React.FC = () => {
         </div>
       )}
 
-      {/* 3. SECTION B: CALL LOGS (Today's History) */}
+      {/* 3. SECTION B: CALL HISTORY & AUDIT ARCHIVE */}
       {activeSection === 'CALL_LOGS' && (
         <div className="space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between pt-1">
             <div>
               <h2 className="font-display font-black text-xl text-[#0A2540] tracking-tight">
-                Call Logs
+                Call History &amp; Audit
               </h2>
               <p className="text-[11px] text-slate-500 font-medium">
-                Today's Completed Calls Register
+                Browse past calls, client notes &amp; follow-up records
               </p>
             </div>
             <button
@@ -469,73 +575,133 @@ export const DailyCallingView: React.FC = () => {
                 setActiveCallingLead(null);
                 setIsQuickCallModalOpen(true);
               }}
-              className="flex items-center gap-1.5 bg-[#0A2540] hover:bg-[#12385f] text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-sm active:scale-95 transition-all flex-shrink-0"
+              className="flex items-center gap-1.5 bg-[#0A2540] hover:bg-[#12385f] text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs active:scale-95 transition-all flex-shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-[#00C9A7] stroke-[3]" />
               <span>Log Call</span>
             </button>
           </div>
 
-          {/* Top Summary Metric Chips */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Calls Made</span>
-              <span className="font-mono-nums font-black text-lg text-[#0A2540] mt-0.5 block">
-                {stats.dialsMade} <span className="text-xs font-normal text-slate-400">/ {stats.todayGoalCalls}</span>
+          {/* Quick Date Range Filter Tabs */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Timeframe:
               </span>
+              {selectedPeriod === 'CUSTOM' && (
+                <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  {customDate || 'Pick date below'}
+                </span>
+              )}
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs">
-              <span className="text-[10px] font-bold text-sky-500 uppercase tracking-wider block">Connected</span>
-              <span className="font-mono-nums font-black text-lg text-sky-600 mt-0.5 block">
-                {stats.connected}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+              {[
+                { id: 'TODAY', label: 'Today' },
+                { id: 'YESTERDAY', label: 'Yesterday' },
+                { id: 'LAST_7', label: 'Last 7 Days' },
+                { id: 'LAST_30', label: 'Last 30 Days' },
+                { id: 'ALL', label: 'All Time' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setSelectedPeriod(tab.id as DatePeriod);
+                    setCustomDate('');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    selectedPeriod === tab.id
+                      ? 'bg-[#0A2540] text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+
+              {/* Custom Date Input Pill */}
+              <div className="relative flex items-center flex-shrink-0">
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => {
+                    setCustomDate(e.target.value);
+                    setSelectedPeriod('CUSTOM');
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer focus:outline-none ${
+                    selectedPeriod === 'CUSTOM'
+                      ? 'bg-emerald-50 text-emerald-900 border-emerald-400 ring-1 ring-emerald-300'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dynamic Period Metrics Banner */}
+          <div className="grid grid-cols-4 gap-1.5">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs text-center">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Dials</span>
+              <span className="font-mono-nums font-black text-base text-[#0A2540] mt-0.5 block">
+                {periodStats.total}
               </span>
             </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs">
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Interested</span>
-              <span className="font-mono-nums font-black text-lg text-emerald-600 mt-0.5 block">
-                {stats.interested}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs text-center">
+              <span className="text-[9px] font-bold text-teal-600 uppercase tracking-wider block">Spoke</span>
+              <span className="font-mono-nums font-black text-base text-teal-700 mt-0.5 block">
+                {periodStats.connected}
+              </span>
+            </div>
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs text-center">
+              <span className="text-[9px] font-bold text-sky-600 uppercase tracking-wider block">Interested</span>
+              <span className="font-mono-nums font-black text-base text-sky-600 mt-0.5 block">
+                {periodStats.interested}
+              </span>
+            </div>
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs text-center">
+              <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider block">Won</span>
+              <span className="font-mono-nums font-black text-base text-emerald-600 mt-0.5 block">
+                {periodStats.dealsWon}
               </span>
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Across Phone, Client & Past Notes */}
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by phone number..."
-              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] shadow-xs font-medium"
+              placeholder="Search phone, client name, or past notes..."
+              className="w-full bg-white border border-slate-200/90 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#00C9A7] shadow-2xs font-medium"
             />
             {search && (
               <button 
                 onClick={() => setSearch('')}
-                className="absolute right-2.5 top-2.5 p-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold"
+                className="absolute right-2.5 top-2.5 p-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold cursor-pointer"
               >
                 <X className="w-3 h-3" />
               </button>
             )}
           </div>
 
-          {/* Filter Chips */}
+          {/* Outcome Filter Chips */}
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
             {[
-              { id: 'ALL', label: 'All Logs' },
-              { id: 'INTERESTED', label: 'Interested' },
-              { id: 'CALLBACK', label: 'Callbacks' },
-              { id: 'DEAL_CLOSED', label: 'Won Deals' },
-              { id: 'BUSY', label: 'No Answer' },
-              { id: 'NOT_INTERESTED', label: 'Not Interested' },
+              { id: 'ALL', label: 'All Results' },
+              { id: 'INTERESTED', label: '🟢 Interested' },
+              { id: 'CALLBACK', label: '⏰ Callbacks' },
+              { id: 'DEAL_CLOSED', label: '🏆 Won Deals' },
+              { id: 'BUSY', label: '📵 No Answer' },
+              { id: 'NOT_INTERESTED', label: '🔴 Not Interested' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setSelectedOutcome(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedOutcome === tab.id
-                    ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs font-extrabold'
+                    ? 'bg-[#00C9A7] text-[#0A2540] shadow-2xs font-extrabold'
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                 }`}
               >
@@ -544,55 +710,97 @@ export const DailyCallingView: React.FC = () => {
             ))}
           </div>
 
-          {/* Call Logs Feed */}
-          {filteredLogs.length > 0 ? (
-            <div className="space-y-3">
-              {filteredLogs.map((log) => (
-                <div 
-                  key={log.id} 
-                  className="nexus-card p-4 bg-white border border-slate-200 rounded-2xl shadow-xs hover:border-[#00C9A7]/50 transition-all space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="font-mono font-black text-sm text-[#0A2540] block">
-                        {log.phoneNumber}
+          {/* Date-Grouped Timeline Feed */}
+          {groupedLogs.length > 0 ? (
+            <div className="space-y-4">
+              {groupedLogs.map((group) => (
+                <div key={group.dateKey} className="space-y-2">
+                  {/* Group Date Header */}
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-1.5">
+                      <CalendarDays className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="font-display font-bold text-xs text-[#0A2540]">
+                        {group.label}
                       </span>
-                      {log.clientName && log.clientName !== 'Direct Caller' && (
-                        <p className="text-xs text-slate-600 font-medium mt-0.5">{log.clientName}</p>
-                      )}
                     </div>
-                    {getOutcomeBadge(log.outcome)}
-                  </div>
-
-                  <div className="flex items-center gap-4 text-xs font-mono text-slate-500 bg-slate-50 p-2 rounded-xl">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      {formatDuration(log.durationSec)}
+                    <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                      {group.logs.length} calls
                     </span>
-                    <span>{log.timestamp}</span>
                   </div>
 
-                  {log.notes && (
-                    <p className="text-xs text-slate-600 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 italic">
-                      "{log.notes}"
-                    </p>
-                  )}
+                  {/* Group Cards */}
+                  <div className="space-y-2.5">
+                    {group.logs.map((log) => (
+                      <div 
+                        key={log.id} 
+                        className="nexus-card p-3.5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs hover:border-[#00C9A7]/50 transition-all space-y-2.5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="font-mono font-black text-sm text-[#0A2540] block tracking-tight">
+                              {log.phoneNumber}
+                            </span>
+                            {log.clientName && log.clientName !== 'Direct Caller' && (
+                              <p className="text-xs text-slate-700 font-semibold mt-0.5 truncate">
+                                {log.clientName}
+                                {log.companyName && <span className="text-slate-400 font-normal"> · {log.companyName}</span>}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0">
+                            {getOutcomeBadge(log.outcome)}
+                          </div>
+                        </div>
 
-                  {log.followUpDate && (
-                    <div className="bg-amber-50 text-amber-800 text-xs px-3 py-1.5 rounded-xl border border-amber-200 flex items-center gap-2 font-medium">
-                      <Clock className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Follow-up: <strong>{log.followUpDate}</strong></span>
-                    </div>
-                  )}
+                        <div className="flex items-center justify-between text-xs font-mono text-slate-500 bg-slate-50/80 px-2.5 py-1.5 rounded-xl border border-slate-100">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            {formatDuration(log.durationSec)}
+                          </span>
+                          <span className="font-medium text-slate-600">{log.timestamp}</span>
+                        </div>
+
+                        {/* Prominent Notes Box */}
+                        {log.notes && (
+                          <div className="bg-slate-50/70 p-2.5 rounded-xl border border-slate-100/90 flex items-start gap-2">
+                            <MessageSquare className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-slate-700 leading-relaxed font-normal">
+                              "{log.notes}"
+                            </p>
+                          </div>
+                        )}
+
+                        {log.followUpDate && (
+                          <div className="bg-amber-50/80 text-amber-800 text-xs px-2.5 py-1.5 rounded-xl border border-amber-200 flex items-center gap-1.5 font-medium">
+                            <Clock className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                            <span>Follow-up: <strong>{log.followUpDate}</strong></span>
+                          </div>
+                        )}
+
+                        {/* Action Row */}
+                        <div className="pt-1 flex items-center justify-end gap-2 border-t border-slate-100">
+                          <a
+                            href={`tel:${log.phoneNumber}`}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                          >
+                            <Phone className="w-3 h-3 text-emerald-600 fill-current" />
+                            <span>Call Again</span>
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="nexus-card p-8 bg-white border border-slate-200 rounded-2xl text-center space-y-2">
               <PhoneCall className="w-8 h-8 text-slate-300 mx-auto" />
-              <h4 className="font-display font-bold text-sm text-[#0A2540]">No calls logged yet</h4>
+              <h4 className="font-display font-bold text-sm text-[#0A2540]">No calls found in this period</h4>
               <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                {search ? 'No call logs match that search.' : 'Calls you complete will show up here.'}
+                {search 
+                  ? 'No logs match your search terms.' 
+                  : `No calls recorded for ${selectedPeriod === 'CUSTOM' ? (customDate || 'selected date') : selectedPeriod.replace('_', ' ').toLowerCase()}. Try selecting 'Last 30 Days' or 'All Time'.`}
               </p>
             </div>
           )}

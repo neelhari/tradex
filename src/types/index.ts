@@ -30,6 +30,8 @@ export interface CallLogItem {
   notes: string;
   followUpDate?: string;
   employeeId?: string;
+  createdAt?: string;
+  date?: string;
 }
 
 export interface ClientLead {

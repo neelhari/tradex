@@ -18,9 +18,13 @@ import {
   Zap,
   Check,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  CalendarDays,
+  FileText,
+  MessageSquare
 } from 'lucide-react';
-import { CallOutcome, AssignedLead } from '../../types';
+import { CallOutcome, AssignedLead, CallLogItem } from '../../types';
 
 export const DesktopDailyCalling: React.FC = () => {
   const { 
@@ -39,8 +43,13 @@ export const DesktopDailyCalling: React.FC = () => {
 
   const [activeSection, setActiveSection] = useState<'QUEUE' | 'LOGS'>('QUEUE');
   const [activeQueueFilter, setActiveQueueFilter] = useState<'ALL_ASSIGNED' | 'CALLBACKS' | 'INTERESTED'>('ALL_ASSIGNED');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Historical Date Range Filter State
+  type DatePeriod = 'TODAY' | 'YESTERDAY' | 'LAST_7' | 'LAST_30' | 'ALL' | 'CUSTOM';
+  const [selectedPeriod, setSelectedPeriod] = useState<DatePeriod>('TODAY');
+  const [customDate, setCustomDate] = useState<string>('');
 
   // Leads allocated to this telecaller
   const myAssignedLeads = useMemo(() => {
@@ -61,7 +70,25 @@ export const DesktopDailyCalling: React.FC = () => {
   const totalAssigned = myAssignedLeads.length;
   const dialsDone = myAssignedLeads.filter((l) => l.status !== 'PENDING').length;
 
+  // Date calculation utilities
   const todayIso = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const yesterdayIso = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+  const sevenDaysAgoIso = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  }, []);
+  const thirtyDaysAgoIso = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  // Yesterday / Overdue Callbacks detector
   const yesterdayCallbacksCount = useMemo(() => {
     return callbackLeads.filter((l) => {
       const d = (l.followUpDate || '').toLowerCase();
@@ -70,8 +97,6 @@ export const DesktopDailyCalling: React.FC = () => {
   }, [callbackLeads, todayIso]);
 
   // Filtered queue based on active cube + search
-  // When activeQueueFilter is 'ALL_ASSIGNED', ONLY uncalled leads (PENDING) are shown,
-  // so whenever a lead is called, it immediately leaves the fresh queue (12345 -> 2345)!
   const currentQueueLeads = useMemo(() => {
     let list = myAssignedLeads;
     if (activeQueueFilter === 'CALLBACKS') {
@@ -79,7 +104,6 @@ export const DesktopDailyCalling: React.FC = () => {
     } else if (activeQueueFilter === 'INTERESTED') {
       list = interestedLeads;
     } else {
-      // Fresh Queue: ONLY PENDING leads
       list = myAssignedLeads.filter((l) => l.status === 'PENDING');
     }
 
@@ -93,20 +117,68 @@ export const DesktopDailyCalling: React.FC = () => {
     triggerToast(`📞 Dialing ${lead.phone}...`);
   };
 
-  // Filtered history logs
-  const filteredLogs = useMemo(() => {
+  // Helper to extract ISO date from a call log item
+  const getLogDateIso = (log: CallLogItem): string => {
+    if (log.date) return log.date;
+    if (log.createdAt) return log.createdAt.split('T')[0];
+    const ts = (log.timestamp || '').toLowerCase();
+    if (ts.includes('today')) return todayIso;
+    if (ts.includes('yesterday')) return yesterdayIso;
+    if (ts.includes('4 days ago')) {
+      const d = new Date(); d.setDate(d.getDate() - 4); return d.toISOString().split('T')[0];
+    }
+    if (ts.includes('12 days ago')) {
+      const d = new Date(); d.setDate(d.getDate() - 12); return d.toISOString().split('T')[0];
+    }
+    if (ts.includes('20 days ago')) {
+      const d = new Date(); d.setDate(d.getDate() - 20); return d.toISOString().split('T')[0];
+    }
+    return todayIso;
+  };
+
+  // 1. Period-filtered logs
+  const periodFilteredLogs = useMemo(() => {
     return callLogs.filter((log) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matches = !q || log.phoneNumber.includes(q) || (log.clientName && log.clientName.toLowerCase().includes(q));
-      if (!matches) return false;
-      if (selectedOutcome === 'ALL') return true;
-      return log.outcome === selectedOutcome;
+      const logDate = getLogDateIso(log);
+      if (selectedPeriod === 'TODAY') return logDate === todayIso;
+      if (selectedPeriod === 'YESTERDAY') return logDate === yesterdayIso;
+      if (selectedPeriod === 'LAST_7') return logDate >= sevenDaysAgoIso;
+      if (selectedPeriod === 'LAST_30') return logDate >= thirtyDaysAgoIso;
+      if (selectedPeriod === 'CUSTOM') {
+        if (!customDate) return true;
+        return logDate === customDate;
+      }
+      return true; // ALL
     });
-  }, [callLogs, searchQuery, selectedOutcome]);
+  }, [callLogs, selectedPeriod, customDate, todayIso, yesterdayIso, sevenDaysAgoIso, thirtyDaysAgoIso]);
+
+  // 2. Period statistics
+  const periodStats = useMemo(() => {
+    const total = periodFilteredLogs.length;
+    const connected = periodFilteredLogs.filter((l) => l.outcome !== 'BUSY').length;
+    const interested = periodFilteredLogs.filter((l) => l.outcome === 'INTERESTED' || l.outcome === 'DEAL_CLOSED').length;
+    const dealsWon = periodFilteredLogs.filter((l) => l.outcome === 'DEAL_CLOSED').length;
+    return { total, connected, interested, dealsWon };
+  }, [periodFilteredLogs]);
+
+  // 3. Final Search & Outcome Filtered Logs
+  const finalFilteredLogs = useMemo(() => {
+    return periodFilteredLogs.filter((log) => {
+      if (selectedOutcome !== 'ALL' && log.outcome !== selectedOutcome) return false;
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        log.phoneNumber.includes(q) ||
+        (log.clientName && log.clientName.toLowerCase().includes(q)) ||
+        (log.companyName && log.companyName.toLowerCase().includes(q)) ||
+        (log.notes && log.notes.toLowerCase().includes(q))
+      );
+    });
+  }, [periodFilteredLogs, selectedOutcome, searchQuery]);
 
   const handleExportLogsCsv = () => {
     const header = 'Time,Phone,Client Name,Duration,Outcome,Notes,Follow Up';
-    const rows = filteredLogs.map((l) =>
+    const rows = finalFilteredLogs.map((l) =>
       `"${l.timestamp}","${l.phoneNumber}","${l.clientName || ''}",${l.durationSec},"${l.outcome}","${(l.notes || '').replace(/"/g, '""')}","${l.followUpDate || ''}"`
     );
     const csv = `data:text/csv;charset=utf-8,${header}\n${rows.join('\n')}`;
@@ -437,27 +509,119 @@ export const DesktopDailyCalling: React.FC = () => {
         </div>
       )}
 
-      {/* 3. SECTION B: CALL LOGS REGISTER */}
+      {/* 3. SECTION B: CALL HISTORY & AUDIT ARCHIVE */}
       {activeSection === 'LOGS' && (
         <div className="space-y-4">
           
-          {/* Filter & Actions Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
-            <div className="flex gap-2">
+          {/* Timeframe Bar & Export */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200/90 shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">
+                Timeframe:
+              </span>
               {[
-                { id: 'ALL', label: 'All Logs' },
-                { id: 'INTERESTED', label: 'Interested' },
-                { id: 'CALLBACK', label: 'Callbacks' },
-                { id: 'DEAL_CLOSED', label: 'Won Deals' },
-                { id: 'BUSY', label: 'No Answer' },
-                { id: 'NOT_INTERESTED', label: 'Not Interested' },
+                { id: 'TODAY', label: 'Today' },
+                { id: 'YESTERDAY', label: 'Yesterday' },
+                { id: 'LAST_7', label: 'Last 7 Days' },
+                { id: 'LAST_30', label: 'Last 30 Days' },
+                { id: 'ALL', label: 'All Time' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setSelectedPeriod(tab.id as DatePeriod);
+                    setCustomDate('');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedPeriod === tab.id
+                      ? 'bg-[#0A2540] text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+
+              {/* Custom Date Picker */}
+              <div className="flex items-center gap-1.5 ml-2">
+                <Calendar className="w-4 h-4 text-slate-400" />
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => {
+                    setCustomDate(e.target.value);
+                    setSelectedPeriod('CUSTOM');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer focus:outline-none ${
+                    selectedPeriod === 'CUSTOM'
+                      ? 'bg-emerald-50 text-emerald-900 border-emerald-400 ring-1 ring-emerald-300'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleExportLogsCsv}
+              className="flex items-center gap-2 bg-white border border-slate-200 hover:border-emerald-500 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export CSV</span>
+            </button>
+          </div>
+
+          {/* Dynamic Period Metrics Banner */}
+          <div className="grid grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Dials</span>
+              <span className="font-mono font-black text-2xl text-[#0A2540] mt-1 block">
+                {periodStats.total}
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">Calls in selected period</span>
+            </div>
+
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+              <span className="text-xs font-bold text-teal-600 uppercase tracking-wider block">Connected</span>
+              <span className="font-mono font-black text-2xl text-teal-700 mt-1 block">
+                {periodStats.connected}
+              </span>
+              <span className="text-[11px] text-teal-600/70 block mt-0.5">Direct conversations</span>
+            </div>
+
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+              <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block">Interested</span>
+              <span className="font-mono font-black text-2xl text-sky-700 mt-1 block">
+                {periodStats.interested}
+              </span>
+              <span className="text-[11px] text-sky-600/70 block mt-0.5">Hot opportunities</span>
+            </div>
+
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block">Won Deals</span>
+              <span className="font-mono font-black text-2xl text-emerald-700 mt-1 block">
+                {periodStats.dealsWon}
+              </span>
+              <span className="text-[11px] text-emerald-600/70 block mt-0.5">Closed revenue</span>
+            </div>
+          </div>
+
+          {/* Filter Chips & Global Search Across Notes */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'ALL', label: 'All Results' },
+                { id: 'INTERESTED', label: '🟢 Interested' },
+                { id: 'CALLBACK', label: '⏰ Callbacks' },
+                { id: 'DEAL_CLOSED', label: '🏆 Won Deals' },
+                { id: 'BUSY', label: '📵 No Answer' },
+                { id: 'NOT_INTERESTED', label: '🔴 Not Interested' },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setSelectedOutcome(tab.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     selectedOutcome === tab.id
-                      ? 'bg-[#0A2540] text-white shadow-xs'
+                      ? 'bg-[#00C9A7] text-[#0A2540] shadow-2xs font-extrabold'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -466,51 +630,59 @@ export const DesktopDailyCalling: React.FC = () => {
               ))}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="relative w-64">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search logs..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs font-mono font-medium text-slate-800 focus:outline-none"
-                />
-              </div>
-
-              <button
-                onClick={handleExportLogsCsv}
-                className="flex items-center gap-2 bg-white border border-slate-200 hover:border-emerald-500 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Export CSV</span>
-              </button>
+            <div className="relative w-80">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search phone, client, or past notes..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Call Logs Table */}
+          {/* Call Logs Table with Notes Inspection */}
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-6">Timestamp</th>
-                    <th className="py-3.5 px-6">Phone Number</th>
+                    <th className="py-3.5 px-6">Timestamp &amp; Date</th>
+                    <th className="py-3.5 px-6">Contact / Company</th>
                     <th className="py-3.5 px-6">Outcome</th>
                     <th className="py-3.5 px-6">Duration</th>
                     <th className="py-3.5 px-6">Follow-Up</th>
-                    <th className="py-3.5 px-6">Notes</th>
+                    <th className="py-3.5 px-6">Notes &amp; Conversation</th>
+                    <th className="py-3.5 px-6 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
-                  {filteredLogs.length > 0 ? (
-                    filteredLogs.map((log) => (
+                  {finalFilteredLogs.length > 0 ? (
+                    finalFilteredLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 px-6 font-mono text-slate-500">
-                          {log.timestamp}
+                          <span className="font-bold text-slate-700 block">{log.timestamp}</span>
+                          <span className="text-[10px] text-slate-400">{getLogDateIso(log)}</span>
                         </td>
-                        <td className="py-3.5 px-6 font-mono font-black text-sm text-[#0A2540]">
-                          {log.phoneNumber}
+                        <td className="py-3.5 px-6">
+                          <span className="font-mono font-black text-sm text-[#0A2540] block">
+                            {log.phoneNumber}
+                          </span>
+                          {log.clientName && log.clientName !== 'Direct Caller' && (
+                            <span className="text-xs text-slate-600 font-semibold block mt-0.5">
+                              {log.clientName}
+                              {log.companyName && <span className="text-slate-400 font-normal"> · {log.companyName}</span>}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3.5 px-6">
                           <span className={`inline-flex items-center gap-1 font-bold text-[11px] px-2.5 py-1 rounded-lg border ${
@@ -522,7 +694,7 @@ export const DesktopDailyCalling: React.FC = () => {
                               ? 'bg-amber-50 text-amber-700 border-amber-200'
                               : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}>
-                            {log.outcome}
+                            {log.outcome.replace('_', ' ')}
                           </span>
                         </td>
                         <td className="py-3.5 px-6 font-mono text-slate-500">
@@ -531,15 +703,36 @@ export const DesktopDailyCalling: React.FC = () => {
                         <td className="py-3.5 px-6 font-mono text-amber-700 font-bold">
                           {log.followUpDate || '—'}
                         </td>
-                        <td className="py-3.5 px-6 text-slate-600 italic max-w-xs truncate">
-                          {log.notes ? `"${log.notes}"` : '—'}
+                        <td className="py-3.5 px-6 max-w-sm">
+                          {log.notes ? (
+                            <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-slate-700 leading-snug">
+                              "{log.notes}"
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic">No notes recorded</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-6 text-right">
+                          <a
+                            href={`tel:${log.phoneNumber}`}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs cursor-pointer transition-all active:scale-95"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-emerald-600 fill-current" />
+                            <span>Call</span>
+                          </a>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400">
-                        No call logs match this filter.
+                      <td colSpan={7} className="py-14 text-center text-slate-400">
+                        <PhoneCall className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <h4 className="font-display font-bold text-sm text-[#0A2540]">No calls found in this period</h4>
+                        <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">
+                          {searchQuery 
+                            ? 'No logs match your search terms.' 
+                            : `No calls recorded for ${selectedPeriod === 'CUSTOM' ? (customDate || 'selected date') : selectedPeriod.replace('_', ' ').toLowerCase()}.`}
+                        </p>
                       </td>
                     </tr>
                   )}
