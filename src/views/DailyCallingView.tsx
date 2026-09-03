@@ -328,126 +328,91 @@ export const DailyCallingView: React.FC = () => {
 
       {/* 2. SECTION A: FRESH CALLS / TODAY'S CALLING QUEUE */}
       {activeSection === 'FRESH_CALLS' && (
-        <div className="space-y-3">
-          {/* Section Header */}
-          <div className="flex items-center justify-between pt-0.5">
-            <div>
-              <h2 className="font-display font-black text-lg text-[#0A2540] tracking-tight">
-                Today's Calling Queue
-              </h2>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Live target &amp; follow-up pipeline
-              </p>
-            </div>
-            <span className="text-xs font-mono font-black bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-xl border border-emerald-200/80">
-              {uncalledLeads.length} To Call
-            </span>
-          </div>
-
-          {/* 3 Interactive Action Cubes (Unified 100/100 Glassmorphic Styling) */}
-          {/* 3 Cohesive Interactive Action Cubes */}
-          <div className="grid grid-cols-3 gap-2.5">
-            {/* Cube 1: Fresh Uncalled Leads Queue */}
+        <div className="space-y-3 pt-1">
+          {/* 3 Compact Action Buttons: Assigned (dialsDone / totalAssigned), Callbacks, Interested */}
+          <div className="grid grid-cols-3 gap-2">
+            {/* Button 1: Assigned (dialsDone / totalAssigned) */}
             <button
               type="button"
               onClick={() => setActiveQueueFilter('ALL_ASSIGNED')}
-              className={`p-3 rounded-2xl border text-left transition-all active:scale-[0.97] flex flex-col justify-between min-h-[96px] cursor-pointer ${
+              className={`p-2.5 rounded-2xl border text-left transition-all active:scale-[0.97] cursor-pointer shadow-2xs ${
                 activeQueueFilter === 'ALL_ASSIGNED'
-                  ? 'bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
-                  : 'bg-white border-slate-200/90 hover:border-slate-300 shadow-2xs'
+                  ? 'bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/20'
+                  : 'bg-white border-slate-200/90 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Fresh Queue
+                <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                  activeQueueFilter === 'ALL_ASSIGNED' ? 'text-emerald-800' : 'text-slate-400'
+                }`}>
+                  Assigned
                 </span>
-                <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Phone className="w-3 h-3 stroke-[2.5]" />
-                </div>
+                <Phone className={`w-3 h-3 ${
+                  activeQueueFilter === 'ALL_ASSIGNED' ? 'text-emerald-600' : 'text-slate-400'
+                }`} />
               </div>
-              <div className="mt-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="font-mono font-black text-xl text-[#0A2540] leading-none">
-                    {uncalledLeads.length}
-                  </span>
-                  <span className="text-[10px] font-bold font-mono text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
-                    To Call
-                  </span>
-                </div>
-                <span className="text-[10px] font-semibold font-mono text-slate-400 block mt-1">
-                  {dialsDone} / {totalAssigned} done
+              <div className="mt-1">
+                <span className="font-mono font-black text-base text-[#0A2540] leading-none block">
+                  {dialsDone} / {totalAssigned}
                 </span>
               </div>
             </button>
 
-            {/* Cube 2: Callbacks Due Today & Overdue from Yesterday */}
+            {/* Button 2: Callbacks */}
             <button
               type="button"
               onClick={() => setActiveQueueFilter('CALLBACKS')}
-              className={`p-3 rounded-2xl border text-left transition-all active:scale-[0.97] flex flex-col justify-between min-h-[96px] cursor-pointer ${
+              className={`p-2.5 rounded-2xl border text-left transition-all active:scale-[0.97] cursor-pointer shadow-2xs ${
                 activeQueueFilter === 'CALLBACKS'
-                  ? 'bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
-                  : 'bg-white border-slate-200/90 hover:border-amber-300 shadow-2xs'
+                  ? 'bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/20'
+                  : 'bg-white border-slate-200/90 hover:border-amber-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                  activeQueueFilter === 'CALLBACKS' ? 'text-amber-800' : 'text-slate-400'
+                }`}>
                   Callbacks
                 </span>
-                <div className="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <Clock className="w-3 h-3 stroke-[2.5]" />
-                </div>
+                <Clock className={`w-3 h-3 ${
+                  activeQueueFilter === 'CALLBACKS' ? 'text-amber-600' : 'text-slate-400'
+                }`} />
               </div>
-              <div className="mt-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="font-mono font-black text-xl text-[#0A2540] leading-none">
-                    {callbackLeads.length}
-                  </span>
-                  <span className="text-[10px] font-bold font-mono text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded">
-                    Due
-                  </span>
-                </div>
-                {yesterdayCallbacksCount > 0 ? (
-                  <span className="text-[9px] font-black font-mono text-rose-600 block mt-1">
-                    ⚠️ {yesterdayCallbacksCount} Overdue
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-medium text-slate-500 block mt-1">
-                    Scheduled today
+              <div className="mt-1 flex items-baseline gap-1">
+                <span className="font-mono font-black text-base text-[#0A2540] leading-none">
+                  {callbackLeads.length}
+                </span>
+                {yesterdayCallbacksCount > 0 && (
+                  <span className="text-[9px] font-mono font-bold text-rose-600 bg-rose-50 px-1 py-0.2 rounded border border-rose-200">
+                    {yesterdayCallbacksCount} overdue
                   </span>
                 )}
               </div>
             </button>
 
-            {/* Cube 3: Interested Leads Ready to Close */}
+            {/* Button 3: Interested */}
             <button
               type="button"
               onClick={() => setActiveQueueFilter('INTERESTED')}
-              className={`p-3 rounded-2xl border text-left transition-all active:scale-[0.97] flex flex-col justify-between min-h-[96px] cursor-pointer ${
+              className={`p-2.5 rounded-2xl border text-left transition-all active:scale-[0.97] cursor-pointer shadow-2xs ${
                 activeQueueFilter === 'INTERESTED'
-                  ? 'bg-sky-500/10 border-sky-500 ring-2 ring-sky-500/20 shadow-xs'
-                  : 'bg-white border-slate-200/90 hover:border-sky-300 shadow-2xs'
+                  ? 'bg-sky-500/10 border-sky-500 ring-2 ring-sky-500/20'
+                  : 'bg-white border-slate-200/90 hover:border-sky-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                  activeQueueFilter === 'INTERESTED' ? 'text-sky-800' : 'text-slate-400'
+                }`}>
                   Interested
                 </span>
-                <div className="w-6 h-6 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
-                  <CheckCircle2 className="w-3 h-3 stroke-[2.5]" />
-                </div>
+                <CheckCircle2 className={`w-3 h-3 ${
+                  activeQueueFilter === 'INTERESTED' ? 'text-sky-600' : 'text-slate-400'
+                }`} />
               </div>
-              <div className="mt-2">
-                <div className="flex items-baseline gap-1">
-                  <span className="font-mono font-black text-xl text-[#0A2540] leading-none">
-                    {interestedLeads.length}
-                  </span>
-                  <span className="text-[10px] font-bold font-mono text-sky-700 bg-sky-100 px-1.5 py-0.2 rounded">
-                    Hot
-                  </span>
-                </div>
-                <span className="text-[10px] font-medium text-slate-500 block mt-1">
-                  Ready to close
+              <div className="mt-1">
+                <span className="font-mono font-black text-base text-[#0A2540] leading-none block">
+                  {interestedLeads.length}
                 </span>
               </div>
             </button>
