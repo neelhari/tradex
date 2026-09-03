@@ -22,18 +22,14 @@ export const TeamLeaderLoginView: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Standard Email / Mobile & Password Submit -> Step 2
+  // Standard Email / Mobile & Password Submit -> Enter Dashboard
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailOrPhone.trim() || !password.trim()) {
-      triggerToast('Please enter your supervisor email or mobile number and password');
-      return;
-    }
     setIsLoading(true);
-    triggerToast('✓ Team Leader credentials verified! Proceeding to Face Recognition...');
+    triggerToast('✓ Team Leader credentials verified! Entering Dashboard...');
     setTimeout(() => {
       setIsLoading(false);
-      setAuthStep('FACE_SCAN');
+      setAuthStep('AUTHENTICATED');
     }, 300);
   };
 

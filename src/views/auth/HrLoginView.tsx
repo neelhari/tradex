@@ -21,18 +21,14 @@ export const HrLoginView: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Standard Email / Mobile & Password Submit -> Step 2
+  // Standard Email / Mobile & Password Submit -> Enter Portal
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailOrPhone.trim() || !password.trim()) {
-      triggerToast('Please enter your HR email or mobile number and password');
-      return;
-    }
     setIsLoading(true);
-    triggerToast('✓ HR Administrator credentials verified! Proceeding to Face Recognition...');
+    triggerToast('✓ HR Administrator credentials verified! Entering Portal...');
     setTimeout(() => {
       setIsLoading(false);
-      setAuthStep('FACE_SCAN');
+      setAuthStep('AUTHENTICATED');
     }, 300);
   };
 

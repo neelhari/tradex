@@ -22,10 +22,6 @@ export const AdminLoginView: React.FC = () => {
 
   const handleAdminPasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailOrPhone.trim() || !password.trim()) {
-      triggerToast('Please enter your administrator email or mobile number and password');
-      return;
-    }
     setIsLoading(true);
     triggerToast('✓ Master Admin credentials verified! Entering Console...');
     setTimeout(() => {
