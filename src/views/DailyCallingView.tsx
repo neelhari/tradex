@@ -450,75 +450,86 @@ export const DailyCallingView: React.FC = () => {
                 return (
                   <div
                     key={lead.id}
-                    className={`nexus-card p-3.5 bg-white border rounded-2xl shadow-xs transition-all flex items-center justify-between gap-3 ${
+                    className={`nexus-card p-3.5 bg-white border rounded-2xl shadow-2xs transition-all space-y-2.5 ${
                       isYesterdayCallback
                         ? 'border-rose-300 ring-1 ring-rose-200'
                         : 'border-slate-200/90 hover:border-[#00C9A7]/60'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        isYesterdayCallback
-                          ? 'bg-rose-50 text-rose-600 border border-rose-200'
-                          : lead.status === 'CALLBACK' 
-                          ? 'bg-amber-50 text-amber-600 border border-amber-200/80' 
-                          : lead.status === 'INTERESTED'
-                          ? 'bg-sky-50 text-sky-600 border border-sky-200/80'
-                          : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                      }`}>
-                        {lead.status === 'CALLBACK' ? (
-                          isYesterdayCallback ? <AlertCircle className="w-4 h-4 stroke-[2.4]" /> : <Clock className="w-4 h-4 stroke-[2.2]" />
-                        ) : (
-                          <Phone className="w-4 h-4 stroke-[2.2]" />
-                        )}
+                    {/* Top Row: Contact Info & Status Badge (Uncongested & Full Width) */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          isYesterdayCallback
+                            ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                            : lead.status === 'CALLBACK' 
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200/80' 
+                            : lead.status === 'INTERESTED'
+                            ? 'bg-sky-50 text-sky-600 border border-sky-200/80'
+                            : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                        }`}>
+                          {lead.status === 'CALLBACK' ? (
+                            isYesterdayCallback ? <AlertCircle className="w-4 h-4 stroke-[2.4]" /> : <Clock className="w-4 h-4 stroke-[2.2]" />
+                          ) : (
+                            <Phone className="w-4 h-4 stroke-[2.2]" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          {/* Full Phone Number with room to breathe */}
+                          <span className="font-mono font-black text-[15px] text-[#0A2540] tracking-tight block">
+                            {lead.phone}
+                          </span>
+                          {lead.name && (
+                            <span className="text-xs text-slate-500 font-medium block truncate">
+                              {lead.name}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="min-w-0">
-                        {/* Full phone number, never truncated */}
-                        <span className="font-mono font-black text-[15px] text-[#0A2540] tracking-tight block whitespace-nowrap">
-                          {lead.phone}
-                        </span>
+                      {/* Clean, Non-wrapping Status Tag */}
+                      <div className="flex-shrink-0">
                         {lead.status === 'CALLBACK' ? (
                           isYesterdayCallback ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black px-2 py-0.5 rounded-md mt-0.5 bg-rose-100 text-rose-800 border border-rose-200">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black px-2 py-0.5 rounded-lg bg-rose-100 text-rose-800 border border-rose-200">
                               <AlertCircle className="w-3 h-3 text-rose-600 flex-shrink-0" />
-                              <span>⚠️ Yesterday's Callback (Call First!)</span>
+                              <span>⚠️ Overdue Callback</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-amber-100 text-amber-800 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200">
                               <Clock className="w-3 h-3 text-amber-600 flex-shrink-0" />
-                              <span>⏰ Callback: {lead.followUpDate || 'Today, 04:00 PM'}</span>
+                              <span>{lead.followUpDate || 'Today, 04:00 PM'}</span>
                             </span>
                           )
                         ) : lead.status === 'INTERESTED' ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-sky-100 text-sky-800 border border-sky-200">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-sky-100 text-sky-800 border border-sky-200">
                             <CheckCircle2 className="w-3 h-3 text-sky-600 flex-shrink-0" />
-                            <span>🟢 Interested Hot Lead</span>
+                            <span>Hot Lead</span>
                           </span>
                         ) : (
-                          <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded-md mt-0.5 bg-slate-100 text-slate-600">
-                            Fresh Lead · Ready to Call
+                          <span className="inline-block text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600">
+                            Fresh Lead
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* Bottom Action Row: Spacious 50/50 Thumb-Friendly Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
                       <button
                         onClick={() => handleCallLead(lead)}
-                        className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] hover:opacity-95 text-[#0A2540] font-black text-xs flex items-center gap-1 active:scale-95 transition-all shadow-xs cursor-pointer"
+                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#00C9A7] to-[#00B4D8] hover:opacity-95 text-[#0A2540] font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs cursor-pointer"
                       >
                         <Phone className="w-3.5 h-3.5 fill-current" />
-                        <span>Call</span>
+                        <span>Call Lead</span>
                       </button>
                       <button
-                        onClick={() => {
-                          openCallModalForLead(lead);
-                        }}
-                        className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                        onClick={() => openCallModalForLead(lead)}
+                        className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer border border-slate-200/80"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-                        <span>Result</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 stroke-[2.5]" />
+                        <span>Log Result</span>
                       </button>
                     </div>
                   </div>
