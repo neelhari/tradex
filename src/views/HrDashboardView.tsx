@@ -36,7 +36,8 @@ import {
   User,
   Search,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle
 } from 'lucide-react';
 import { OnboardingEmployee, ExitEmployee, TeamMember, TeamGroup } from '../types';
 import { AddEmployeeModal } from '../components/modals/AddEmployeeModal';
@@ -136,7 +137,10 @@ export const HrDashboardView: React.FC = () => {
   const onLeaveCount = teamMembers.filter((m) => m.attendanceStatus === 'ON_LEAVE').length;
   const presentCount = teamMembers.filter((m) => m.attendanceStatus === 'PRESENT').length;
   const lateCount = teamMembers.filter((m) => m.attendanceStatus === 'LATE').length;
-  const attendancePercent = Math.round((presentCount / Math.max(1, totalEmployees)) * 100);
+  const absentCount = teamMembers.filter((m) => m.attendanceStatus === 'ABSENT').length;
+
+  const lateEmployees = useMemo(() => teamMembers.filter((m) => m.attendanceStatus === 'LATE'), [teamMembers]);
+  const onLeaveEmployees = useMemo(() => teamMembers.filter((m) => m.attendanceStatus === 'ON_LEAVE'), [teamMembers]);
 
   const totalActivities = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
   const totalGoalCalls = teamMembers.reduce((sum, m) => sum + (m.goalCalls || 100), 0);
@@ -144,28 +148,12 @@ export const HrDashboardView: React.FC = () => {
     return teamMembers.filter(m => m.salesAchieved > 0).length || 7;
   }, [teamMembers]);
 
-  const formatInLakhs = (amount: number) => {
-    if (amount >= 100000) {
-      const lakhs = (amount / 100000).toFixed(2);
-      return `₹${lakhs.replace(/\.00$/, '')} L`;
-    }
-    return `₹${amount.toLocaleString('en-IN')}`;
-  };
-
   const totalSalesTarget = teamMembers.reduce((sum, m) => sum + m.salesTarget, 0);
   const totalSalesAchieved = teamMembers.reduce((sum, m) => sum + m.salesAchieved, 0);
-  const targetAchievedPercent = Math.round((totalSalesAchieved / Math.max(1, totalSalesTarget)) * 100);
 
   const pendingApprovalsCount =
     leaveRequests.filter((r) => r.status === 'PENDING').length +
     paymentVerifications.filter((p) => p.status === 'PENDING_HR_AUDIT').length;
-
-  const teamAnalyticsData = [
-    { team: 'HNI Closers', percent: 96 },
-    { team: 'Inbound Qualifiers', percent: 92 },
-    { team: 'Retention Squad', percent: 88 },
-    { team: 'Enterprise Growth', percent: 94 },
-  ];
 
   const handleGeneratePayslipsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,127 +236,285 @@ export const HrDashboardView: React.FC = () => {
         {activeHrNav === 'home' && (
           <div className="space-y-4 animate-in fade-in duration-150">
             
-            {/* 3 Top Stat Cards */}
-            <div className="grid grid-cols-3 gap-2.5">
-              
-              {/* Card 1: Teams */}
-              <div 
-                onClick={() => setActiveHrNav('employees')}
-                className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs flex flex-col justify-between cursor-pointer hover:border-[#00C9A7] transition-all active:scale-95"
-              >
-                <span className="text-[11px] font-bold text-slate-600 leading-tight mb-1">
-                  Teams
-                </span>
-                <span className="font-display font-black text-2xl text-[#0A2540]">
-                  {totalTeams}
-                </span>
-              </div>
-
-              {/* Card 2: Employees */}
-              <div 
-                onClick={() => setActiveHrNav('employees')}
-                className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs flex flex-col justify-between cursor-pointer hover:border-[#00C9A7] transition-all active:scale-95"
-              >
-                <span className="text-[11px] font-bold text-slate-600 leading-tight mb-1">
-                  Employees
-                </span>
-                <span className="font-display font-black text-2xl text-[#0A2540]">
-                  {totalEmployees}
+            {/* Floor Attendance Census - Exact Real Headcounts, Zero Percentages */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display font-black text-sm text-[#0A2540]">
+                    Floor Attendance Census
+                  </h3>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live Floor
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                  {totalEmployees} Employees • {totalTeams} Teams
                 </span>
               </div>
 
-              {/* Card 3: On Leave */}
-              <div 
-                onClick={() => setActiveHrNav('approvals')}
-                className="bg-white border border-amber-200/80 rounded-2xl p-3 shadow-xs flex flex-col justify-between cursor-pointer hover:border-amber-500 transition-all active:scale-95"
-              >
-                <span className="text-[11px] font-bold text-amber-700 leading-tight mb-1">
-                  On Leave
-                </span>
-                <span className="font-display font-black text-2xl text-amber-600">
-                  {onLeaveCount}
-                </span>
-              </div>
+              {/* 4 Crisp Headcount Status Cards */}
+              <div className="grid grid-cols-4 gap-2">
+                {/* 1. Present */}
+                <div
+                  onClick={() => {
+                    setAttendanceFilter('PRESENT');
+                    setActiveHrNav('employees');
+                  }}
+                  className="bg-white border border-emerald-200/90 hover:border-emerald-400 rounded-2xl p-2.5 shadow-2xs text-center cursor-pointer transition-all active:scale-95 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-[#00C9A7]" />
+                  <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">
+                    Present
+                  </span>
+                  <span className="font-display font-black text-xl text-emerald-600 block my-0.5 group-hover:scale-105 transition-transform">
+                    {presentCount}
+                  </span>
+                  <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded-md">
+                    On Floor
+                  </span>
+                </div>
 
+                {/* 2. Late */}
+                <div
+                  onClick={() => {
+                    setAttendanceFilter('LATE');
+                    setActiveHrNav('employees');
+                  }}
+                  className="bg-white border border-amber-200/90 hover:border-amber-400 rounded-2xl p-2.5 shadow-2xs text-center cursor-pointer transition-all active:scale-95 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-amber-500" />
+                  <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">
+                    Late
+                  </span>
+                  <span className="font-display font-black text-xl text-amber-600 block my-0.5 group-hover:scale-105 transition-transform">
+                    {lateCount}
+                  </span>
+                  <span className="text-[9px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.2 rounded-md">
+                    Flagged
+                  </span>
+                </div>
+
+                {/* 3. On Leave */}
+                <div
+                  onClick={() => {
+                    setAttendanceFilter('ON_LEAVE');
+                    setActiveHrNav('employees');
+                  }}
+                  className="bg-white border border-purple-200/90 hover:border-purple-400 rounded-2xl p-2.5 shadow-2xs text-center cursor-pointer transition-all active:scale-95 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-purple-500" />
+                  <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">
+                    On Leave
+                  </span>
+                  <span className="font-display font-black text-xl text-purple-600 block my-0.5 group-hover:scale-105 transition-transform">
+                    {onLeaveCount}
+                  </span>
+                  <span className="text-[9px] text-purple-700 font-bold bg-purple-50 px-1.5 py-0.2 rounded-md">
+                    Approved
+                  </span>
+                </div>
+
+                {/* 4. Absent */}
+                <div
+                  onClick={() => {
+                    setAttendanceFilter('ALL');
+                    setActiveHrNav('employees');
+                  }}
+                  className="bg-white border border-rose-200/90 hover:border-rose-400 rounded-2xl p-2.5 shadow-2xs text-center cursor-pointer transition-all active:scale-95 group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-400 to-rose-500" />
+                  <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">
+                    Absent
+                  </span>
+                  <span className="font-display font-black text-xl text-rose-600 block my-0.5 group-hover:scale-105 transition-transform">
+                    {absentCount}
+                  </span>
+                  <span className="text-[9px] text-rose-700 font-bold bg-rose-50 px-1.5 py-0.2 rounded-md">
+                    Unexcused
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Overview Section */}
-            <div className="space-y-2">
+            {/* Squads Live Floor Board (Replaces Useless Static Bar Chart) */}
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <h3 className="font-display font-bold text-sm text-[#0A2540]">
-                  Overview
-                </h3>
-                <span className="text-[11px] font-bold text-[#00A88B] bg-[#E6FAF6] px-2.5 py-0.5 rounded-full">
-                  This Month
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2.5">
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs text-center space-y-1">
-                  <span className="text-[10px] font-bold text-slate-500 block">Attendance</span>
-                  <span className="font-display font-black text-xl text-[#00A88B]">
-                    {attendancePercent}%
-                  </span>
+                <div>
+                  <h3 className="font-display font-bold text-sm text-[#0A2540] flex items-center gap-1.5">
+                    <span>Squads Live Floor Status</span>
+                    <span className="text-[10px] font-bold text-slate-400 font-mono">({teamGroups.length} Teams)</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Tap any squad to view members &amp; live performance</p>
                 </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs text-center space-y-1">
-                  <span className="text-[10px] font-bold text-slate-500 block">Target Achieved</span>
-                  <span className="font-display font-black text-xl text-amber-500">
-                    {targetAchievedPercent}%
-                  </span>
-                </div>
-
-                <div 
-                  onClick={() => setActiveHrNav('approvals')}
-                  className="bg-white border border-slate-200 hover:border-rose-400 rounded-2xl p-3 shadow-xs text-center space-y-1 cursor-pointer transition-all active:scale-95"
+                <button
+                  onClick={() => {
+                    setSelectedTeamGroup(null);
+                    setActiveHrNav('employees');
+                  }}
+                  className="text-[11px] font-bold text-[#00A88B] hover:text-[#0A2540] transition-colors flex items-center gap-0.5 cursor-pointer flex-shrink-0"
                 >
-                  <span className="text-[10px] font-bold text-slate-500 block">Pending Approvals</span>
-                  <span className="font-display font-black text-xl text-rose-600">
-                    {pendingApprovalsCount}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* HR Analytics Section: Attendance Bar Chart */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display font-bold text-sm text-[#0A2540]">
-                  HR Analytics
-                </h3>
-                <button 
-                  onClick={() => setActiveHrNav('reports')}
-                  className="text-[11px] font-bold text-[#00A88B] hover:underline"
-                >
-                  View All
+                  <span>View All Teams</span>
+                  <span>→</span>
                 </button>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
-                <span className="text-xs font-bold text-[#0A2540] block">
-                  Attendance % Across Squads
-                </span>
+              <div className="space-y-2">
+                {teamGroups.map((group) => {
+                  const squadEmps = teamMembers.filter((m) => m.group === group.name);
+                  const squadPresent = squadEmps.filter((m) => m.attendanceStatus === 'PRESENT').length;
+                  const squadLate = squadEmps.filter((m) => m.attendanceStatus === 'LATE').length;
+                  const squadLeave = squadEmps.filter((m) => m.attendanceStatus === 'ON_LEAVE').length;
+                  const squadDials = squadEmps.reduce((s, m) => s + (m.dialsToday || 0), 0);
+                  const squadRev = squadEmps.reduce((s, m) => s + (m.salesAchieved || 0), 0);
 
-                <div className="h-36 flex items-end justify-between gap-3 pt-4 px-2 border-b border-slate-100 relative">
-                  {teamAnalyticsData.map((item) => (
-                    <div key={item.team} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end relative z-10 group cursor-pointer">
-                      <span className="text-[10px] font-mono font-bold text-[#00A88B]">
-                        {item.percent}%
+                  const allPresent = squadEmps.length > 0 && squadPresent === squadEmps.length;
+
+                  return (
+                    <div
+                      key={group.id}
+                      onClick={() => {
+                        setSelectedTeamGroup(group);
+                        setActiveHrNav('employees');
+                      }}
+                      className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3 shadow-2xs hover:shadow-md transition-all cursor-pointer active:scale-[0.99] group flex flex-col gap-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform flex-shrink-0">
+                            <Layers className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-bold text-xs text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                                {group.name}
+                              </h4>
+                              <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
+                                {squadEmps.length} Reps
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              Leader: <strong className="text-slate-700">{group.leaderName || 'Unassigned'}</strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Attendance Pill */}
+                        <div className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                          allPresent 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                            : squadLate > 0 
+                            ? 'bg-amber-50 text-amber-800 border-amber-200' 
+                            : 'bg-purple-50 text-purple-700 border-purple-200'
+                        }`}>
+                          {squadPresent}/{squadEmps.length} Present{squadLate > 0 ? ` • ${squadLate} Late` : squadLeave > 0 ? ` • ${squadLeave} Leave` : ''}
+                        </div>
+                      </div>
+
+                      {/* Floor Activity Bar */}
+                      <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100 font-mono">
+                        <span className="text-slate-500 flex items-center gap-1">
+                          <PhoneCall className="w-3 h-3 text-[#00A88B]" />
+                          <strong className="text-slate-800 font-bold">{squadDials}</strong> Dials Today
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400 font-medium font-sans">
+                            Rev: <strong className="text-[#00A88B] font-bold">{formatInLakhs(squadRev)}</strong>
+                          </span>
+                          <span className="text-[#00A88B] font-bold font-sans group-hover:translate-x-0.5 transition-transform">
+                            Inspect →
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Today's Exceptions & Punctuality Radar */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-bold text-sm text-[#0A2540] flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-amber-500" />
+                  <span>Today's Attendance Exceptions</span>
+                </h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  {lateEmployees.length + onLeaveEmployees.length} Flags
+                </span>
+              </div>
+
+              {lateEmployees.length === 0 && onLeaveEmployees.length === 0 ? (
+                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3 text-center text-xs font-bold text-emerald-800 flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>All clocked-in staff arrived on time today. Zero punctuality flags!</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {lateEmployees.map((emp) => (
+                    <div
+                      key={emp.id}
+                      onClick={() => setSelectedEmployeeFor360(emp)}
+                      className="bg-white border border-amber-200/90 hover:border-amber-400 rounded-2xl p-2.5 shadow-2xs flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          {emp.avatar || emp.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <strong className="text-xs font-bold text-[#0A2540] truncate group-hover:text-amber-700 transition-colors">
+                              {emp.name}
+                            </strong>
+                            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded">
+                              {emp.group}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-amber-700 font-mono flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-500" />
+                            Checked in: {emp.checkInTime || '09:38 AM'} (Late Flag)
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-bold text-[#00A88B] bg-[#E6FAF6] px-2 py-1 rounded-xl flex-shrink-0 group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors">
+                        View 360 →
                       </span>
-                      <div 
-                        className="w-full max-w-[36px] bg-gradient-to-t from-[#00A88B] to-[#00C9A7] rounded-t-xl group-hover:brightness-110 transition-all shadow-xs"
-                        style={{ height: `${item.percent}%` }}
-                      />
+                    </div>
+                  ))}
+
+                  {onLeaveEmployees.map((emp) => (
+                    <div
+                      key={emp.id}
+                      onClick={() => setSelectedEmployeeFor360(emp)}
+                      className="bg-white border border-purple-200/90 hover:border-purple-400 rounded-2xl p-2.5 shadow-2xs flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          {emp.avatar || emp.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <strong className="text-xs font-bold text-[#0A2540] truncate group-hover:text-purple-700 transition-colors">
+                              {emp.name}
+                            </strong>
+                            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 rounded">
+                              {emp.group}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-purple-700 font-medium">
+                            Approved Leave for Today
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-bold text-[#00A88B] bg-[#E6FAF6] px-2 py-1 rounded-xl flex-shrink-0 group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors">
+                        View 360 →
+                      </span>
                     </div>
                   ))}
                 </div>
-
-                <div className="flex justify-between px-1 text-[10px] font-bold text-slate-500">
-                  {teamAnalyticsData.map(item => (
-                    <span key={item.team} className="flex-1 text-center truncate">{item.team}</span>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Quick Operations Grid */}
