@@ -48,7 +48,8 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
     leaveRequests,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'CALLING' | 'LEADS' | 'LEAVES' | 'ATTENDANCE' | 'COMPLIANCE'>('CALLING');
+  const [activeTab, setActiveTab] = useState<'CALLING' | 'ATTENDANCE' | 'COMPLIANCE'>('CALLING');
+  const [leaveCapsuleFilter, setLeaveCapsuleFilter] = useState<'ALL' | 'CASUAL' | 'SICK' | 'ABSENT'>('ALL');
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(0);
   const [reassigningLeadId, setReassigningLeadId] = useState<string | null>(null);
   const [targetAssignee, setTargetAssignee] = useState<string>('');
@@ -351,39 +352,35 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
 
     if (list.length > 0) return list;
 
-    // Fallback seed records if user is Arjun Kumar
-    if (memberNameLower.includes('arjun')) {
-      return [
-        {
-          id: 'leave-2',
-          employeeName: 'Arjun Kumar',
-          employeeCode: 'TNX-8492',
-          leaveType: 'Sick Leave',
-          fromDate: '05 Jun 2025',
-          toDate: '06 Jun 2025',
-          totalDays: 2,
-          reason: 'Scheduled medical health checkup and recovery',
-          status: 'APPROVED',
-          appliedOn: '04 Jun 2025',
-          approvedBy: 'Ramesh Sharma (Team Leader)'
-        },
-        {
-          id: 'leave-1',
-          employeeName: 'Arjun Kumar',
-          employeeCode: 'TNX-8492',
-          leaveType: 'Casual Leave',
-          fromDate: '22 May 2025',
-          toDate: '22 May 2025',
-          totalDays: 1,
-          reason: 'Family personal commitment in hometown',
-          status: 'APPROVED',
-          appliedOn: '20 May 2025',
-          approvedBy: 'Ramesh Sharma (Team Leader)'
-        }
-      ] as any[];
-    }
-
-    return [];
+    // Fallback seed records so that ANY employee opened has realistic Casual & Sick leave records for TL inspection
+    return [
+      {
+        id: `leave-sick-${member.id}`,
+        employeeName: member.name,
+        employeeCode: member.empCode,
+        leaveType: 'Sick Leave',
+        fromDate: '05 Jun 2025',
+        toDate: '06 Jun 2025',
+        totalDays: 2,
+        reason: 'Viral fever and doctor advised rest',
+        status: 'APPROVED',
+        appliedOn: '04 Jun 2025',
+        approvedBy: 'Ramesh Sharma (Team Leader)'
+      },
+      {
+        id: `leave-casual-${member.id}`,
+        employeeName: member.name,
+        employeeCode: member.empCode,
+        leaveType: 'Casual Leave',
+        fromDate: '22 May 2025',
+        toDate: '22 May 2025',
+        totalDays: 1,
+        reason: 'Family personal commitment in hometown',
+        status: 'APPROVED',
+        appliedOn: '20 May 2025',
+        approvedBy: 'Ramesh Sharma (Team Leader)'
+      }
+    ] as any[];
   }, [leaveRequests, member, memberNameLower]);
 
   // Leave statistics
@@ -414,6 +411,28 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
       .filter(l => l.status === 'APPROVED' && l.leaveType === 'Earned / Paid Leave')
       .reduce((sum, l) => sum + (l.totalDays || 1), 0);
   }, [memberLeaves]);
+
+  const casualLeaves = useMemo(() => {
+    return memberLeaves.filter(l => l.leaveType === 'Casual Leave');
+  }, [memberLeaves]);
+
+  const sickLeaves = useMemo(() => {
+    return memberLeaves.filter(l => l.leaveType === 'Sick Leave');
+  }, [memberLeaves]);
+
+  const absentRecords = useMemo(() => {
+    return attendanceHistory.filter(r => r.status === 'ABSENT');
+  }, [attendanceHistory]);
+
+  const casualDaysCount = useMemo(() => {
+    return casualLeaves.reduce((sum, l) => sum + (l.totalDays || 1), 0);
+  }, [casualLeaves]);
+
+  const sickDaysCount = useMemo(() => {
+    return sickLeaves.reduce((sum, l) => sum + (l.totalDays || 1), 0);
+  }, [sickLeaves]);
+
+  const absentDaysCount = absentRecords.length;
 
   // Handle lead reassign
   const handleReassign = (leadId: string) => {
@@ -561,11 +580,11 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
       {/* Main Content Area (Directly below attached header, with ample vertical room for calls & history) */}
       <div className="p-3 sm:p-4 space-y-3">
 
-      {/* Tabs Row - Mobile Native Clean Controls */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-1 shadow-2xs flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+      {/* Tabs Row - 2 Big Clean Buttons Like Before */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm flex items-center justify-between gap-1.5">
         <button
           onClick={() => setActiveTab('CALLING')}
-          className={`flex-1 min-w-[70px] py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
             activeTab === 'CALLING'
               ? 'bg-[#0A2540] text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
@@ -576,45 +595,21 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveTab('LEADS')}
-          className={`flex-1 min-w-[70px] py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
-            activeTab === 'LEADS'
-              ? 'bg-[#0A2540] text-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>Leads ({memberLeads.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('LEAVES')}
-          className={`flex-1 min-w-[70px] py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
-            activeTab === 'LEAVES'
-              ? 'bg-[#0A2540] text-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>Leaves ({totalLeavesApproved})</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('ATTENDANCE')}
-          className={`flex-1 min-w-[70px] py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
             activeTab === 'ATTENDANCE'
               ? 'bg-[#0A2540] text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>Attendance</span>
+          <span>Attendance &amp; Leaves</span>
         </button>
 
         {(viewerRole === 'hr' || viewerRole === 'admin') && (
           <button
             onClick={() => setActiveTab('COMPLIANCE')}
-            className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
               activeTab === 'COMPLIANCE'
                 ? 'bg-[#0A2540] text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
@@ -1010,395 +1005,446 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
         </div>
       )}
 
-      {/* TAB 2: ASSIGNED LEADS & PIPELINE */}
-      {activeTab === 'LEADS' && (
-        <div className="space-y-3 animate-in fade-in duration-150">
-          {/* Section Header */}
-          <div className="flex items-center justify-between px-1 pt-1">
-            <div>
-              <h3 className="font-display font-black text-sm text-[#0A2540]">
-                Assigned Leads Pipeline
-              </h3>
-              <p className="text-[10px] text-slate-500">
-                {memberLeads.length} active leads currently assigned
-              </p>
-            </div>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-              Pipeline: {formatInLakhs(memberLeads.reduce((s, l) => s + (l.dealValue || 0), 0))}
-            </span>
-          </div>
-
-          {/* Leads List */}
-          <div className="space-y-2">
-            {memberLeads.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-400">
-                No active leads currently assigned to this telecaller.
-              </div>
-            ) : (
-              memberLeads.map((lead) => (
-                <div key={lead.id} className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <strong className="text-xs text-[#0A2540] block">{lead.name}</strong>
-                      <span className="text-[10px] text-slate-400">{lead.company || 'Direct Client'} • {maskPhone(lead.phone)}</span>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                      lead.status === 'CONVERTED' ? 'bg-purple-100 text-purple-800' :
-                      lead.status === 'INTERESTED' ? 'bg-emerald-100 text-emerald-800' :
-                      lead.status === 'CALLBACK' ? 'bg-amber-100 text-amber-800' :
-                      'bg-slate-100 text-slate-600'
-                    }`}>
-                      {lead.status}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-slate-400">Deal Value:</span>
-                      <strong className="font-mono font-black text-[#00A88B]">
-                        {lead.dealValue ? formatInLakhs(lead.dealValue) : '—'}
-                      </strong>
-                    </div>
-
-                    <button
-                      onClick={() => setReassigningLeadId(lead.id)}
-                      className="text-[10px] font-bold text-slate-600 hover:text-[#00A88B] bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
-                    >
-                      <ArrowRightLeft className="w-3 h-3" />
-                      <span>Reassign</span>
-                    </button>
-                  </div>
-
-                  {reassigningLeadId === lead.id && (
-                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2 mt-1 animate-in fade-in">
-                      <span className="text-[10px] font-bold text-slate-600 block">Select new team member:</span>
-                      <div className="flex gap-1.5">
-                        <select
-                          value={targetAssignee}
-                          onChange={(e) => setTargetAssignee(e.target.value)}
-                          className="flex-1 text-xs p-1.5 rounded-lg border border-slate-200 bg-white"
-                        >
-                          <option value="">Choose telecaller...</option>
-                          {teamMembers.filter(m => m.id !== member.id).map(tm => (
-                            <option key={tm.id} value={tm.name}>{tm.name} ({tm.empCode})</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => handleReassign(lead.id)}
-                          disabled={!targetAssignee}
-                          className="px-2.5 py-1 bg-[#00C9A7] text-[#0A2540] font-bold text-xs rounded-lg disabled:opacity-50"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setReassigningLeadId(null)}
-                          className="px-2 py-1 text-xs text-slate-500"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: LEAVES & TIME OFF (Monthly Leaves Taken, Balances & History) */}
-      {activeTab === 'LEAVES' && (
-        <div className="space-y-3 animate-in fade-in duration-150">
-          {/* Section Header */}
-          <div className="flex items-center justify-between px-1 pt-1">
-            <div>
-              <h3 className="font-display font-black text-sm text-[#0A2540]">
-                Leave &amp; Time-Off Records
-              </h3>
-              <p className="text-[10px] text-slate-500">
-                Monthly leave history, balances &amp; applications
-              </p>
-            </div>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-              Annual Quota: 18 Days
-            </span>
-          </div>
-
-          {/* 3 Top Metric Cards for Leaves */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs text-center">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Taken This Month</span>
-              <strong className="text-base font-display font-black text-[#0A2540] block mt-0.5">
-                {totalLeavesApproved} <span className="text-xs font-normal text-slate-400">Days</span>
-              </strong>
-            </div>
-
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs text-center">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Remaining</span>
-              <strong className="text-base font-display font-black text-[#00A88B] block mt-0.5">
-                {Math.max(0, 18 - totalLeavesApproved)} <span className="text-xs font-normal text-slate-400">Days</span>
-              </strong>
-            </div>
-
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs text-center">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Pending</span>
-              <strong className={`text-base font-display font-black block mt-0.5 ${pendingLeavesCount > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                {pendingLeavesCount} <span className="text-xs font-normal text-slate-400">Req.</span>
-              </strong>
-            </div>
-          </div>
-
-          {/* Leave Category Quota Breakdown */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2.5">
-            <h4 className="text-xs font-bold text-slate-700">Leave Balance Breakdown</h4>
-            
-            <div className="space-y-2 text-xs">
-              {/* Casual Leave */}
-              <div>
-                <div className="flex justify-between items-center mb-1 text-[11px]">
-                  <span className="font-semibold text-slate-600">Casual Leave (CL)</span>
-                  <span className="font-mono text-slate-500">{casualLeavesUsed} used of 6 days</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-[#00C9A7] h-full rounded-full" style={{ width: `${Math.min(100, (casualLeavesUsed / 6) * 100)}%` }} />
-                </div>
-              </div>
-
-              {/* Sick Leave */}
-              <div>
-                <div className="flex justify-between items-center mb-1 text-[11px]">
-                  <span className="font-semibold text-slate-600">Sick Leave (SL)</span>
-                  <span className="font-mono text-slate-500">{sickLeavesUsed} used of 6 days</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, (sickLeavesUsed / 6) * 100)}%` }} />
-                </div>
-              </div>
-
-              {/* Paid / Earned Leave */}
-              <div>
-                <div className="flex justify-between items-center mb-1 text-[11px]">
-                  <span className="font-semibold text-slate-600">Earned / Paid Leave (PL)</span>
-                  <span className="font-mono text-slate-500">{paidLeavesUsed} used of 6 days</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${Math.min(100, (paidLeavesUsed / 6) * 100)}%` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Leave Applications History */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-700 px-1">Leave Applications History</h4>
-
-            {memberLeaves.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-400">
-                No leave requests logged for this employee.
-              </div>
-            ) : (
-              memberLeaves.map((req) => (
-                <div key={req.id} className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-                        <Calendar className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <strong className="text-xs text-[#0A2540] block">{req.leaveType}</strong>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {req.fromDate === req.toDate ? req.fromDate : `${req.fromDate} - ${req.toDate}`} • {req.totalDays || 1} {(req.totalDays || 1) > 1 ? 'Days' : 'Day'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                      req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
-                      req.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
-                      'bg-rose-100 text-rose-800'
-                    }`}>
-                      {req.status}
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-slate-600 italic bg-slate-50 p-2 rounded-xl border border-slate-100/80">
-                    "{req.reason}"
-                  </p>
-
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-0.5">
-                    <span>Applied: {req.appliedOn || 'Recent'}</span>
-                    {req.approvedBy && <span>{req.approvedBy}</span>}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: ATTENDANCE & SHIFT LOGS (10 DAYS HISTORY TABLE) */}
+      {/* TAB 2: ATTENDANCE & LEAVES (WITH 3 CAPSULES: CASUAL, SICK, ABSENT) */}
       {activeTab === 'ATTENDANCE' && (
-        <div className="space-y-3">
+        <div className="space-y-3 animate-in fade-in duration-150">
           
-          {/* MOBILE-ONLY VIEW (Screens < 768px): Free, Direct on Canvas */}
-          <div className="block md:hidden space-y-2.5">
-            <div className="flex items-center justify-between px-1 pt-1 pb-0.5">
-              <div>
-                <h3 className="font-display font-black text-sm text-[#0A2540]">
-                  Attendance History
-                </h3>
-                <p className="text-[10px] text-slate-500">
-                  Standard shift starts at 09:30 AM (9.0 Hours)
-                </p>
+          {/* Section Header & Reset */}
+          <div className="flex items-center justify-between px-1 pt-1 pb-0.5">
+            <div>
+              <h3 className="font-display font-black text-sm text-[#0A2540]">
+                Attendance &amp; Leaves
+              </h3>
+              <p className="text-[10px] text-slate-500">
+                Tap any capsule to inspect leaves taken &amp; reasons
+              </p>
+            </div>
+            {leaveCapsuleFilter !== 'ALL' && (
+              <button
+                onClick={() => setLeaveCapsuleFilter('ALL')}
+                className="text-[10px] font-bold text-[#00A88B] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
+              >
+                ✕ Show All
+              </button>
+            )}
+          </div>
+
+          {/* 3 Clickable Capsules: Casual, Sick, Absent */}
+          <div className="grid grid-cols-3 gap-2">
+            {/* Capsule 1: Casual */}
+            <button
+              type="button"
+              onClick={() => setLeaveCapsuleFilter(leaveCapsuleFilter === 'CASUAL' ? 'ALL' : 'CASUAL')}
+              className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                leaveCapsuleFilter === 'CASUAL'
+                  ? 'bg-[#0A2540] text-white border-[#0A2540] shadow-md ring-2 ring-[#00C9A7]/40 scale-[1.02]'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 shadow-2xs'
+              }`}
+            >
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                leaveCapsuleFilter === 'CASUAL' ? 'text-[#00C9A7]' : 'text-slate-400'
+              }`}>
+                Casual
+              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-base font-black font-display">{casualDaysCount}</span>
+                <span className={`text-[10px] ${leaveCapsuleFilter === 'CASUAL' ? 'text-slate-200' : 'text-slate-400'}`}>
+                  {casualDaysCount === 1 ? 'day' : 'days'}
+                </span>
               </div>
-            </div>
+            </button>
 
-            <div className="flex items-center gap-1.5 text-[10px] font-bold px-1">
-              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                On-Time: {onTimeCount} Days
+            {/* Capsule 2: Sick */}
+            <button
+              type="button"
+              onClick={() => setLeaveCapsuleFilter(leaveCapsuleFilter === 'SICK' ? 'ALL' : 'SICK')}
+              className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                leaveCapsuleFilter === 'SICK'
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-400/40 scale-[1.02]'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 shadow-2xs'
+              }`}
+            >
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                leaveCapsuleFilter === 'SICK' ? 'text-amber-200' : 'text-slate-400'
+              }`}>
+                Sick
               </span>
-              <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
-                Late: {lateCount} Days
-              </span>
-              <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">
-                Leaves: {leaveCount} Days
-              </span>
-            </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-base font-black font-display">{sickDaysCount}</span>
+                <span className={`text-[10px] ${leaveCapsuleFilter === 'SICK' ? 'text-amber-100' : 'text-slate-400'}`}>
+                  {sickDaysCount === 1 ? 'day' : 'days'}
+                </span>
+              </div>
+            </button>
 
-            {/* Attendance Cards */}
-            {attendanceHistory.map((rec, idx) => (
-              <div key={idx} className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <strong className="text-xs text-[#0A2540] block">{rec.date}</strong>
-                    <span className="text-[10px] text-slate-400 font-mono">({rec.dayName})</span>
+            {/* Capsule 3: Absent */}
+            <button
+              type="button"
+              onClick={() => setLeaveCapsuleFilter(leaveCapsuleFilter === 'ABSENT' ? 'ALL' : 'ABSENT')}
+              className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                leaveCapsuleFilter === 'ABSENT'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-400/40 scale-[1.02]'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 shadow-2xs'
+              }`}
+            >
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                leaveCapsuleFilter === 'ABSENT' ? 'text-rose-200' : 'text-slate-400'
+              }`}>
+                Absent
+              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-base font-black font-display">{absentDaysCount}</span>
+                <span className={`text-[10px] ${leaveCapsuleFilter === 'ABSENT' ? 'text-rose-100' : 'text-slate-400'}`}>
+                  {absentDaysCount === 1 ? 'day' : 'days'}
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* DYNAMIC CONTENT REFLECTED BELOW THE CAPSULES */}
+
+          {/* CASE 1: CASUAL LEAVES REFLECTED */}
+          {leaveCapsuleFilter === 'CASUAL' && (
+            <div className="space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between px-1">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#00C9A7]" />
+                  <span>Casual Leaves Logged ({casualDaysCount} {casualDaysCount === 1 ? 'Day' : 'Days'})</span>
+                </h4>
+                <span className="text-[10px] font-mono text-slate-400">Approved by TL</span>
+              </div>
+
+              {casualLeaves.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center text-xs text-slate-400">
+                  No casual leaves taken by this employee.
+                </div>
+              ) : (
+                casualLeaves.map((req) => (
+                  <div key={req.id} className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-[#00A88B]">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <strong className="text-xs text-[#0A2540] block">{req.leaveType}</strong>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {req.fromDate === req.toDate ? req.fromDate : `${req.fromDate} - ${req.toDate}`} • {req.totalDays || 1} {(req.totalDays || 1) > 1 ? 'Days' : 'Day'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                        {req.status}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block mb-0.5">Stated Reason</span>
+                      <p className="text-xs text-slate-700 italic">
+                        "{req.reason}"
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-0.5">
+                      <span>Applied: {req.appliedOn || 'Recent'}</span>
+                      {req.approvedBy && <span className="text-emerald-700 font-medium">✓ {req.approvedBy}</span>}
+                    </div>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                    rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
-                    rec.status === 'LATE' ? 'bg-amber-100 text-amber-800' :
-                    rec.status === 'WEEKLY_OFF' ? 'bg-slate-100 text-slate-500' :
-                    'bg-rose-100 text-rose-800'
-                  }`}>
-                    {rec.status}
+                ))
+              )}
+            </div>
+          )}
+
+          {/* CASE 2: SICK LEAVES REFLECTED */}
+          {leaveCapsuleFilter === 'SICK' && (
+            <div className="space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between px-1">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span>Sick Leaves Logged ({sickDaysCount} {sickDaysCount === 1 ? 'Day' : 'Days'})</span>
+                </h4>
+                <span className="text-[10px] font-mono text-slate-400">Medical / Health</span>
+              </div>
+
+              {sickLeaves.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center text-xs text-slate-400">
+                  No sick leaves recorded for this employee.
+                </div>
+              ) : (
+                sickLeaves.map((req) => (
+                  <div key={req.id} className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <strong className="text-xs text-[#0A2540] block">{req.leaveType}</strong>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {req.fromDate === req.toDate ? req.fromDate : `${req.fromDate} - ${req.toDate}`} • {req.totalDays || 1} {(req.totalDays || 1) > 1 ? 'Days' : 'Day'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                        {req.status}
+                      </span>
+                    </div>
+
+                    <div className="bg-amber-50/50 p-2.5 rounded-xl border border-amber-100/60">
+                      <span className="text-[9px] uppercase font-bold text-amber-700 block mb-0.5">Medical Reason</span>
+                      <p className="text-xs text-slate-700 italic">
+                        "{req.reason}"
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-0.5">
+                      <span>Applied: {req.appliedOn || 'Recent'}</span>
+                      {req.approvedBy && <span className="text-emerald-700 font-medium">✓ {req.approvedBy}</span>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* CASE 3: ABSENT RECORDS REFLECTED */}
+          {leaveCapsuleFilter === 'ABSENT' && (
+            <div className="space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between px-1">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span>Unnotified Absent Shifts ({absentDaysCount})</span>
+                </h4>
+                <span className="text-[10px] font-mono text-slate-400">Shift Compliance</span>
+              </div>
+
+              {absentDaysCount === 0 ? (
+                <div className="bg-white border border-emerald-200/80 rounded-2xl p-5 text-center space-y-2 shadow-2xs">
+                  <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs text-[#0A2540]">Zero Unnotified Absences</h5>
+                    <p className="text-[11px] text-slate-500 max-w-xs mx-auto mt-0.5">
+                      This employee has zero unplanned absences. All non-working days are officially approved leaves or scheduled weekly offs.
+                    </p>
+                  </div>
+                  <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    100% Shift Attendance Compliance
                   </span>
                 </div>
+              ) : (
+                absentRecords.map((rec, idx) => (
+                  <div key={idx} className="bg-white border border-rose-200 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <strong className="text-xs text-[#0A2540] block">{rec.date} ({rec.dayName})</strong>
+                        <span className="text-[10px] text-rose-600 font-mono">No Punch-In Detected</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-100 text-rose-800">
+                        ABSENT
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Unnotified absence without prior leave application approved by Team Leader.
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
-                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-xl text-center text-xs">
-                  <div>
-                    <span className="text-[9px] text-slate-400 block font-bold uppercase">Punch In</span>
-                    <strong className="text-xs font-mono font-bold text-slate-700">{rec.inTime}</strong>
+          {/* CASE 4: ALL RECORDS (LEAVES SUMMARY + FULL 10-DAY ATTENDANCE SHIFT LOGS) */}
+          {leaveCapsuleFilter === 'ALL' && (
+            <div className="space-y-3">
+              {/* Approved Leaves Summary Strip */}
+              {memberLeaves.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] font-bold text-slate-600">Approved Leaves History</span>
+                    <span className="text-[10px] text-slate-400">Total: {totalLeavesApproved} Days</span>
                   </div>
-                  <div>
-                    <span className="text-[9px] text-slate-400 block font-bold uppercase">Punch Out</span>
-                    <strong className="text-xs font-mono font-bold text-slate-700">{rec.outTime}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-slate-400 block font-bold uppercase">Shift Hours</span>
-                    <strong className="text-xs font-mono font-bold text-[#00A88B]">{rec.hours}</strong>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {memberLeaves.map((l) => (
+                      <div key={l.id} className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                            l.leaveType === 'Sick Leave' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+                            'bg-teal-50 text-teal-800 border border-teal-200'
+                          }`}>
+                            {l.leaveType}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {l.fromDate === l.toDate ? l.fromDate : `${l.fromDate} - ${l.toDate}`}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 italic line-clamp-1">"{l.reason}"</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
 
-          {/* DESKTOP-ONLY ATTENDANCE TABLE (Screens >= 768px) */}
-          <div className="hidden md:block bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-display font-black text-lg text-[#0A2540]">
-                  Daily Shift & Attendance Log
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Standard shift starts at 09:30 AM • Required shift duration: 9.0 Hours
-                </p>
+              {/* MOBILE-ONLY VIEW (Screens < 768px): Free, Direct on Canvas Shift Cards */}
+              <div className="block md:hidden space-y-2.5 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <div>
+                    <h4 className="font-display font-black text-xs text-[#0A2540]">
+                      10-Day Shift Punch Logs
+                    </h4>
+                    <p className="text-[10px] text-slate-500">
+                      Standard shift: 09:30 AM (9.0 Hours)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] font-bold">
+                    <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                      On-Time: {onTimeCount}
+                    </span>
+                    <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+                      Late: {lateCount}
+                    </span>
+                  </div>
+                </div>
+
+                {attendanceHistory.map((rec, idx) => (
+                  <div key={idx} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <strong className="text-xs text-[#0A2540] block">{rec.date}</strong>
+                        <span className="text-[10px] text-slate-400 font-mono">({rec.dayName})</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                        rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
+                        rec.status === 'LATE' ? 'bg-amber-100 text-amber-800' :
+                        rec.status === 'WEEKLY_OFF' ? 'bg-slate-100 text-slate-500' :
+                        'bg-rose-100 text-rose-800'
+                      }`}>
+                        {rec.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 bg-slate-50 p-2 rounded-xl text-center text-xs">
+                      <div>
+                        <span className="text-[8px] text-slate-400 block font-bold uppercase">Punch In</span>
+                        <strong className="text-[11px] font-mono font-bold text-slate-700">{rec.inTime}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-400 block font-bold uppercase">Punch Out</span>
+                        <strong className="text-[11px] font-mono font-bold text-slate-700">{rec.outTime}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-400 block font-bold uppercase">Shift Hours</span>
+                        <strong className="text-[11px] font-mono font-bold text-[#00A88B]">{rec.hours}</strong>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-xl">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  On-Time: {onTimeCount} Days
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-xl">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  Late: {lateCount} Days
-                </span>
-                <span className="flex items-center gap-1.5 text-rose-700 font-bold bg-rose-50 px-2.5 py-1 rounded-xl">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  Leaves: {leaveCount} Days
-                </span>
+              {/* DESKTOP-ONLY ATTENDANCE TABLE (Screens >= 768px) */}
+              <div className="hidden md:block bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="font-display font-black text-lg text-[#0A2540]">
+                      Daily Shift &amp; Attendance Log
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Standard shift starts at 09:30 AM • Required shift duration: 9.0 Hours
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-xl">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      On-Time: {onTimeCount} Days
+                    </span>
+                    <span className="flex items-center gap-1.5 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-xl">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      Late: {lateCount} Days
+                    </span>
+                    <span className="flex items-center gap-1.5 text-rose-700 font-bold bg-rose-50 px-2.5 py-1 rounded-xl">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      Leaves: {leaveCount} Days
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="pb-3 pl-2">Date &amp; Day</th>
+                        <th className="pb-3">Punch-In Time</th>
+                        <th className="pb-3">Punch-Out Time</th>
+                        <th className="pb-3">Shift Working Hours</th>
+                        <th className="pb-3">Attendance Status</th>
+                        <th className="pb-3 text-right pr-2">Remark</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {attendanceHistory.map((rec, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 pl-2 font-bold text-[#0A2540]">
+                            {rec.date} <span className="text-slate-400 font-normal font-mono">({rec.dayName})</span>
+                          </td>
+
+                          <td className="py-3.5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold ${
+                              rec.isLate ? 'bg-amber-50 text-amber-800 border border-amber-200' : 
+                              rec.status === 'WEEKLY_OFF' || rec.status === 'LEAVE' ? 'text-slate-400' :
+                              'bg-slate-50 text-slate-700 border border-slate-200'
+                            }`}>
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              {rec.inTime}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold ${
+                              rec.outTime === 'Shift Active' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+                              rec.status === 'WEEKLY_OFF' || rec.status === 'LEAVE' ? 'text-slate-400' :
+                              'bg-slate-50 text-slate-700 border border-slate-200'
+                            }`}>
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              {rec.outTime}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 font-mono font-bold">
+                            <span className={rec.isShort ? 'text-amber-700' : rec.hours !== '0h 00m' ? 'text-emerald-700' : 'text-slate-400'}>
+                              {rec.hours}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
+                              rec.status === 'LATE' ? 'bg-amber-100 text-amber-800' :
+                              rec.status === 'LEAVE' ? 'bg-rose-100 text-rose-800' :
+                              'bg-slate-100 text-slate-500'
+                            }`}>
+                              {rec.status.replace('_', ' ')}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 text-right pr-2 text-slate-500 font-medium text-[11px]">
+                            {rec.isLate ? '⚠️ Late Punch (>09:30 AM)' : 
+                             rec.status === 'LEAVE' ? 'Approved Casual Leave' :
+                             rec.status === 'WEEKLY_OFF' ? 'Weekly Off' : '✓ Full Shift Completed'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
               </div>
             </div>
+          )}
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="pb-3 pl-2">Date & Day</th>
-                    <th className="pb-3">Punch-In Time</th>
-                    <th className="pb-3">Punch-Out Time</th>
-                    <th className="pb-3">Shift Working Hours</th>
-                    <th className="pb-3">Attendance Status</th>
-                    <th className="pb-3 text-right pr-2">Remark</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {attendanceHistory.map((rec, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 pl-2 font-bold text-[#0A2540]">
-                        {rec.date} <span className="text-slate-400 font-normal font-mono">({rec.dayName})</span>
-                      </td>
-
-                      <td className="py-3.5">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold ${
-                          rec.isLate ? 'bg-amber-50 text-amber-800 border border-amber-200' : 
-                          rec.status === 'WEEKLY_OFF' || rec.status === 'LEAVE' ? 'text-slate-400' :
-                          'bg-slate-50 text-slate-700 border border-slate-200'
-                        }`}>
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          {rec.inTime}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold ${
-                          rec.outTime === 'Shift Active' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
-                          rec.status === 'WEEKLY_OFF' || rec.status === 'LEAVE' ? 'text-slate-400' :
-                          'bg-slate-50 text-slate-700 border border-slate-200'
-                        }`}>
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          {rec.outTime}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 font-mono font-bold">
-                        <span className={rec.isShort ? 'text-amber-700' : rec.hours !== '0h 00m' ? 'text-emerald-700' : 'text-slate-400'}>
-                          {rec.hours}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
-                          rec.status === 'LATE' ? 'bg-amber-100 text-amber-800' :
-                          rec.status === 'LEAVE' ? 'bg-rose-100 text-rose-800' :
-                          'bg-slate-100 text-slate-500'
-                        }`}>
-                          {rec.status.replace('_', ' ')}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 text-right pr-2 text-slate-500 font-medium text-[11px]">
-                        {rec.isLate ? '⚠️ Late Punch (>09:30 AM)' : 
-                         rec.status === 'LEAVE' ? 'Approved Casual Leave' :
-                         rec.status === 'WEEKLY_OFF' ? 'Weekly Off' : '✓ Full Shift Completed'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-          </div>
         </div>
       )}
 
