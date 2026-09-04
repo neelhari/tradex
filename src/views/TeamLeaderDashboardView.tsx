@@ -702,40 +702,65 @@ export const TeamLeaderDashboardView: React.FC = () => {
         {/* --- TAB 2: TEAM (Live Attendance, Roster & 360 Dossier) --- */}
         {activeTab === 'team' && (
           <div className="space-y-3.5 animate-in fade-in duration-150">
-            {/* Today's Team Report Box (Replaces old heading) */}
-            <div className="nexus-card p-3 bg-white border border-slate-200 shadow-sm rounded-2xl">
+            {/* TODAY'S TEAM PULSE / REPORT BOX (Replaces old heading as requested) */}
+            <div className="bg-white border border-slate-200/90 shadow-xs rounded-2xl p-3.5 space-y-2.5">
+              {/* Top Row: Title + Live Status Pill (Image 2) */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-black tracking-wider text-[#0A2540] uppercase">
+                    Today's Team Pulse
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <div className="bg-[#E6F8F5] border border-[#B2EFE5] text-[#00897B] font-bold text-[10px] px-2.5 py-0.5 rounded-full">
+                  {presentCount} Present • {lateCount} Late • {onLeaveCount} Leave
+                </div>
+              </div>
+
+              {/* Subtle Divider */}
+              <div className="h-px bg-slate-100" />
+
+              {/* 4 Metric Columns: Team | Calls (Attended / Total) | Won | Revenue */}
               <div className="grid grid-cols-4 gap-1 text-center divide-x divide-slate-100">
                 {/* 1. Team */}
                 <div className="px-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Team</span>
-                  <strong className="text-sm sm:text-base font-mono-nums font-black text-[#0A2540] block mt-0.5">
+                  <strong className="text-base font-display font-black text-[#0A2540] block leading-tight">
                     {totalTeamStrength}
                   </strong>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                    Team
+                  </span>
                 </div>
 
-                {/* 2. Attended / Total Calls */}
+                {/* 2. Attended out of total calls */}
                 <div className="px-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Calls</span>
-                  <strong className="text-sm sm:text-base font-mono-nums font-black text-[#0A2540] block mt-0.5">
+                  <strong className="text-base font-display font-black text-[#0A2540] block leading-tight">
                     <span className="text-[#00A88B]">{totalActivities}</span>
                     <span className="text-slate-300 font-normal text-xs">/{totalGoalCalls}</span>
                   </strong>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                    Calls
+                  </span>
                 </div>
 
                 {/* 3. Won */}
                 <div className="px-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Won</span>
-                  <strong className="text-sm sm:text-base font-mono-nums font-black text-purple-700 block mt-0.5">
+                  <strong className="text-base font-display font-black text-purple-700 block leading-tight">
                     {totalWonToday}
                   </strong>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                    Won
+                  </span>
                 </div>
 
                 {/* 4. Revenue */}
                 <div className="px-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Revenue</span>
-                  <strong className="text-sm sm:text-base font-mono-nums font-black text-[#00A88B] block mt-0.5">
+                  <strong className="text-base font-display font-black text-[#00A88B] block leading-tight">
                     {formatInLakhs(totalSales)}
                   </strong>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                    Revenue
+                  </span>
                 </div>
               </div>
             </div>

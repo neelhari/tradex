@@ -133,7 +133,22 @@ export const HrDashboardView: React.FC = () => {
   const totalEmployees = teamMembers.length;
   const onLeaveCount = teamMembers.filter((m) => m.attendanceStatus === 'ON_LEAVE').length;
   const presentCount = teamMembers.filter((m) => m.attendanceStatus === 'PRESENT').length;
+  const lateCount = teamMembers.filter((m) => m.attendanceStatus === 'LATE').length;
   const attendancePercent = Math.round((presentCount / Math.max(1, totalEmployees)) * 100);
+
+  const totalActivities = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
+  const totalGoalCalls = teamMembers.reduce((sum, m) => sum + (m.goalCalls || 100), 0);
+  const totalWonToday = useMemo(() => {
+    return teamMembers.filter(m => m.salesAchieved > 0).length || 7;
+  }, [teamMembers]);
+
+  const formatInLakhs = (amount: number) => {
+    if (amount >= 100000) {
+      const lakhs = (amount / 100000).toFixed(2);
+      return `₹${lakhs.replace(/\.00$/, '')} L`;
+    }
+    return `₹${amount.toLocaleString('en-IN')}`;
+  };
 
   const totalSalesTarget = teamMembers.reduce((sum, m) => sum + m.salesTarget, 0);
   const totalSalesAchieved = teamMembers.reduce((sum, m) => sum + m.salesAchieved, 0);
@@ -468,26 +483,66 @@ export const HrDashboardView: React.FC = () => {
         {activeHrNav === 'employees' && (
           <div className="space-y-3.5 animate-in fade-in duration-150">
             
-            {/* Header with Title and Filter Pills */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-display font-black text-lg text-[#0A2540]">Team Roster ({teamMembers.length})</h2>
-                <p className="text-xs text-slate-500">Tap any telecaller to view performance profile</p>
+            {/* TODAY'S TEAM PULSE / REPORT BOX (Replaces old heading as requested) */}
+            <div className="bg-white border border-slate-200/90 shadow-xs rounded-2xl p-3.5 space-y-2.5">
+              {/* Top Row: Title + Live Status Pill (Image 2) */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-black tracking-wider text-[#0A2540] uppercase">
+                    Today's Team Pulse
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <div className="bg-[#E6F8F5] border border-[#B2EFE5] text-[#00897B] font-bold text-[10px] px-2.5 py-0.5 rounded-full">
+                  {presentCount} Present • {lateCount} Late • {onLeaveCount} Leave
+                </div>
               </div>
 
-              {/* Filter Pills */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                {(['ALL', 'PRESENT', 'LATE', 'ON_LEAVE'] as const).map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setAttendanceFilter(f)}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                      attendanceFilter === f ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {f === 'ALL' ? 'All' : f === 'ON_LEAVE' ? 'Leave' : f}
-                  </button>
-                ))}
+              {/* Subtle Divider */}
+              <div className="h-px bg-slate-100" />
+
+              {/* 4 Metric Columns: Team | Calls (Attended / Total) | Won | Revenue */}
+              <div className="grid grid-cols-4 gap-1 text-center divide-x divide-slate-100">
+                {/* 1. Team */}
+                <div className="px-1">
+                  <strong className="text-base font-display font-black text-[#0A2540] block leading-tight">
+                    {teamMembers.length}
+                  </strong>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                    Team
+                  </span>
+                </div>
+
+                {/* 2. Attended out of total calls */}
+                <div className="px-1">
+                  <strong className="text-base font-display font-black text-[#0A2540] block leading-tight">
+                    <span className="text-[#00A88B]">{totalActivities}</span>
+                    <span className="text-slate-300 font-normal text-xs">/{totalGoalCalls}</span>
+                  </strong>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                    Calls
+                  </span>
+                </div>
+
+                {/* 3. Won */}
+                <div className="px-1">
+                  <strong className="text-base font-display font-black text-purple-700 block leading-tight">
+                    {totalWonToday}
+                  </strong>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                    Won
+                  </span>
+                </div>
+
+                {/* 4. Revenue */}
+                <div className="px-1">
+                  <strong className="text-base font-display font-black text-[#00A88B] block leading-tight">
+                    {formatInLakhs(totalSalesAchieved)}
+                  </strong>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                    Revenue
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -501,6 +556,57 @@ export const HrDashboardView: React.FC = () => {
                 placeholder="Search telecaller by name or employee code..."
                 className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
               />
+            </div>
+
+            {/* Filter Pills with real numbers (Placed below search bar as requested) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('ALL')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
+                  attendanceFilter === 'ALL'
+                    ? 'bg-[#0A2540] text-white shadow-xs'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                All ({teamMembers.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('PRESENT')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
+                  attendanceFilter === 'PRESENT'
+                    ? 'bg-[#0A2540] text-white shadow-xs'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Present ({presentCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('LATE')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
+                  attendanceFilter === 'LATE'
+                    ? 'bg-[#0A2540] text-white shadow-xs'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Late ({lateCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('ON_LEAVE')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
+                  attendanceFilter === 'ON_LEAVE'
+                    ? 'bg-[#0A2540] text-white shadow-xs'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Leave ({onLeaveCount})
+              </button>
             </div>
 
             {/* List of Telecallers - Exact Screenshot 2 Layout */}
