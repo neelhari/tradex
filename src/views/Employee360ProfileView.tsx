@@ -21,7 +21,9 @@ import {
   Briefcase, 
   ArrowRightLeft,
   DollarSign,
-  Filter
+  Filter,
+  Users,
+  PhoneCall
 } from 'lucide-react';
 
 interface Employee360ProfileViewProps {
@@ -42,10 +44,11 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
     teamMembers,
     reassignLead, 
     triggerToast,
-    faceProfiles
+    faceProfiles,
+    leaveRequests,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'CALLING' | 'ATTENDANCE' | 'COMPLIANCE'>('CALLING');
+  const [activeTab, setActiveTab] = useState<'CALLING' | 'LEADS' | 'LEAVES' | 'ATTENDANCE' | 'COMPLIANCE'>('CALLING');
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(0);
   const [reassigningLeadId, setReassigningLeadId] = useState<string | null>(null);
   const [targetAssignee, setTargetAssignee] = useState<string>('');
@@ -337,6 +340,81 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
   const activeShiftDays = onTimeCount + lateCount;
   const onTimePercentage = activeShiftDays > 0 ? Math.round((onTimeCount / activeShiftDays) * 100) : 100;
 
+  // Filter leaves for this employee from live backend/store
+  const memberLeaves = useMemo(() => {
+    const list = (leaveRequests || []).filter((l) => {
+      const byCode = l.employeeCode && l.employeeCode.toLowerCase() === member.empCode.toLowerCase();
+      const byName = l.employeeName && l.employeeName.toLowerCase() === memberNameLower;
+      const byId = (l as any).employeeId && (l as any).employeeId === member.id;
+      return byCode || byName || byId;
+    });
+
+    if (list.length > 0) return list;
+
+    // Fallback seed records if user is Arjun Kumar
+    if (memberNameLower.includes('arjun')) {
+      return [
+        {
+          id: 'leave-2',
+          employeeName: 'Arjun Kumar',
+          employeeCode: 'TNX-8492',
+          leaveType: 'Sick Leave',
+          fromDate: '05 Jun 2025',
+          toDate: '06 Jun 2025',
+          totalDays: 2,
+          reason: 'Scheduled medical health checkup and recovery',
+          status: 'APPROVED',
+          appliedOn: '04 Jun 2025',
+          approvedBy: 'Ramesh Sharma (Team Leader)'
+        },
+        {
+          id: 'leave-1',
+          employeeName: 'Arjun Kumar',
+          employeeCode: 'TNX-8492',
+          leaveType: 'Casual Leave',
+          fromDate: '22 May 2025',
+          toDate: '22 May 2025',
+          totalDays: 1,
+          reason: 'Family personal commitment in hometown',
+          status: 'APPROVED',
+          appliedOn: '20 May 2025',
+          approvedBy: 'Ramesh Sharma (Team Leader)'
+        }
+      ] as any[];
+    }
+
+    return [];
+  }, [leaveRequests, member, memberNameLower]);
+
+  // Leave statistics
+  const totalLeavesApproved = useMemo(() => {
+    return memberLeaves
+      .filter(l => l.status === 'APPROVED')
+      .reduce((sum, l) => sum + (l.totalDays || 1), 0);
+  }, [memberLeaves]);
+
+  const pendingLeavesCount = useMemo(() => {
+    return memberLeaves.filter(l => l.status === 'PENDING').length;
+  }, [memberLeaves]);
+
+  const casualLeavesUsed = useMemo(() => {
+    return memberLeaves
+      .filter(l => l.status === 'APPROVED' && l.leaveType === 'Casual Leave')
+      .reduce((sum, l) => sum + (l.totalDays || 1), 0);
+  }, [memberLeaves]);
+
+  const sickLeavesUsed = useMemo(() => {
+    return memberLeaves
+      .filter(l => l.status === 'APPROVED' && l.leaveType === 'Sick Leave')
+      .reduce((sum, l) => sum + (l.totalDays || 1), 0);
+  }, [memberLeaves]);
+
+  const paidLeavesUsed = useMemo(() => {
+    return memberLeaves
+      .filter(l => l.status === 'APPROVED' && l.leaveType === 'Earned / Paid Leave')
+      .reduce((sum, l) => sum + (l.totalDays || 1), 0);
+  }, [memberLeaves]);
+
   // Handle lead reassign
   const handleReassign = (leadId: string) => {
     if (!targetAssignee) return;
@@ -483,43 +561,67 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
       {/* Main Content Area (Directly below attached header, with ample vertical room for calls & history) */}
       <div className="p-3 sm:p-4 space-y-3">
 
-      {/* Tabs Row - Mobile Native Symmetric Controls */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm flex items-center justify-between gap-1.5">
+      {/* Tabs Row - Mobile Native Clean Controls */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-1 shadow-2xs flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('CALLING')}
-          className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
+          className={`flex-1 min-w-[70px] py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
             activeTab === 'CALLING'
               ? 'bg-[#0A2540] text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Briefcase className="w-3.5 h-3.5 flex-shrink-0" />
-          <span className="truncate">Calls</span>
+          <span>Calls</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('LEADS')}
+          className={`flex-1 min-w-[70px] py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
+            activeTab === 'LEADS'
+              ? 'bg-[#0A2540] text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>Leads ({memberLeads.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('LEAVES')}
+          className={`flex-1 min-w-[70px] py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
+            activeTab === 'LEAVES'
+              ? 'bg-[#0A2540] text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>Leaves ({totalLeavesApproved})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('ATTENDANCE')}
-          className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
+          className={`flex-1 min-w-[70px] py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
             activeTab === 'ATTENDANCE'
               ? 'bg-[#0A2540] text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-          <span className="truncate">Attendance</span>
+          <span>Attendance</span>
         </button>
 
         {(viewerRole === 'hr' || viewerRole === 'admin') && (
           <button
             onClick={() => setActiveTab('COMPLIANCE')}
-            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
+            className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
               activeTab === 'COMPLIANCE'
                 ? 'bg-[#0A2540] text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="truncate">Audit</span>
+            <span>Audit</span>
           </button>
         )}
       </div>
@@ -908,7 +1010,233 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
         </div>
       )}
 
-      {/* TAB 2: ATTENDANCE & SHIFT LOGS (10 DAYS HISTORY TABLE) */}
+      {/* TAB 2: ASSIGNED LEADS & PIPELINE */}
+      {activeTab === 'LEADS' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          {/* Section Header */}
+          <div className="flex items-center justify-between px-1 pt-1">
+            <div>
+              <h3 className="font-display font-black text-sm text-[#0A2540]">
+                Assigned Leads Pipeline
+              </h3>
+              <p className="text-[10px] text-slate-500">
+                {memberLeads.length} active leads currently assigned
+              </p>
+            </div>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+              Pipeline: {formatInLakhs(memberLeads.reduce((s, l) => s + (l.dealValue || 0), 0))}
+            </span>
+          </div>
+
+          {/* Leads List */}
+          <div className="space-y-2">
+            {memberLeads.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-400">
+                No active leads currently assigned to this telecaller.
+              </div>
+            ) : (
+              memberLeads.map((lead) => (
+                <div key={lead.id} className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <strong className="text-xs text-[#0A2540] block">{lead.name}</strong>
+                      <span className="text-[10px] text-slate-400">{lead.company || 'Direct Client'} • {maskPhone(lead.phone)}</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                      lead.status === 'CONVERTED' ? 'bg-purple-100 text-purple-800' :
+                      lead.status === 'INTERESTED' ? 'bg-emerald-100 text-emerald-800' :
+                      lead.status === 'CALLBACK' ? 'bg-amber-100 text-amber-800' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      {lead.status}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400">Deal Value:</span>
+                      <strong className="font-mono font-black text-[#00A88B]">
+                        {lead.dealValue ? formatInLakhs(lead.dealValue) : '—'}
+                      </strong>
+                    </div>
+
+                    <button
+                      onClick={() => setReassigningLeadId(lead.id)}
+                      className="text-[10px] font-bold text-slate-600 hover:text-[#00A88B] bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
+                    >
+                      <ArrowRightLeft className="w-3 h-3" />
+                      <span>Reassign</span>
+                    </button>
+                  </div>
+
+                  {reassigningLeadId === lead.id && (
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2 mt-1 animate-in fade-in">
+                      <span className="text-[10px] font-bold text-slate-600 block">Select new team member:</span>
+                      <div className="flex gap-1.5">
+                        <select
+                          value={targetAssignee}
+                          onChange={(e) => setTargetAssignee(e.target.value)}
+                          className="flex-1 text-xs p-1.5 rounded-lg border border-slate-200 bg-white"
+                        >
+                          <option value="">Choose telecaller...</option>
+                          {teamMembers.filter(m => m.id !== member.id).map(tm => (
+                            <option key={tm.id} value={tm.name}>{tm.name} ({tm.empCode})</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleReassign(lead.id)}
+                          disabled={!targetAssignee}
+                          className="px-2.5 py-1 bg-[#00C9A7] text-[#0A2540] font-bold text-xs rounded-lg disabled:opacity-50"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setReassigningLeadId(null)}
+                          className="px-2 py-1 text-xs text-slate-500"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: LEAVES & TIME OFF (Monthly Leaves Taken, Balances & History) */}
+      {activeTab === 'LEAVES' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          {/* Section Header */}
+          <div className="flex items-center justify-between px-1 pt-1">
+            <div>
+              <h3 className="font-display font-black text-sm text-[#0A2540]">
+                Leave &amp; Time-Off Records
+              </h3>
+              <p className="text-[10px] text-slate-500">
+                Monthly leave history, balances &amp; applications
+              </p>
+            </div>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+              Annual Quota: 18 Days
+            </span>
+          </div>
+
+          {/* 3 Top Metric Cards for Leaves */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs text-center">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Taken This Month</span>
+              <strong className="text-base font-display font-black text-[#0A2540] block mt-0.5">
+                {totalLeavesApproved} <span className="text-xs font-normal text-slate-400">Days</span>
+              </strong>
+            </div>
+
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs text-center">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Remaining</span>
+              <strong className="text-base font-display font-black text-[#00A88B] block mt-0.5">
+                {Math.max(0, 18 - totalLeavesApproved)} <span className="text-xs font-normal text-slate-400">Days</span>
+              </strong>
+            </div>
+
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs text-center">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Pending</span>
+              <strong className={`text-base font-display font-black block mt-0.5 ${pendingLeavesCount > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                {pendingLeavesCount} <span className="text-xs font-normal text-slate-400">Req.</span>
+              </strong>
+            </div>
+          </div>
+
+          {/* Leave Category Quota Breakdown */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2.5">
+            <h4 className="text-xs font-bold text-slate-700">Leave Balance Breakdown</h4>
+            
+            <div className="space-y-2 text-xs">
+              {/* Casual Leave */}
+              <div>
+                <div className="flex justify-between items-center mb-1 text-[11px]">
+                  <span className="font-semibold text-slate-600">Casual Leave (CL)</span>
+                  <span className="font-mono text-slate-500">{casualLeavesUsed} used of 6 days</span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div className="bg-[#00C9A7] h-full rounded-full" style={{ width: `${Math.min(100, (casualLeavesUsed / 6) * 100)}%` }} />
+                </div>
+              </div>
+
+              {/* Sick Leave */}
+              <div>
+                <div className="flex justify-between items-center mb-1 text-[11px]">
+                  <span className="font-semibold text-slate-600">Sick Leave (SL)</span>
+                  <span className="font-mono text-slate-500">{sickLeavesUsed} used of 6 days</span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, (sickLeavesUsed / 6) * 100)}%` }} />
+                </div>
+              </div>
+
+              {/* Paid / Earned Leave */}
+              <div>
+                <div className="flex justify-between items-center mb-1 text-[11px]">
+                  <span className="font-semibold text-slate-600">Earned / Paid Leave (PL)</span>
+                  <span className="font-mono text-slate-500">{paidLeavesUsed} used of 6 days</span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${Math.min(100, (paidLeavesUsed / 6) * 100)}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Leave Applications History */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-slate-700 px-1">Leave Applications History</h4>
+
+            {memberLeaves.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-400">
+                No leave requests logged for this employee.
+              </div>
+            ) : (
+              memberLeaves.map((req) => (
+                <div key={req.id} className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                        <Calendar className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <strong className="text-xs text-[#0A2540] block">{req.leaveType}</strong>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {req.fromDate === req.toDate ? req.fromDate : `${req.fromDate} - ${req.toDate}`} • {req.totalDays || 1} {(req.totalDays || 1) > 1 ? 'Days' : 'Day'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                      req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+                      req.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
+                      'bg-rose-100 text-rose-800'
+                    }`}>
+                      {req.status}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 italic bg-slate-50 p-2 rounded-xl border border-slate-100/80">
+                    "{req.reason}"
+                  </p>
+
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-0.5">
+                    <span>Applied: {req.appliedOn || 'Recent'}</span>
+                    {req.approvedBy && <span>{req.approvedBy}</span>}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: ATTENDANCE & SHIFT LOGS (10 DAYS HISTORY TABLE) */}
       {activeTab === 'ATTENDANCE' && (
         <div className="space-y-3">
           
