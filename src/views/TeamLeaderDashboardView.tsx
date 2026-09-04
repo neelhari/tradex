@@ -287,7 +287,7 @@ export const TeamLeaderDashboardView: React.FC = () => {
   // If 360 profile is open, render native full-screen mobile view
   if (selectedMemberFor360) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] pb-28 pt-2 px-3 sm:px-4 max-w-lg mx-auto">
+      <div className="min-h-screen bg-[#F8FAFC] pb-28 max-w-lg mx-auto">
         <Employee360ProfileView 
           member={selectedMemberFor360} 
           onBack={() => setSelectedMemberFor360(null)} 

@@ -375,140 +375,113 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
   const faceProfile = faceProfiles.find(f => f.employeeName?.toLowerCase() === memberNameLower || f.employeeId === member.id);
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-150">
+    <div className="animate-in fade-in duration-150">
       
-      {/* Main Profile Header Card (Back Button & Download are cleanly integrated inside here) */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
+      {/* Attached Compact Profile Header (Edge-to-edge, no bulky floating outer card) */}
+      <div className="bg-white border-b border-slate-200 px-3.5 py-2.5 shadow-2xs space-y-2 sticky top-0 z-30">
         
-        {/* Top utility row: Back button on left, Download on right */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2">
+        {/* Top utility row: Back button on left, Active Status & CSV on right */}
+        <div className="flex items-center justify-between gap-2">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 text-xs font-black text-slate-700 hover:text-[#00A88B] transition-colors group"
+            className="inline-flex items-center gap-1.5 text-xs font-black text-slate-700 hover:text-[#00A88B] transition-colors py-0.5 group"
           >
-            <div className="w-7 h-7 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-[#E6FAF6] transition-colors">
-              <ArrowLeft className="w-4 h-4 text-slate-600 group-hover:text-[#00A88B]" />
+            <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-[#E6FAF6] transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-600 group-hover:text-[#00A88B]" />
             </div>
             <span>Back</span>
           </button>
 
-          <button
-            onClick={handleExportCSV}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-2xs flex-shrink-0"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden sm:inline">Download</span>
-            <span>CSV</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Active Shift
+            </span>
+
+            <button
+              onClick={handleExportCSV}
+              className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition-all inline-flex items-center gap-1 shadow-2xs"
+            >
+              <Download className="w-3 h-3 text-slate-500" />
+              <span>CSV</span>
+            </button>
+          </div>
         </div>
 
-        {/* Employee Info Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-xl sm:text-2xl shadow-md flex-shrink-0">
+        {/* Compact Employee Info Row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs flex-shrink-0">
               {member.name.substring(0, 2).toUpperCase()}
             </div>
             
-            <div className="space-y-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-display font-black text-xl sm:text-2xl text-[#0A2540]">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h2 className="font-display font-black text-sm text-[#0A2540] truncate">
                   {member.name}
                 </h2>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${
+                <span className={`px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider ${
                   member.attendanceStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
                   member.attendanceStatus === 'LATE' ? 'bg-amber-100 text-amber-800' :
                   'bg-rose-100 text-rose-800'
                 }`}>
                   {member.attendanceStatus}
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-mono font-bold">
+                <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-mono font-bold">
                   {member.empCode}
                 </span>
               </div>
 
-              <p className="text-xs text-slate-600 font-medium flex flex-wrap items-center gap-1.5">
-                <span className="font-bold text-[#0A2540]">{cleanRole}</span>
-                <span>•</span>
-                <span>{member.group || 'Alpha Team'}</span>
-                <span>•</span>
-                <span>TL: <strong className="text-[#0A2540]">Ramesh Sharma</strong></span>
+              <p className="text-[11px] text-slate-500 font-medium truncate">
+                <span className="font-bold text-slate-700">{cleanRole}</span> • <span>{member.group || 'Alpha Team'}</span> • <span>TL: Ramesh Sharma</span>
               </p>
-
-              <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 font-mono pt-0.5">
-                <span className="flex items-center gap-1">
-                  <Mail className="w-3 h-3 text-slate-400" />
-                  {member.email || `${member.name.toLowerCase().replace(/\s+/g, '.')}@tradenexus.io`}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Phone className="w-3 h-3 text-slate-400" />
-                  {member.phone}
-                </span>
-              </div>
             </div>
-          </div>
-
-          <div className="self-start md:self-center">
-            <span className="px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-black flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Active Shift (In Office)
-            </span>
           </div>
         </div>
 
-        {/* 4 Core KPI Cards - Compact for 400px mobile */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2 border-t border-slate-100">
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-              Dials Today
+        {/* Sleek 4-Column Metric Strip (Replaces bulky 4 boxes to free up screen space for main calls content) */}
+        <div className="grid grid-cols-4 gap-1 text-center divide-x divide-slate-100 bg-slate-50/90 rounded-xl py-1.5 px-1 border border-slate-100">
+          <div className="px-0.5">
+            <strong className="text-xs font-display font-black text-[#0A2540] block leading-tight">
+              {member.dialsToday} <span className="text-[9px] text-slate-400 font-normal">/{member.goalCalls || 100}</span>
+            </strong>
+            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+              Dials
             </span>
-            <div className="flex items-baseline gap-1 flex-wrap">
-              <span className="font-mono-nums font-black text-base sm:text-lg text-[#0A2540]">
-                {member.dialsToday} Calls
-              </span>
-              <span className="text-[10px] text-slate-400 font-bold">/ {member.goalCalls || 100}</span>
-            </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-[#E6FAF6]/60 border border-[#00C9A7]/30">
-            <span className="text-[10px] font-bold text-[#00A88B] uppercase tracking-wider block mb-0.5">
-              Sales This Month
+          <div className="px-0.5">
+            <strong className="text-xs font-display font-black text-[#00A88B] block leading-tight">
+              {formatInLakhs(member.salesAchieved)}
+            </strong>
+            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+              Sales
             </span>
-            <div className="flex items-baseline gap-1 flex-wrap">
-              <span className="font-mono-nums font-black text-base sm:text-lg text-[#00A88B]">
-                {formatInLakhs(member.salesAchieved)}
-              </span>
-              <span className="text-[10px] text-emerald-700 font-bold">/ ₹2.00 L</span>
-            </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-              Leads in Queue
+          <div className="px-0.5">
+            <strong className="text-xs font-display font-black text-purple-700 block leading-tight">
+              {member.interested || 12}
+            </strong>
+            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+              Interested
             </span>
-            <div className="flex items-baseline gap-1 flex-wrap">
-              <span className="font-mono-nums font-black text-base sm:text-lg text-[#0A2540]">
-                {memberLeads.length} Leads
-              </span>
-              <span className="text-[10px] text-emerald-600 font-bold">
-                {member.interested || 12} Int.
-              </span>
-            </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-              Shift Punctuality
+          <div className="px-0.5">
+            <strong className={`text-xs font-display font-black block leading-tight ${onTimePercentage >= 85 ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {onTimePercentage}%
+            </strong>
+            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+              Punctual
             </span>
-            <div className="flex items-baseline gap-1 flex-wrap">
-              <span className={`font-mono-nums font-black text-base sm:text-lg ${onTimePercentage >= 85 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {onTimePercentage}%
-              </span>
-              <span className="text-[10px] text-slate-400 font-bold">{lateCount} Late marks</span>
-            </div>
           </div>
         </div>
 
       </div>
+
+      {/* Main Content Area (Directly below attached header, with ample vertical room for calls & history) */}
+      <div className="p-3 sm:p-4 space-y-3">
 
       {/* Tabs Row - Mobile Native Symmetric Controls */}
       <div className="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm flex items-center justify-between gap-1.5">
@@ -1166,6 +1139,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
         </div>
       )}
 
+      </div>
     </div>
   );
 };
