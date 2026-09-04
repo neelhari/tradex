@@ -38,7 +38,8 @@ import {
   Clock,
   ArrowLeft,
   CalendarCheck,
-  AlertCircle
+  AlertCircle,
+  Filter
 } from 'lucide-react';
 import { OnboardingEmployee, ExitEmployee, TeamMember, TeamGroup } from '../types';
 import { AddEmployeeModal } from '../components/modals/AddEmployeeModal';
@@ -165,6 +166,27 @@ export const HrDashboardView: React.FC = () => {
   const pendingApprovalsCount =
     leaveRequests.filter((r) => r.status === 'PENDING').length +
     paymentVerifications.filter((p) => p.status === 'PENDING_HR_AUDIT').length;
+
+  // Leave Approvals & Sanctions States
+  const [leaveApprovalTab, setLeaveApprovalTab] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const [approvedCategoryFilter, setApprovedCategoryFilter] = useState<'ALL' | 'Casual Leave' | 'Sick Leave' | 'Earned / Paid Leave'>('ALL');
+
+  const pendingLeaves = useMemo(() => leaveRequests.filter((r) => r.status === 'PENDING'), [leaveRequests]);
+  const approvedLeaves = useMemo(() => leaveRequests.filter((r) => r.status === 'APPROVED'), [leaveRequests]);
+  const rejectedLeaves = useMemo(() => leaveRequests.filter((r) => r.status === 'REJECTED'), [leaveRequests]);
+
+  const approvedCasualCount = useMemo(() => approvedLeaves.filter((r) => r.leaveType === 'Casual Leave').length, [approvedLeaves]);
+  const approvedSickCount = useMemo(() => approvedLeaves.filter((r) => r.leaveType === 'Sick Leave').length, [approvedLeaves]);
+  const approvedEarnedCount = useMemo(() => approvedLeaves.filter((r) => r.leaveType.includes('Earned') || r.leaveType.includes('Paid')).length, [approvedLeaves]);
+  const totalApprovedDays = useMemo(() => approvedLeaves.reduce((sum, r) => sum + (r.totalDays || 1), 0), [approvedLeaves]);
+
+  const displayedApprovedLeaves = useMemo(() => {
+    if (approvedCategoryFilter === 'ALL') return approvedLeaves;
+    if (approvedCategoryFilter === 'Earned / Paid Leave') {
+      return approvedLeaves.filter((r) => r.leaveType.includes('Earned') || r.leaveType.includes('Paid'));
+    }
+    return approvedLeaves.filter((r) => r.leaveType === approvedCategoryFilter);
+  }, [approvedLeaves, approvedCategoryFilter]);
 
   const teamAnalyticsData = [
     { team: 'HNI Closers', percent: 96 },
@@ -347,17 +369,17 @@ export const HrDashboardView: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Pending Approvals */}
+                {/* Today's Revenue - Replaces Pending Approvals */}
                 <div 
-                  onClick={() => setActiveHrNav('approvals')}
-                  className="bg-white border border-slate-200 hover:border-rose-400 rounded-2xl p-3 shadow-xs text-center space-y-1 cursor-pointer transition-all active:scale-95 group"
+                  onClick={() => setActiveHrNav('employees')}
+                  className="bg-white border border-slate-200 hover:border-emerald-400 rounded-2xl p-3 shadow-xs text-center space-y-1 cursor-pointer transition-all active:scale-95 group"
                 >
-                  <span className="text-[10px] font-bold text-slate-500 block">Pending Approvals</span>
-                  <span className="font-display font-black text-xl text-rose-600 block group-hover:scale-105 transition-transform">
-                    {pendingApprovalsCount}
+                  <span className="text-[10px] font-bold text-slate-500 block">Today's Revenue</span>
+                  <span className="font-display font-black text-xl text-emerald-600 block group-hover:scale-105 transition-transform">
+                    {formatInLakhs(totalSalesAchieved)}
                   </span>
-                  <span className="text-[9px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md inline-block">
-                    Leaves &amp; Audits
+                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded-md inline-block">
+                    {totalWonToday} Won Deals
                   </span>
                 </div>
               </div>
@@ -1173,49 +1195,434 @@ export const HrDashboardView: React.FC = () => {
         {/* --- TAB 3: APPROVALS & LEAVES --- */}
         {activeHrNav === 'approvals' && (
           <div className="space-y-4 animate-in fade-in duration-150">
-            <div>
-              <h2 className="font-display font-black text-lg text-[#0A2540]">HR Sanctions &amp; Approvals ({pendingApprovalsCount})</h2>
-              <p className="text-xs text-slate-500">Leave applications and payment verification queue</p>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display font-black text-lg text-[#0A2540]">HR Sanctions &amp; Approvals</h2>
+                <p className="text-xs text-slate-500">Leave applications &amp; floor attendance governance</p>
+              </div>
+              {pendingLeaves.length > 0 && (
+                <span className="text-[11px] font-black text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>{pendingLeaves.length} Needs Review</span>
+                </span>
+              )}
             </div>
 
-            <div className="space-y-3">
-              {leaveRequests.map((req) => (
-                <div key={req.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <strong className="text-xs font-bold text-[#0A2540] block">{req.employeeName || 'Employee'}</strong>
-                      <span className="text-[11px] text-slate-500">{req.leaveType} ({req.totalDays} Days)</span>
+            {/* Top KPI Ribbon (3 Clickable Stage Filters) */}
+            <div className="grid grid-cols-3 gap-2">
+              {/* Card 1: Pending */}
+              <div
+                onClick={() => setLeaveApprovalTab('PENDING')}
+                className={`p-3 rounded-2xl border transition-all cursor-pointer text-center ${
+                  leaveApprovalTab === 'PENDING'
+                    ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/20 shadow-xs'
+                    : 'bg-white border-slate-200 hover:border-amber-300 shadow-2xs'
+                }`}
+              >
+                <span className="text-[10px] font-bold text-slate-500 block">Pending</span>
+                <span className="font-display font-black text-xl text-amber-600 block">
+                  {pendingLeaves.length}
+                </span>
+                <span className="text-[9px] font-bold text-amber-800 bg-amber-100/70 px-1.5 py-0.2 rounded inline-block">
+                  Needs Action
+                </span>
+              </div>
+
+              {/* Card 2: Approved */}
+              <div
+                onClick={() => setLeaveApprovalTab('APPROVED')}
+                className={`p-3 rounded-2xl border transition-all cursor-pointer text-center ${
+                  leaveApprovalTab === 'APPROVED'
+                    ? 'bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-400/20 shadow-xs'
+                    : 'bg-white border-slate-200 hover:border-emerald-300 shadow-2xs'
+                }`}
+              >
+                <span className="text-[10px] font-bold text-slate-500 block">Approved</span>
+                <span className="font-display font-black text-xl text-emerald-600 block">
+                  {approvedLeaves.length}
+                </span>
+                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/70 px-1.5 py-0.2 rounded inline-block">
+                  {totalApprovedDays} Days Total
+                </span>
+              </div>
+
+              {/* Card 3: Rejected */}
+              <div
+                onClick={() => setLeaveApprovalTab('REJECTED')}
+                className={`p-3 rounded-2xl border transition-all cursor-pointer text-center ${
+                  leaveApprovalTab === 'REJECTED'
+                    ? 'bg-rose-50/80 border-rose-400 ring-2 ring-rose-400/20 shadow-xs'
+                    : 'bg-white border-slate-200 hover:border-rose-300 shadow-2xs'
+                }`}
+              >
+                <span className="text-[10px] font-bold text-slate-500 block">Rejected</span>
+                <span className="font-display font-black text-xl text-rose-600 block">
+                  {rejectedLeaves.length}
+                </span>
+                <span className="text-[9px] font-bold text-rose-800 bg-rose-100/70 px-1.5 py-0.2 rounded inline-block">
+                  Archived
+                </span>
+              </div>
+            </div>
+
+            {/* Segmented Tab Controls */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
+              <button
+                onClick={() => setLeaveApprovalTab('PENDING')}
+                className={`flex-1 py-2 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                  leaveApprovalTab === 'PENDING'
+                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span>Pending Queue</span>
+                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                  pendingLeaves.length > 0 ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {pendingLeaves.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setLeaveApprovalTab('APPROVED')}
+                className={`flex-1 py-2 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                  leaveApprovalTab === 'APPROVED'
+                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span>Approved</span>
+                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
+                  {approvedLeaves.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setLeaveApprovalTab('REJECTED')}
+                className={`flex-1 py-2 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                  leaveApprovalTab === 'REJECTED'
+                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span>Rejected</span>
+                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600">
+                  {rejectedLeaves.length}
+                </span>
+              </button>
+            </div>
+
+            {/* --- SECTION 1: PENDING QUEUE --- */}
+            {leaveApprovalTab === 'PENDING' && (
+              <div className="space-y-3">
+                <div className="bg-amber-50/60 border border-amber-200/70 rounded-2xl p-2.5 px-3 text-xs text-amber-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>Review reason, shift impact, and floor coverage before sanctioning or rejecting.</span>
+                </div>
+
+                {pendingLeaves.length === 0 ? (
+                  <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-2 shadow-xs">
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-6 h-6" />
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      req.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                    }`}>
-                      {req.status}
+                    <h4 className="font-display font-bold text-sm text-[#0A2540]">All Clear!</h4>
+                    <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                      Zero pending leave applications. Floor attendance is fully accounted for.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingLeaves.map((req) => {
+                      const emp = teamMembers.find(m => m.name === req.employeeName || m.empCode === req.employeeCode);
+                      return (
+                        <div key={req.id} className="bg-white border border-slate-200 hover:border-amber-300 rounded-3xl p-4 shadow-xs space-y-3 transition-all">
+                          {/* Applicant Header */}
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-black text-xs">
+                                {emp?.avatar || req.employeeName?.substring(0, 2).toUpperCase() || 'EM'}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <strong className="text-xs font-bold text-[#0A2540]">{req.employeeName || 'Employee'}</strong>
+                                  <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                                    {req.employeeCode || emp?.empCode || 'TNX'}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-slate-500 block">
+                                  {emp?.group || 'Inside Sales Squad'}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                              PENDING SANCTION
+                            </span>
+                          </div>
+
+                          {/* Leave Details Pills */}
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className={`font-bold px-2 py-0.5 rounded-lg ${
+                              req.leaveType === 'Sick Leave'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                            }`}>
+                              {req.leaveType} ({req.totalDays} {req.totalDays === 1 ? 'Day' : 'Days'})
+                            </span>
+                            <span className="text-slate-600 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>{req.fromDate} {req.toDate !== req.fromDate ? `→ ${req.toDate}` : ''}</span>
+                            </span>
+                            <span className="text-slate-400 text-[10px]">
+                              Applied: {req.appliedOn || 'Today'}
+                            </span>
+                          </div>
+
+                          {/* Reason Quote */}
+                          <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Applicant Stated Reason</span>
+                            <p className="text-xs text-slate-700 italic">
+                              "{req.reason}"
+                            </p>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                            <button
+                              onClick={() => {
+                                approveLeaveRequest(req.id);
+                                triggerToast(`✓ Sanctioned leave for ${req.employeeName || 'Employee'}`);
+                              }}
+                              className="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-95"
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>Sanction Leave</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                rejectLeaveRequest(req.id, 'Shift coverage constraint');
+                                triggerToast(`✗ Rejected leave application for ${req.employeeName || 'Employee'}`);
+                              }}
+                              className="py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Reject</span>
+                            </button>
+                          </div>
+
+                          {/* Quick 360 link */}
+                          {emp && (
+                            <div className="text-right pt-0.5">
+                              <button
+                                onClick={() => setSelectedEmployeeFor360(emp)}
+                                className="text-[11px] font-bold text-[#00A88B] hover:underline inline-flex items-center gap-1"
+                              >
+                                <span>Inspect Employee 360 &amp; Past Leaves</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* --- SECTION 2: APPROVED LEAVES WITH CATEGORY FILTER --- */}
+            {leaveApprovalTab === 'APPROVED' && (
+              <div className="space-y-3">
+                {/* Approved Overview Card */}
+                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                    </div>
+                    <div>
+                      <strong className="text-xs font-bold text-emerald-900 block">
+                        Total Leaves Approved: {approvedLeaves.length}
+                      </strong>
+                      <span className="text-[10px] text-emerald-700">
+                        {totalApprovedDays} Total days officially sanctioned across all teams
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold font-mono bg-white border border-emerald-200 text-emerald-800 px-2 py-0.5 rounded-lg shadow-2xs">
+                    Sanction Log
+                  </span>
+                </div>
+
+                {/* Category Filter Pills Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                      <Filter className="w-3 h-3 text-[#00A88B]" />
+                      <span>Leave Categories:</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      Showing {displayedApprovedLeaves.length} of {approvedLeaves.length}
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-600 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                    "{req.reason}"
-                  </p>
-
-                  {req.status === 'PENDING' && (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <button
-                        onClick={() => approveLeaveRequest(req.id)}
-                        className="py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
-                      >
-                        Sanction Leave
-                      </button>
-                      <button
-                        onClick={() => rejectLeaveRequest(req.id, 'Shift understaffing')}
-                        className="py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                    {[
+                      { id: 'ALL', label: 'All Approved', count: approvedLeaves.length },
+                      { id: 'Casual Leave', label: 'Casual Leave', count: approvedCasualCount },
+                      { id: 'Sick Leave', label: 'Sick Leave', count: approvedSickCount },
+                      { id: 'Earned / Paid Leave', label: 'Paid / Earned', count: approvedEarnedCount },
+                    ].map((cat) => {
+                      const isActive = approvedCategoryFilter === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => setApprovedCategoryFilter(cat.id as any)}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                            isActive
+                              ? 'bg-[#00A88B] text-white shadow-xs'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <span>{cat.label}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
+                            isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {cat.count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Approved Cards List */}
+                {displayedApprovedLeaves.length === 0 ? (
+                  <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-1 shadow-xs">
+                    <p className="text-xs font-bold text-[#0A2540]">No records in this category</p>
+                    <p className="text-[11px] text-slate-400">
+                      No approved leave applications match "{approvedCategoryFilter}".
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {displayedApprovedLeaves.map((req) => {
+                      const emp = teamMembers.find(m => m.name === req.employeeName || m.empCode === req.employeeCode);
+                      return (
+                        <div key={req.id} className="bg-white border border-slate-200 hover:border-emerald-300 rounded-3xl p-4 shadow-xs space-y-3 transition-all">
+                          {/* Header */}
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-black text-xs border border-emerald-100">
+                                {emp?.avatar || req.employeeName?.substring(0, 2).toUpperCase() || 'EM'}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <strong className="text-xs font-bold text-[#0A2540]">{req.employeeName || 'Employee'}</strong>
+                                  <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                                    {req.employeeCode || emp?.empCode || 'TNX'}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-slate-500 block">
+                                  {emp?.group || 'Inside Sales Squad'}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>APPROVED</span>
+                            </span>
+                          </div>
+
+                          {/* Details pills */}
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className="font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                              {req.leaveType} ({req.totalDays} {req.totalDays === 1 ? 'Day' : 'Days'})
+                            </span>
+                            <span className="text-slate-600 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>{req.fromDate} {req.toDate !== req.fromDate ? `→ ${req.toDate}` : ''}</span>
+                            </span>
+                          </div>
+
+                          {/* Reason */}
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <p className="text-xs text-slate-600 italic">
+                              "{req.reason}"
+                            </p>
+                          </div>
+
+                          {/* Sanction Stamp & 360 link */}
+                          <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                            <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Sanctioned by {req.approvedBy || 'HR Administration'}</span>
+                            </span>
+                            {emp && (
+                              <button
+                                onClick={() => setSelectedEmployeeFor360(emp)}
+                                className="text-[11px] font-bold text-[#00A88B] hover:underline flex items-center gap-0.5"
+                              >
+                                <span>View 360 Profile</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* --- SECTION 3: REJECTED LEAVES --- */}
+            {leaveApprovalTab === 'REJECTED' && (
+              <div className="space-y-3">
+                {rejectedLeaves.length === 0 ? (
+                  <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-1 shadow-xs">
+                    <p className="text-xs font-bold text-[#0A2540]">No Rejected Requests</p>
+                    <p className="text-[11px] text-slate-400">
+                      There are currently zero rejected leave applications in the audit archive.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {rejectedLeaves.map((req) => {
+                      const emp = teamMembers.find(m => m.name === req.employeeName || m.empCode === req.employeeCode);
+                      return (
+                        <div key={req.id} className="bg-white border border-slate-200 rounded-3xl p-4 shadow-xs space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <strong className="text-xs font-bold text-[#0A2540] block">{req.employeeName || 'Employee'}</strong>
+                              <span className="text-[11px] text-slate-500">{req.leaveType} ({req.totalDays} Days)</span>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200">
+                              REJECTED
+                            </span>
+                          </div>
+
+                          <div className="bg-rose-50/50 p-2.5 rounded-xl border border-rose-100 text-xs text-rose-800">
+                            <strong>Note:</strong> {req.approvedBy || 'Operational requirements & shift understaffing'}
+                          </div>
+
+                          {emp && (
+                            <div className="text-right pt-1">
+                              <button
+                                onClick={() => setSelectedEmployeeFor360(emp)}
+                                className="text-[11px] font-bold text-slate-600 hover:underline inline-flex items-center gap-1"
+                              >
+                                <span>Inspect Employee 360</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
