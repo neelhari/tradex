@@ -409,53 +409,48 @@ export const TeamLeaderDashboardView: React.FC = () => {
                 </button>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3.5">
-                {/* Total Activities */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-[#E6FAF6] text-[#00A88B] flex items-center justify-center">
-                      <PhoneCall className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 block">Total Dials Made</span>
-                      <span className="text-[10px] text-slate-400">{presentCount} telecallers active</span>
-                    </div>
+              {/* 3 Metric Columns Side-by-Side: Calls | Won | Revenue (Matching Image 2) */}
+              <div className="bg-white border border-slate-200/90 shadow-xs rounded-2xl p-3.5">
+                <div className="grid grid-cols-3 gap-1 text-center divide-x divide-slate-100">
+                  {/* 1. Calls */}
+                  <div 
+                    onClick={() => setActiveTab('team')} 
+                    className="px-1 cursor-pointer active:scale-95 transition-transform"
+                  >
+                    <strong className="text-base sm:text-lg font-display font-black text-[#0A2540] block leading-tight">
+                      <span className="text-[#00A88B]">{totalActivities}</span>
+                      <span className="text-slate-300 font-normal text-xs">/{totalGoalCalls}</span>
+                    </strong>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-1">
+                      Calls
+                    </span>
                   </div>
-                  <span className="font-mono-nums font-black text-base text-[#0A2540]">
-                    {totalActivities} Calls
-                  </span>
-                </div>
 
-                {/* Sales Achieved */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                      <TrendingUp className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 block">Team Sales Done</span>
-                      <span className="text-[10px] text-slate-400">Target: {formatInLakhs(targetTotal)}</span>
-                    </div>
+                  {/* 2. Won */}
+                  <div 
+                    onClick={() => setActiveTab('team')} 
+                    className="px-1 cursor-pointer active:scale-95 transition-transform"
+                  >
+                    <strong className="text-base sm:text-lg font-display font-black text-purple-700 block leading-tight">
+                      {totalWonToday}
+                    </strong>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-1">
+                      Won
+                    </span>
                   </div>
-                  <span className="font-mono-nums font-black text-base text-[#00A88B]">
-                    {formatInLakhs(totalSales)}
-                  </span>
-                </div>
 
-                {/* Connect Rate */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 block">Calls Answered</span>
-                      <span className="text-[10px] text-slate-400">{connectRate}% Connect Rate</span>
-                    </div>
+                  {/* 3. Revenue */}
+                  <div 
+                    onClick={() => setActiveTab('reports')} 
+                    className="px-1 cursor-pointer active:scale-95 transition-transform"
+                  >
+                    <strong className="text-base sm:text-lg font-display font-black text-[#00A88B] block leading-tight">
+                      {formatInLakhs(totalSales)}
+                    </strong>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-1">
+                      Revenue
+                    </span>
                   </div>
-                  <span className="font-mono-nums font-black text-base text-emerald-600">
-                    {totalConnectedCalls} Answered
-                  </span>
                 </div>
               </div>
             </div>
