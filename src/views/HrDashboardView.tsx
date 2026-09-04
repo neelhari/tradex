@@ -1194,138 +1194,77 @@ export const HrDashboardView: React.FC = () => {
 
         {/* --- TAB 3: APPROVALS & LEAVES --- */}
         {activeHrNav === 'approvals' && (
-          <div className="space-y-3.5 animate-in fade-in duration-150">
-            {/* Clean Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-display font-black text-lg text-[#0A2540] flex items-center gap-2">
-                  <span>HR Sanctions &amp; Approvals</span>
-                </h2>
-                <p className="text-xs text-slate-500">Leave applications &amp; floor attendance governance</p>
-              </div>
-              {pendingLeaves.length > 0 && (
-                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  <span>{pendingLeaves.length} Needs Action</span>
-                </span>
-              )}
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Clean Executive Header (No bulky badge pill) */}
+            <div>
+              <h2 className="font-display font-black text-xl text-[#0A2540]">
+                HR Sanctions &amp; Approvals
+              </h2>
+              <p className="text-xs text-slate-500">Leave applications and floor attendance governance</p>
             </div>
 
-            {/* Unified 3-Card Stage Selector (Consolidates stats + navigation, eliminates redundant button bar) */}
-            <div className="grid grid-cols-3 gap-2">
-              {/* Tab 1: Pending */}
+            {/* Sleek Segmented Control (Linear / iOS Style, No bulky color boxes) */}
+            <div className="bg-slate-100/90 p-1 rounded-xl flex items-center gap-1 border border-slate-200/60">
               <button
                 onClick={() => setLeaveApprovalTab('PENDING')}
-                className={`p-3 rounded-2xl border transition-all text-left relative overflow-hidden flex flex-col justify-between cursor-pointer ${
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   leaveApprovalTab === 'PENDING'
-                    ? 'bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/25 shadow-xs'
-                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <div className="flex items-center justify-between w-full mb-0.5">
-                  <span className={`text-[11px] font-bold ${
-                    leaveApprovalTab === 'PENDING' ? 'text-amber-900' : 'text-slate-500'
-                  }`}>
-                    Pending
-                  </span>
-                  {pendingLeaves.length > 0 && (
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  )}
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className={`font-display font-black text-2xl ${
-                    leaveApprovalTab === 'PENDING' ? 'text-amber-700' : 'text-[#0A2540]'
-                  }`}>
-                    {pendingLeaves.length}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">to review</span>
-                </div>
-                <div className={`mt-2 h-1 w-full rounded-full transition-all ${
-                  leaveApprovalTab === 'PENDING' ? 'bg-amber-500' : 'bg-transparent'
-                }`} />
+                <span>Pending</span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                  leaveApprovalTab === 'PENDING' ? 'bg-[#0A2540] text-white font-bold' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {pendingLeaves.length}
+                </span>
               </button>
 
-              {/* Tab 2: Approved */}
               <button
                 onClick={() => setLeaveApprovalTab('APPROVED')}
-                className={`p-3 rounded-2xl border transition-all text-left relative overflow-hidden flex flex-col justify-between cursor-pointer ${
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   leaveApprovalTab === 'APPROVED'
-                    ? 'bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/25 shadow-xs'
-                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <div className="flex items-center justify-between w-full mb-0.5">
-                  <span className={`text-[11px] font-bold ${
-                    leaveApprovalTab === 'APPROVED' ? 'text-emerald-900' : 'text-slate-500'
-                  }`}>
-                    Approved
-                  </span>
-                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/70 px-1 py-0.2 rounded font-mono">
-                    {totalApprovedDays}d
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className={`font-display font-black text-2xl ${
-                    leaveApprovalTab === 'APPROVED' ? 'text-emerald-700' : 'text-[#0A2540]'
-                  }`}>
-                    {approvedLeaves.length}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">sanctioned</span>
-                </div>
-                <div className={`mt-2 h-1 w-full rounded-full transition-all ${
-                  leaveApprovalTab === 'APPROVED' ? 'bg-emerald-500' : 'bg-transparent'
-                }`} />
+                <span>Approved</span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                  leaveApprovalTab === 'APPROVED' ? 'bg-[#0A2540] text-white font-bold' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {approvedLeaves.length}
+                </span>
               </button>
 
-              {/* Tab 3: Rejected */}
               <button
                 onClick={() => setLeaveApprovalTab('REJECTED')}
-                className={`p-3 rounded-2xl border transition-all text-left relative overflow-hidden flex flex-col justify-between cursor-pointer ${
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   leaveApprovalTab === 'REJECTED'
-                    ? 'bg-rose-500/10 border-rose-400 ring-2 ring-rose-400/25 shadow-xs'
-                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <div className="flex items-center justify-between w-full mb-0.5">
-                  <span className={`text-[11px] font-bold ${
-                    leaveApprovalTab === 'REJECTED' ? 'text-rose-900' : 'text-slate-500'
-                  }`}>
-                    Rejected
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1 py-0.2 rounded">
-                    Log
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className={`font-display font-black text-2xl ${
-                    leaveApprovalTab === 'REJECTED' ? 'text-rose-700' : 'text-[#0A2540]'
-                  }`}>
-                    {rejectedLeaves.length}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">archived</span>
-                </div>
-                <div className={`mt-2 h-1 w-full rounded-full transition-all ${
-                  leaveApprovalTab === 'REJECTED' ? 'bg-rose-500' : 'bg-transparent'
-                }`} />
+                <span>Rejected</span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                  leaveApprovalTab === 'REJECTED' ? 'bg-[#0A2540] text-white font-bold' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {rejectedLeaves.length}
+                </span>
               </button>
             </div>
 
             {/* --- SECTION 1: PENDING QUEUE --- */}
             {leaveApprovalTab === 'PENDING' && (
               <div className="space-y-3">
-                <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl px-3 py-2 text-xs text-amber-900 flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                  <span className="text-[11px]">Review reason &amp; shift coverage before sanctioning.</span>
-                </div>
-
                 {pendingLeaves.length === 0 ? (
                   <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-2 shadow-xs">
-                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-                      <CheckCircle2 className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-full bg-slate-100 text-[#0A2540] flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     </div>
-                    <h4 className="font-display font-bold text-sm text-[#0A2540]">All Clear!</h4>
+                    <h4 className="font-display font-bold text-sm text-[#0A2540]">All Clear</h4>
                     <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                      Zero pending leave applications. Floor attendance is fully accounted for.
+                      Zero pending leave requests. Floor attendance is fully accounted for.
                     </p>
                   </div>
                 ) : (
@@ -1333,91 +1272,81 @@ export const HrDashboardView: React.FC = () => {
                     {pendingLeaves.map((req) => {
                       const emp = teamMembers.find(m => m.name === req.employeeName || m.empCode === req.employeeCode);
                       return (
-                        <div key={req.id} className="bg-white border border-slate-200 hover:border-amber-300 rounded-2xl p-3.5 shadow-xs space-y-2.5 transition-all">
-                          {/* Clean Applicant Header (No stacked pills) */}
+                        <div key={req.id} className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-4 shadow-xs space-y-3 transition-all">
+                          {/* Header: Avatar, Name, Group & Clean Leave Pill */}
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-black text-xs flex-shrink-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-full bg-slate-100 text-[#0A2540] font-bold text-xs flex items-center justify-center border border-slate-200/60 flex-shrink-0">
                                 {emp?.avatar || req.employeeName?.substring(0, 2).toUpperCase() || 'EM'}
                               </div>
                               <div className="min-w-0">
-                                <h4 className="text-xs font-bold text-[#0A2540] truncate">
+                                <h4 className="text-sm font-bold text-[#0A2540] truncate">
                                   {req.employeeName || 'Employee'}
                                 </h4>
-                                <p className="text-[11px] text-slate-500 truncate">
+                                <p className="text-xs text-slate-500 truncate">
                                   <span className="font-mono text-slate-600">{req.employeeCode || emp?.empCode || 'TNX'}</span>
                                   <span className="mx-1.5 text-slate-300">•</span>
                                   <span>{emp?.group || 'Inside Sales Squad'}</span>
                                 </p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/80 whitespace-nowrap flex-shrink-0">
-                              Awaiting Decision
+
+                            {/* Refined Subtle Leave Tag */}
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200/70 whitespace-nowrap flex-shrink-0">
+                              {req.leaveType} • {req.totalDays}d
                             </span>
                           </div>
 
-                          {/* Leave Specs: Single elegant info row */}
-                          <div className="flex items-center justify-between text-xs py-1.5 border-y border-slate-100">
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
-                                req.leaveType === 'Sick Leave'
-                                  ? 'bg-rose-50 text-rose-700 border border-rose-200/80'
-                                  : 'bg-amber-50 text-amber-700 border border-amber-200/80'
-                              }`}>
-                                {req.leaveType} ({req.totalDays}d)
-                              </span>
-                              <span className="text-[11px] text-slate-600 font-medium flex items-center gap-1">
-                                <Calendar className="w-3 h-3 text-slate-400" />
-                                <span>{req.fromDate} {req.toDate !== req.fromDate ? `– ${req.toDate}` : ''}</span>
-                              </span>
+                          {/* Date Range & Timestamp */}
+                          <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
+                            <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{req.fromDate} {req.toDate !== req.fromDate ? `– ${req.toDate}` : ''}</span>
                             </div>
-                            <span className="text-[10px] text-slate-400 font-medium">
+                            <span className="text-[11px] text-slate-400">
                               {req.appliedOn || 'Today'}
                             </span>
                           </div>
 
-                          {/* Reason Quote with elegant left accent border */}
-                          <div className="border-l-2 border-amber-400 bg-amber-50/30 pl-2.5 py-1.5 rounded-r-lg">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                              Stated Reason
-                            </span>
-                            <p className="text-xs text-slate-700 italic">
+                          {/* Clean Quote Box (No uppercase label) */}
+                          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100">
+                            <p className="text-xs text-slate-700 italic leading-relaxed">
                               "{req.reason}"
                             </p>
                           </div>
 
-                          {/* Action Bar */}
+                          {/* Action Buttons: Executive Navy + Clean Outlined */}
                           <div className="grid grid-cols-2 gap-2 pt-0.5">
                             <button
                               onClick={() => {
                                 approveLeaveRequest(req.id);
                                 triggerToast(`✓ Sanctioned leave for ${req.employeeName || 'Employee'}`);
                               }}
-                              className="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors active:scale-95"
+                              className="py-2.5 rounded-xl bg-[#0A2540] hover:bg-[#133353] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-98 cursor-pointer"
                             >
                               <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                              <span>Sanction Leave</span>
+                              <span>Approve</span>
                             </button>
                             <button
                               onClick={() => {
                                 rejectLeaveRequest(req.id, 'Shift coverage constraint');
                                 triggerToast(`✗ Rejected leave application for ${req.employeeName || 'Employee'}`);
                               }}
-                              className="py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+                              className="py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-98 cursor-pointer"
                             >
                               <XCircle className="w-3.5 h-3.5" />
                               <span>Reject</span>
                             </button>
                           </div>
 
-                          {/* Quick 360 link */}
+                          {/* Subtle 360 link */}
                           {emp && (
                             <div className="text-right pt-0.5">
                               <button
                                 onClick={() => setSelectedEmployeeFor360(emp)}
-                                className="text-[11px] font-bold text-[#00A88B] hover:underline inline-flex items-center gap-0.5"
+                                className="text-[11px] font-semibold text-[#00A88B] hover:underline inline-flex items-center gap-0.5"
                               >
-                                <span>Inspect Employee 360 &amp; Past Leaves</span>
+                                <span>View 360 Profile</span>
                                 <ChevronRight className="w-3 h-3" />
                               </button>
                             </div>
@@ -1430,69 +1359,45 @@ export const HrDashboardView: React.FC = () => {
               </div>
             )}
 
-            {/* --- SECTION 2: APPROVED LEAVES WITH STREAMLINED CATEGORY FILTER --- */}
+            {/* --- SECTION 2: APPROVED LEAVES WITH SLEEK FILTER --- */}
             {leaveApprovalTab === 'APPROVED' && (
               <div className="space-y-3">
-                {/* Approved Overview Card */}
-                <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                    </div>
-                    <div>
-                      <strong className="text-xs font-bold text-emerald-900 block">
-                        Total Leaves Approved: {approvedLeaves.length}
-                      </strong>
-                      <span className="text-[10px] text-emerald-700">
-                        {totalApprovedDays} total days sanctioned across all squads
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold font-mono bg-white border border-emerald-200 text-emerald-800 px-2 py-0.5 rounded-lg shadow-2xs">
-                    Sanctions Log
+                {/* Summary bar */}
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-[#0A2540]">
+                    {approvedLeaves.length} Approved Requests
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {totalApprovedDays} Days Total
                   </span>
                 </div>
 
-                {/* Category Filter Pills Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                      <Filter className="w-3 h-3 text-[#00A88B]" />
-                      <span>Leave Categories:</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-semibold">
-                      Showing {displayedApprovedLeaves.length} of {approvedLeaves.length}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                    {[
-                      { id: 'ALL', label: 'All Approved', count: approvedLeaves.length },
-                      { id: 'Casual Leave', label: 'Casual', count: approvedCasualCount },
-                      { id: 'Sick Leave', label: 'Sick', count: approvedSickCount },
-                      { id: 'Earned / Paid Leave', label: 'Paid / Earned', count: approvedEarnedCount },
-                    ].map((cat) => {
-                      const isActive = approvedCategoryFilter === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          onClick={() => setApprovedCategoryFilter(cat.id as any)}
-                          className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                            isActive
-                              ? 'bg-[#00A88B] text-white shadow-xs'
-                              : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
-                          }`}
-                        >
-                          <span>{cat.label}</span>
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
-                            isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {cat.count}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                {/* Sleek Category Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {[
+                    { id: 'ALL', label: 'All', count: approvedLeaves.length },
+                    { id: 'Casual Leave', label: 'Casual', count: approvedCasualCount },
+                    { id: 'Sick Leave', label: 'Sick', count: approvedSickCount },
+                    { id: 'Earned / Paid Leave', label: 'Paid', count: approvedEarnedCount },
+                  ].map((cat) => {
+                    const isActive = approvedCategoryFilter === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => setApprovedCategoryFilter(cat.id as any)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                          isActive
+                            ? 'bg-[#0A2540] text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                        }`}
+                      >
+                        <span>{cat.label}</span>
+                        <span className={`text-[10px] font-mono ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>
+                          {cat.count}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Approved Cards List */}
@@ -1504,47 +1409,47 @@ export const HrDashboardView: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {displayedApprovedLeaves.map((req) => {
                       const emp = teamMembers.find(m => m.name === req.employeeName || m.empCode === req.employeeCode);
                       return (
-                        <div key={req.id} className="bg-white border border-slate-200 hover:border-emerald-300 rounded-2xl p-3.5 shadow-xs space-y-2.5 transition-all">
+                        <div key={req.id} className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-4 shadow-xs space-y-3 transition-all">
                           {/* Header */}
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-black text-xs border border-emerald-100 flex-shrink-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-full bg-slate-100 text-[#0A2540] font-bold text-xs flex items-center justify-center border border-slate-200/60 flex-shrink-0">
                                 {emp?.avatar || req.employeeName?.substring(0, 2).toUpperCase() || 'EM'}
                               </div>
                               <div className="min-w-0">
-                                <h4 className="text-xs font-bold text-[#0A2540] truncate">
+                                <h4 className="text-sm font-bold text-[#0A2540] truncate">
                                   {req.employeeName || 'Employee'}
                                 </h4>
-                                <p className="text-[11px] text-slate-500 truncate">
+                                <p className="text-xs text-slate-500 truncate">
                                   <span className="font-mono text-slate-600">{req.employeeCode || emp?.empCode || 'TNX'}</span>
                                   <span className="mx-1.5 text-slate-300">•</span>
                                   <span>{emp?.group || 'Inside Sales Squad'}</span>
                                 </p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 flex-shrink-0">
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1 flex-shrink-0">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>Sanctioned</span>
+                              <span>Approved</span>
                             </span>
                           </div>
 
                           {/* Leave Specs */}
-                          <div className="flex items-center justify-between text-xs py-1.5 border-y border-slate-100">
-                            <span className="text-[11px] font-bold text-slate-700">
-                              {req.leaveType} ({req.totalDays}d)
+                          <div className="flex items-center justify-between text-xs text-slate-600 px-0.5">
+                            <span className="font-semibold text-slate-800">
+                              {req.leaveType} • {req.totalDays}d
                             </span>
-                            <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-slate-400" />
+                            <span className="text-slate-500 flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
                               <span>{req.fromDate} {req.toDate !== req.fromDate ? `– ${req.toDate}` : ''}</span>
                             </span>
                           </div>
 
                           {/* Reason */}
-                          <div className="border-l-2 border-emerald-400 bg-emerald-50/30 pl-2.5 py-1.5 rounded-r-lg">
+                          <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
                             <p className="text-xs text-slate-600 italic">
                               "{req.reason}"
                             </p>
@@ -1552,14 +1457,13 @@ export const HrDashboardView: React.FC = () => {
 
                           {/* Sanction Stamp & 360 link */}
                           <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                            <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>Sanctioned by {req.approvedBy || 'HR Admin'}</span>
+                            <span className="text-[11px] text-slate-500 font-medium">
+                              Sanctioned by {req.approvedBy || 'HR Admin'}
                             </span>
                             {emp && (
                               <button
                                 onClick={() => setSelectedEmployeeFor360(emp)}
-                                className="text-[11px] font-bold text-[#00A88B] hover:underline flex items-center gap-0.5"
+                                className="text-[11px] font-semibold text-[#00A88B] hover:underline flex items-center gap-0.5"
                               >
                                 <span>View 360</span>
                                 <ChevronRight className="w-3 h-3" />
@@ -1581,34 +1485,34 @@ export const HrDashboardView: React.FC = () => {
                   <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-1 shadow-xs">
                     <p className="text-xs font-bold text-[#0A2540]">No Rejected Requests</p>
                     <p className="text-[11px] text-slate-400">
-                      There are currently zero rejected leave applications in the audit archive.
+                      There are currently zero rejected leave applications.
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {rejectedLeaves.map((req) => {
                       const emp = teamMembers.find(m => m.name === req.employeeName || m.empCode === req.employeeCode);
                       return (
-                        <div key={req.id} className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs space-y-2.5">
+                        <div key={req.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-2.5">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <strong className="text-xs font-bold text-[#0A2540] block">{req.employeeName || 'Employee'}</strong>
-                              <span className="text-[11px] text-slate-500">{req.leaveType} ({req.totalDays} Days)</span>
+                              <strong className="text-sm font-bold text-[#0A2540] block">{req.employeeName || 'Employee'}</strong>
+                              <span className="text-xs text-slate-500">{req.leaveType} ({req.totalDays} Days)</span>
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-800 border border-rose-200">
-                              REJECTED
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/80">
+                              Rejected
                             </span>
                           </div>
 
                           <div className="bg-rose-50/50 p-2.5 rounded-xl border border-rose-100 text-xs text-rose-800">
-                            <strong>Note:</strong> {req.approvedBy || 'Operational requirements & shift understaffing'}
+                            <strong>Note:</strong> {req.approvedBy || 'Operational requirements'}
                           </div>
 
                           {emp && (
                             <div className="text-right pt-0.5">
                               <button
                                 onClick={() => setSelectedEmployeeFor360(emp)}
-                                className="text-[11px] font-bold text-slate-600 hover:underline inline-flex items-center gap-1"
+                                className="text-[11px] font-semibold text-slate-600 hover:underline inline-flex items-center gap-1"
                               >
                                 <span>Inspect Employee 360</span>
                                 <ChevronRight className="w-3 h-3" />
