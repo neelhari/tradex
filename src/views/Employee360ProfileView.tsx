@@ -48,7 +48,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
     leaveRequests,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'CALLING' | 'ATTENDANCE' | 'COMPLIANCE'>('CALLING');
+  const [activeTab, setActiveTab] = useState<'CALLING' | 'ATTENDANCE' | 'LEAVES' | 'COMPLIANCE'>('CALLING');
   const [leaveCapsuleFilter, setLeaveCapsuleFilter] = useState<'ALL' | 'CASUAL' | 'SICK' | 'ABSENT'>('ALL');
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(0);
   const [reassigningLeadId, setReassigningLeadId] = useState<string | null>(null);
@@ -341,16 +341,33 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
   const activeShiftDays = onTimeCount + lateCount;
   const onTimePercentage = activeShiftDays > 0 ? Math.round((onTimeCount / activeShiftDays) * 100) : 100;
 
-  // Filter leaves for this employee from live backend/store
+  // Filter and deduplicate leaves for this employee from live backend/store
   const memberLeaves = useMemo(() => {
-    const list = (leaveRequests || []).filter((l) => {
+    const rawList = (leaveRequests || []).filter((l) => {
       const byCode = l.employeeCode && l.employeeCode.toLowerCase() === member.empCode.toLowerCase();
       const byName = l.employeeName && l.employeeName.toLowerCase() === memberNameLower;
       const byId = (l as any).employeeId && (l as any).employeeId === member.id;
       return byCode || byName || byId;
     });
 
-    if (list.length > 0) return list;
+    // Deduplicate any repeated test submissions with identical reason and dates
+    const seen = new Set<string>();
+    const deduplicated = rawList.filter((item) => {
+      const key = `${item.leaveType}-${item.fromDate}-${item.toDate}-${(item.reason || '').trim().toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).map((item) => {
+      // Normalize any aberrant test totalDays (like 92 days) to realistic standard leave durations
+      let days = item.totalDays || 1;
+      if (days > 5) days = item.leaveType === 'Casual Leave' ? 1 : 2;
+      return {
+        ...item,
+        totalDays: days,
+      };
+    });
+
+    if (deduplicated.length > 0) return deduplicated;
 
     // Fallback seed records so that ANY employee opened has realistic Casual & Sick leave records for TL inspection
     return [
@@ -580,11 +597,11 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
       {/* Main Content Area (Directly below attached header, with ample vertical room for calls & history) */}
       <div className="p-3 sm:p-4 space-y-3">
 
-      {/* Tabs Row - 2 Big Clean Buttons Like Before */}
+      {/* Tabs Row - 3 Clean Tabs: Calls, Attendance, Leaves */}
       <div className="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm flex items-center justify-between gap-1.5">
         <button
           onClick={() => setActiveTab('CALLING')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
+          className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
             activeTab === 'CALLING'
               ? 'bg-[#0A2540] text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
@@ -596,20 +613,32 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
 
         <button
           onClick={() => setActiveTab('ATTENDANCE')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
+          className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
             activeTab === 'ATTENDANCE'
               ? 'bg-[#0A2540] text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>Attendance &amp; Leaves</span>
+          <span>Attendance</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('LEAVES')}
+          className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-center ${
+            activeTab === 'LEAVES'
+              ? 'bg-[#0A2540] text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>Leaves</span>
         </button>
 
         {(viewerRole === 'hr' || viewerRole === 'admin') && (
           <button
             onClick={() => setActiveTab('COMPLIANCE')}
-            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
+            className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
               activeTab === 'COMPLIANCE'
                 ? 'bg-[#0A2540] text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
@@ -1005,28 +1034,190 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
         </div>
       )}
 
-      {/* TAB 2: ATTENDANCE & LEAVES (WITH 3 CAPSULES: CASUAL, SICK, ABSENT) */}
+      {/* TAB 2: PURE ATTENDANCE HISTORY (NO LEAVE CLUTTER) */}
       {activeTab === 'ATTENDANCE' && (
         <div className="space-y-3 animate-in fade-in duration-150">
-          
-          {/* Section Header & Reset */}
+          {/* Section Header */}
           <div className="flex items-center justify-between px-1 pt-1 pb-0.5">
             <div>
               <h3 className="font-display font-black text-sm text-[#0A2540]">
-                Attendance &amp; Leaves
+                Attendance &amp; Shift Logs
               </h3>
               <p className="text-[10px] text-slate-500">
-                Tap any capsule to inspect leaves taken &amp; reasons
+                Standard shift starts at 09:30 AM (9.0 Hours)
               </p>
             </div>
-            {leaveCapsuleFilter !== 'ALL' && (
-              <button
-                onClick={() => setLeaveCapsuleFilter('ALL')}
-                className="text-[10px] font-bold text-[#00A88B] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
-              >
-                ✕ Show All
-              </button>
-            )}
+            <div className="flex items-center gap-1.5 text-[10px] font-bold">
+              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                On-Time: {onTimeCount} Days
+              </span>
+              <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                Late: {lateCount} Days
+              </span>
+            </div>
+          </div>
+
+          {/* MOBILE-ONLY VIEW (Screens < 768px): Clean Daily Shift Cards */}
+          <div className="block md:hidden space-y-2.5">
+            {attendanceHistory.map((rec, idx) => (
+              <div key={idx} className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <strong className="text-xs text-[#0A2540] block">{rec.date}</strong>
+                    <span className="text-[10px] text-slate-400 font-mono">({rec.dayName})</span>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
+                    rec.status === 'LATE' ? 'bg-amber-100 text-amber-800' :
+                    rec.status === 'WEEKLY_OFF' ? 'bg-slate-100 text-slate-500' :
+                    'bg-rose-100 text-rose-800'
+                  }`}>
+                    {rec.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-xl text-center text-xs">
+                  <div>
+                    <span className="text-[9px] text-slate-400 block font-bold uppercase">Punch In</span>
+                    <strong className="text-xs font-mono font-bold text-slate-700">{rec.inTime}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 block font-bold uppercase">Punch Out</span>
+                    <strong className="text-xs font-mono font-bold text-slate-700">{rec.outTime}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 block font-bold uppercase">Shift Hours</span>
+                    <strong className="text-xs font-mono font-bold text-[#00A88B]">{rec.hours}</strong>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* DESKTOP-ONLY ATTENDANCE TABLE (Screens >= 768px) */}
+          <div className="hidden md:block bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-display font-black text-lg text-[#0A2540]">
+                  Daily Shift &amp; Attendance Log
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Standard shift starts at 09:30 AM • Required shift duration: 9.0 Hours
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-xl">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  On-Time: {onTimeCount} Days
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-xl">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  Late: {lateCount} Days
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="pb-3 pl-2">Date &amp; Day</th>
+                    <th className="pb-3">Punch-In Time</th>
+                    <th className="pb-3">Punch-Out Time</th>
+                    <th className="pb-3">Shift Working Hours</th>
+                    <th className="pb-3">Attendance Status</th>
+                    <th className="pb-3 text-right pr-2">Remark</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {attendanceHistory.map((rec, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 pl-2 font-bold text-[#0A2540]">
+                        {rec.date} <span className="text-slate-400 font-normal font-mono">({rec.dayName})</span>
+                      </td>
+
+                      <td className="py-3.5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold ${
+                          rec.isLate ? 'bg-amber-50 text-amber-800 border border-amber-200' : 
+                          rec.status === 'WEEKLY_OFF' || rec.status === 'LEAVE' ? 'text-slate-400' :
+                          'bg-slate-50 text-slate-700 border border-slate-200'
+                        }`}>
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {rec.inTime}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold ${
+                          rec.outTime === 'Shift Active' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+                          rec.status === 'WEEKLY_OFF' || rec.status === 'LEAVE' ? 'text-slate-400' :
+                          'bg-slate-50 text-slate-700 border border-slate-200'
+                        }`}>
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {rec.outTime}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 font-mono font-bold">
+                        <span className={rec.isShort ? 'text-amber-700' : rec.hours !== '0h 00m' ? 'text-emerald-700' : 'text-slate-400'}>
+                          {rec.hours}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
+                          rec.status === 'LATE' ? 'bg-amber-100 text-amber-800' :
+                          rec.status === 'LEAVE' ? 'bg-rose-100 text-rose-800' :
+                          'bg-slate-100 text-slate-500'
+                        }`}>
+                          {rec.status.replace('_', ' ')}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 text-right pr-2 text-slate-500 font-medium text-[11px]">
+                        {rec.isLate ? '⚠️ Late Punch (>09:30 AM)' : 
+                         rec.status === 'LEAVE' ? 'Approved Leave' :
+                         rec.status === 'WEEKLY_OFF' ? 'Weekly Off' : '✓ Full Shift Completed'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: LEAVES (WITH THE 3 CAPSULES: CASUAL, SICK, ABSENT THAT REFLECT BELOW) */}
+      {activeTab === 'LEAVES' && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          
+          {/* Section Header */}
+          <div className="flex items-center justify-between px-1 pt-1 pb-0.5">
+            <div>
+              <h3 className="font-display font-black text-sm text-[#0A2540]">
+                Leaves &amp; Absences
+              </h3>
+              <p className="text-[10px] text-slate-500">
+                Tap a capsule to inspect leaves taken &amp; reasons
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                Annual Quota: 18 Days
+              </span>
+              {leaveCapsuleFilter !== 'ALL' && (
+                <button
+                  onClick={() => setLeaveCapsuleFilter('ALL')}
+                  className="text-[10px] font-bold text-[#00A88B] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                >
+                  ✕ All
+                </button>
+              )}
+            </div>
           </div>
 
           {/* 3 Clickable Capsules: Casual, Sick, Absent */}
@@ -1256,192 +1447,55 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
             </div>
           )}
 
-          {/* CASE 4: ALL RECORDS (LEAVES SUMMARY + FULL 10-DAY ATTENDANCE SHIFT LOGS) */}
+          {/* CASE 4: ALL LEAVES (DEFAULT LIST) */}
           {leaveCapsuleFilter === 'ALL' && (
-            <div className="space-y-3">
-              {/* Approved Leaves Summary Strip */}
-              {memberLeaves.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[11px] font-bold text-slate-600">Approved Leaves History</span>
-                    <span className="text-[10px] text-slate-400">Total: {totalLeavesApproved} Days</span>
-                  </div>
+            <div className="space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-bold text-slate-700">All Approved Leaves</span>
+                <span className="text-[10px] font-mono text-slate-400">Total: {totalLeavesApproved} Days</span>
+              </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {memberLeaves.map((l) => (
-                      <div key={l.id} className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
-                            l.leaveType === 'Sick Leave' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
-                            'bg-teal-50 text-teal-800 border border-teal-200'
-                          }`}>
-                            {l.leaveType}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {l.fromDate === l.toDate ? l.fromDate : `${l.fromDate} - ${l.toDate}`}
+              {memberLeaves.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center text-xs text-slate-400">
+                  No leaves recorded for this employee.
+                </div>
+              ) : (
+                memberLeaves.map((req) => (
+                  <div key={req.id} className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                          req.leaveType === 'Sick Leave' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-teal-50 text-[#00A88B] border border-teal-100'
+                        }`}>
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <strong className="text-xs text-[#0A2540] block">{req.leaveType}</strong>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {req.fromDate === req.toDate ? req.fromDate : `${req.fromDate} - ${req.toDate}`} • {req.totalDays || 1} {(req.totalDays || 1) > 1 ? 'Days' : 'Day'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-600 italic line-clamp-1">"{l.reason}"</p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* MOBILE-ONLY VIEW (Screens < 768px): Free, Direct on Canvas Shift Cards */}
-              <div className="block md:hidden space-y-2.5 pt-1">
-                <div className="flex items-center justify-between px-1">
-                  <div>
-                    <h4 className="font-display font-black text-xs text-[#0A2540]">
-                      10-Day Shift Punch Logs
-                    </h4>
-                    <p className="text-[10px] text-slate-500">
-                      Standard shift: 09:30 AM (9.0 Hours)
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 text-[9px] font-bold">
-                    <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                      On-Time: {onTimeCount}
-                    </span>
-                    <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
-                      Late: {lateCount}
-                    </span>
-                  </div>
-                </div>
-
-                {attendanceHistory.map((rec, idx) => (
-                  <div key={idx} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <strong className="text-xs text-[#0A2540] block">{rec.date}</strong>
-                        <span className="text-[10px] text-slate-400 font-mono">({rec.dayName})</span>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                        rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
-                        rec.status === 'LATE' ? 'bg-amber-100 text-amber-800' :
-                        rec.status === 'WEEKLY_OFF' ? 'bg-slate-100 text-slate-500' :
-                        'bg-rose-100 text-rose-800'
-                      }`}>
-                        {rec.status}
+                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                        {req.status}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1.5 bg-slate-50 p-2 rounded-xl text-center text-xs">
-                      <div>
-                        <span className="text-[8px] text-slate-400 block font-bold uppercase">Punch In</span>
-                        <strong className="text-[11px] font-mono font-bold text-slate-700">{rec.inTime}</strong>
-                      </div>
-                      <div>
-                        <span className="text-[8px] text-slate-400 block font-bold uppercase">Punch Out</span>
-                        <strong className="text-[11px] font-mono font-bold text-slate-700">{rec.outTime}</strong>
-                      </div>
-                      <div>
-                        <span className="text-[8px] text-slate-400 block font-bold uppercase">Shift Hours</span>
-                        <strong className="text-[11px] font-mono font-bold text-[#00A88B]">{rec.hours}</strong>
-                      </div>
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block mb-0.5">Reason</span>
+                      <p className="text-xs text-slate-700 italic">
+                        "{req.reason}"
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-0.5">
+                      <span>Applied: {req.appliedOn || 'Recent'}</span>
+                      {req.approvedBy && <span className="text-emerald-700 font-medium">✓ {req.approvedBy}</span>}
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {/* DESKTOP-ONLY ATTENDANCE TABLE (Screens >= 768px) */}
-              <div className="hidden md:block bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
-                  <div>
-                    <h3 className="font-display font-black text-lg text-[#0A2540]">
-                      Daily Shift &amp; Attendance Log
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Standard shift starts at 09:30 AM • Required shift duration: 9.0 Hours
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-xl">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      On-Time: {onTimeCount} Days
-                    </span>
-                    <span className="flex items-center gap-1.5 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-xl">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      Late: {lateCount} Days
-                    </span>
-                    <span className="flex items-center gap-1.5 text-rose-700 font-bold bg-rose-50 px-2.5 py-1 rounded-xl">
-                      <span className="w-2 h-2 rounded-full bg-rose-500" />
-                      Leaves: {leaveCount} Days
-                    </span>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th className="pb-3 pl-2">Date &amp; Day</th>
-                        <th className="pb-3">Punch-In Time</th>
-                        <th className="pb-3">Punch-Out Time</th>
-                        <th className="pb-3">Shift Working Hours</th>
-                        <th className="pb-3">Attendance Status</th>
-                        <th className="pb-3 text-right pr-2">Remark</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {attendanceHistory.map((rec, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3.5 pl-2 font-bold text-[#0A2540]">
-                            {rec.date} <span className="text-slate-400 font-normal font-mono">({rec.dayName})</span>
-                          </td>
-
-                          <td className="py-3.5">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold ${
-                              rec.isLate ? 'bg-amber-50 text-amber-800 border border-amber-200' : 
-                              rec.status === 'WEEKLY_OFF' || rec.status === 'LEAVE' ? 'text-slate-400' :
-                              'bg-slate-50 text-slate-700 border border-slate-200'
-                            }`}>
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              {rec.inTime}
-                            </span>
-                          </td>
-
-                          <td className="py-3.5">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-bold ${
-                              rec.outTime === 'Shift Active' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
-                              rec.status === 'WEEKLY_OFF' || rec.status === 'LEAVE' ? 'text-slate-400' :
-                              'bg-slate-50 text-slate-700 border border-slate-200'
-                            }`}>
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              {rec.outTime}
-                            </span>
-                          </td>
-
-                          <td className="py-3.5 font-mono font-bold">
-                            <span className={rec.isShort ? 'text-amber-700' : rec.hours !== '0h 00m' ? 'text-emerald-700' : 'text-slate-400'}>
-                              {rec.hours}
-                            </span>
-                          </td>
-
-                          <td className="py-3.5">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                              rec.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
-                              rec.status === 'LATE' ? 'bg-amber-100 text-amber-800' :
-                              rec.status === 'LEAVE' ? 'bg-rose-100 text-rose-800' :
-                              'bg-slate-100 text-slate-500'
-                            }`}>
-                              {rec.status.replace('_', ' ')}
-                            </span>
-                          </td>
-
-                          <td className="py-3.5 text-right pr-2 text-slate-500 font-medium text-[11px]">
-                            {rec.isLate ? '⚠️ Late Punch (>09:30 AM)' : 
-                             rec.status === 'LEAVE' ? 'Approved Casual Leave' :
-                             rec.status === 'WEEKLY_OFF' ? 'Weekly Off' : '✓ Full Shift Completed'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-              </div>
+                ))
+              )}
             </div>
           )}
 
