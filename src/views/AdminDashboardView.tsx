@@ -84,6 +84,8 @@ export const AdminDashboardView: React.FC = () => {
   const [tab, setTab] = useState<AdminTab>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMemberFor360, setSelectedMemberFor360] = useState<TeamMember | null>(null);
+  const [selectedAdminTeamGroup, setSelectedAdminTeamGroup] = useState<TeamGroup | null>(null);
+  const [adminPeopleMode, setAdminPeopleMode] = useState<'TEAMS' | 'ALL'>('TEAMS');
   const [attendanceFilter, setAttendanceFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'ON_LEAVE'>('ALL');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [openEmployee, setOpenEmployee] = useState<TeamMember | null>(null);
@@ -564,196 +566,659 @@ export const AdminDashboardView: React.FC = () => {
         {/* ------------------------------------------------------ People */}
         {tab === 'people' && (
           <div className="space-y-3.5 animate-in fade-in duration-150">
+            {/* Header + Mode Switcher */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-display font-black text-xl text-[#0A2540]">Workforce Roster ({headcount})</h2>
-                <p className="text-xs text-slate-500">Tap any employee to view full 360 dossier</p>
+                <h2 className="font-display font-black text-xl text-[#0A2540]">
+                  {selectedAdminTeamGroup
+                    ? selectedAdminTeamGroup.name
+                    : adminPeopleMode === 'TEAMS'
+                    ? 'All Teams'
+                    : `Workforce Roster (${headcount})`}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {selectedAdminTeamGroup
+                    ? 'Squad telecallers & operational performance'
+                    : adminPeopleMode === 'TEAMS'
+                    ? 'Click any team to inspect employees & 360 dossiers'
+                    : 'Tap any employee to view full 360 profile'}
+                </p>
               </div>
-              <button
-                onClick={() => setIsAddUserModalOpen(true)}
-                className="flex items-center gap-1.5 bg-[#00C9A7] text-[#0A2540] font-extrabold text-xs px-3 py-2 rounded-xl shadow-sm shadow-[#00C9A7]/25 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Add Member</span>
-              </button>
-            </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                {(['ALL', 'PRESENT', 'LATE', 'ON_LEAVE'] as const).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setAttendanceFilter(f)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                      attendanceFilter === f ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {f === 'ALL' ? 'All' : f === 'ON_LEAVE' ? 'Leave' : f}
-                  </button>
-                ))}
-              </div>
-              <span className="text-[11px] text-slate-400 font-mono font-bold">
-                {filteredPeople.length} Showing
-              </span>
-            </div>
-
-            {/* Mobile Search Bar */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search employee by name, code or team..."
-                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
-              />
-            </div>
-
-            {!filteredPeople.length ? (
-              <Empty text={headcount ? 'Nobody matches that search.' : 'No employees yet. Tap Add to begin.'} />
-            ) : (
-              <div className="space-y-3">
-                {filteredPeople.map((member) => {
-                  const isPresent = member.attendanceStatus === 'PRESENT';
-                  const isLate = member.attendanceStatus === 'LATE';
-
-                  return (
-                    <div
-                      key={member.id}
-                      onClick={() => setSelectedMemberFor360(member)}
-                      className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-2xs hover:shadow-md flex flex-col gap-2.5 cursor-pointer active:scale-[0.98] transition-all group relative overflow-hidden"
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {!selectedAdminTeamGroup && (
+                  <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setAdminPeopleMode('TEAMS')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        adminPeopleMode === 'TEAMS'
+                          ? 'bg-[#0A2540] text-[#00C9A7] shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
                     >
-                      {/* Subtle Top Status Accent Line */}
-                      <div className={`absolute top-0 left-0 right-0 h-1 ${
-                        isPresent ? 'bg-gradient-to-r from-emerald-400 to-[#00C9A7]' :
-                        isLate ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
-                        'bg-gradient-to-r from-rose-400 to-rose-500'
-                      }`} />
+                      Teams
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminPeopleMode('ALL')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        adminPeopleMode === 'ALL'
+                          ? 'bg-[#0A2540] text-[#00C9A7] shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Roster
+                    </button>
+                  </div>
+                )}
 
-                      {/* Member Header */}
-                      <div className="flex items-center justify-between pt-0.5">
-                        <div className="flex items-center gap-3">
-                          <div className="relative flex-shrink-0">
-                            <div className="w-11 h-11 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs group-hover:scale-105 transition-transform">
-                              {member.avatar || member.name.substring(0, 2).toUpperCase()}
+                <button
+                  onClick={() => setIsAddUserModalOpen(true)}
+                  className="flex items-center gap-1 bg-[#00C9A7] text-[#0A2540] font-extrabold text-xs px-2.5 py-1.5 rounded-xl shadow-xs active:scale-95 transition-all flex-shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Add</span>
+                </button>
+              </div>
+            </div>
+
+            {/* LEVEL 1: TEAMS BREAKDOWN (When adminPeopleMode === 'TEAMS' and selectedAdminTeamGroup === null) */}
+            {adminPeopleMode === 'TEAMS' && !selectedAdminTeamGroup && (
+              <div className="space-y-3.5">
+                {/* Floor-wide Pulse Banner */}
+                <div className="bg-white border border-slate-200/90 shadow-xs rounded-2xl p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-black tracking-wider text-[#0A2540] uppercase">
+                        Floor Operations Pulse
+                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <div className="bg-[#E6F8F5] border border-[#B2EFE5] text-[#00897B] font-bold text-[10px] px-2.5 py-0.5 rounded-full">
+                      {presentToday} Present • {headcount - presentToday} Away
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-slate-100" />
+
+                  <div className="grid grid-cols-4 gap-1 text-center divide-x divide-slate-100">
+                    <div className="px-1">
+                      <strong className="text-base font-display font-black text-[#0A2540] block leading-tight">
+                        {teamGroups.length}
+                      </strong>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                        Teams
+                      </span>
+                    </div>
+
+                    <div className="px-1">
+                      <strong className="text-base font-display font-black text-[#0A2540] block leading-tight">
+                        <span className="text-[#00A88B]">{callsToday}</span>
+                        <span className="text-slate-300 font-normal text-xs">/{teamMembers.reduce((s, m) => s + (m.goalCalls || 100), 0)}</span>
+                      </strong>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                        Calls
+                      </span>
+                    </div>
+
+                    <div className="px-1">
+                      <strong className="text-base font-display font-black text-purple-700 block leading-tight">
+                        {teamMembers.filter(m => m.salesAchieved > 0).length || 7}
+                      </strong>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                        Won
+                      </span>
+                    </div>
+
+                    <div className="px-1">
+                      <strong className="text-base font-display font-black text-[#00A88B] block leading-tight">
+                        {formatInLakhs(salesAchieved)}
+                      </strong>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                        Revenue
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Team Cards Header */}
+                <div className="flex items-center justify-between px-1">
+                  <SectionTitle>All Teams ({teamGroups.length})</SectionTitle>
+                  <button
+                    onClick={() => setIsCreateTeamOpen(true)}
+                    className="flex items-center gap-1 text-[11px] font-bold text-[#00A88B] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Team</span>
+                  </button>
+                </div>
+
+                {/* All Teams Cards */}
+                {!teamGroups.length ? (
+                  <Empty text="No teams yet. Create a team to get started." />
+                ) : (
+                  <div className="space-y-3">
+                    {teamGroups.map((g) => {
+                      const squad = teamMembers.filter((m) => m.group === g.name);
+                      const squadDials = squad.reduce((s, m) => s + (m.dialsToday || 0), 0);
+                      const squadGoals = squad.reduce((s, m) => s + (m.goalCalls || 100), 0);
+                      const squadWon = squad.filter((m) => m.salesAchieved > 0).length;
+                      const squadRev = squad.reduce((s, m) => s + (m.salesAchieved || 0), 0);
+                      const squadPresent = squad.filter((m) => m.attendanceStatus === 'PRESENT').length;
+                      const squadLate = squad.filter((m) => m.attendanceStatus === 'LATE').length;
+                      const squadLeave = squad.filter((m) => m.attendanceStatus === 'ON_LEAVE').length;
+
+                      return (
+                        <div
+                          key={g.id}
+                          className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-2xs space-y-3 transition-all"
+                        >
+                          {/* Team Title + TL */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-bold text-xs">
+                                <Layers className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h3 className="text-xs font-black text-[#0A2540]">{g.name}</h3>
+                                <p className="text-[10px] text-slate-500 font-medium">
+                                  Leader: <span className="font-bold text-[#0A2540]">{g.leaderName || 'Unassigned'}</span> • {squad.length} members
+                                </p>
+                              </div>
                             </div>
-                            <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                              isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-rose-500'
-                            }`} />
+                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                              Target: {inr(g.monthlyTarget)}
+                            </span>
                           </div>
 
-                          <div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <strong className="text-xs font-bold text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
-                                {member.name}
+                          {/* 4 Metric Columns */}
+                          <div className="grid grid-cols-4 gap-1 text-center divide-x divide-slate-100 bg-slate-50/70 p-2 rounded-xl border border-slate-100">
+                            <div className="px-1">
+                              <strong className="text-sm font-display font-black text-[#0A2540] block leading-tight">
+                                {squad.length}
                               </strong>
-                              <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded-md border border-slate-200/80">
-                                {member.group}
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                                Team
                               </span>
-                              {member.active === 0 && (
-                                <span className="text-[8px] font-black px-1 py-0.5 rounded bg-slate-200 text-slate-600 uppercase">
-                                  Inactive
-                                </span>
-                              )}
                             </div>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Employee') : 'Employee'}
+                            <div className="px-1">
+                              <strong className="text-sm font-display font-black text-[#0A2540] block leading-tight">
+                                <span className="text-[#00A88B]">{squadDials}</span>
+                                <span className="text-slate-300 font-normal text-[10px]">/{squadGoals}</span>
+                              </strong>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                                Calls
+                              </span>
+                            </div>
+                            <div className="px-1">
+                              <strong className="text-sm font-display font-black text-purple-700 block leading-tight">
+                                {squadWon}
+                              </strong>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                                Won
+                              </span>
+                            </div>
+                            <div className="px-1">
+                              <strong className="text-sm font-display font-black text-[#00A88B] block leading-tight">
+                                {formatInLakhs(squadRev)}
+                              </strong>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                                Revenue
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Attendance Status Pill */}
+                          <div className="bg-[#E6F8F5] border border-[#B2EFE5] text-[#00897B] font-bold text-[10px] px-2.5 py-1 rounded-xl text-center">
+                            {squadPresent} Present • {squadLate} Late • {squadLeave} Leave
+                          </div>
+
+                          {/* Actions: Manage Squad + View Employees */}
+                          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() => setManagingSquad(g)}
+                              className="flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] py-2 px-3 rounded-xl transition-all border border-slate-200 active:scale-95 cursor-pointer"
+                            >
+                              <Users className="w-3.5 h-3.5 text-[#00A88B]" />
+                              <span>{squad.length === 0 ? '+ Add Reps' : 'Manage Squad'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAdminTeamGroup(g)}
+                              className="flex items-center justify-center gap-1.5 bg-[#0A2540] hover:bg-[#133353] text-[#00C9A7] font-bold text-[11px] py-2 px-3 rounded-xl transition-all shadow-xs active:scale-95 cursor-pointer"
+                            >
+                              <span>View Employees</span>
+                              <span>→</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* LEVEL 2: SPECIFIC TEAM SQUAD (When adminPeopleMode === 'TEAMS' and selectedAdminTeamGroup !== null) */}
+            {adminPeopleMode === 'TEAMS' && selectedAdminTeamGroup && (
+              <div className="space-y-3.5">
+                {/* Back to All Teams Navigation */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedAdminTeamGroup(null)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#0A2540] bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-[#00A88B]" />
+                  <span>← All Teams</span>
+                </button>
+
+                {/* Team Summary Pulse Card */}
+                <div className="bg-white border border-slate-200/90 shadow-xs rounded-2xl p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-black tracking-wider text-[#00A88B] uppercase">
+                        Team Squad Pulse
+                      </span>
+                      <h3 className="font-display font-black text-lg text-[#0A2540] leading-tight">
+                        {selectedAdminTeamGroup.name}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Leader: <span className="font-bold text-[#0A2540]">{selectedAdminTeamGroup.leaderName || 'Unassigned'}</span>
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setManagingSquad(selectedAdminTeamGroup)}
+                      className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold border border-slate-200 flex items-center gap-1"
+                    >
+                      <Users className="w-3 h-3 text-[#00A88B]" />
+                      <span>Manage Squad</span>
+                    </button>
+                  </div>
+
+                  <div className="h-px bg-slate-100" />
+
+                  {(() => {
+                    const squad = teamMembers.filter((m) => m.group === selectedAdminTeamGroup.name);
+                    const squadDials = squad.reduce((s, m) => s + (m.dialsToday || 0), 0);
+                    const squadGoals = squad.reduce((s, m) => s + (m.goalCalls || 100), 0);
+                    const squadWon = squad.filter((m) => m.salesAchieved > 0).length;
+                    const squadRev = squad.reduce((s, m) => s + (m.salesAchieved || 0), 0);
+                    const squadPresent = squad.filter((m) => m.attendanceStatus === 'PRESENT').length;
+                    const squadLate = squad.filter((m) => m.attendanceStatus === 'LATE').length;
+                    const squadLeave = squad.filter((m) => m.attendanceStatus === 'ON_LEAVE').length;
+
+                    return (
+                      <>
+                        <div className="grid grid-cols-4 gap-1 text-center divide-x divide-slate-100">
+                          <div className="px-1">
+                            <strong className="text-base font-display font-black text-[#0A2540] block leading-tight">
+                              {squad.length}
+                            </strong>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                              Team
+                            </span>
+                          </div>
+                          <div className="px-1">
+                            <strong className="text-base font-display font-black text-[#0A2540] block leading-tight">
+                              <span className="text-[#00A88B]">{squadDials}</span>
+                              <span className="text-slate-300 font-normal text-xs">/{squadGoals}</span>
+                            </strong>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                              Calls
+                            </span>
+                          </div>
+                          <div className="px-1">
+                            <strong className="text-base font-display font-black text-purple-700 block leading-tight">
+                              {squadWon}
+                            </strong>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                              Won
+                            </span>
+                          </div>
+                          <div className="px-1">
+                            <strong className="text-base font-display font-black text-[#00A88B] block leading-tight">
+                              {formatInLakhs(squadRev)}
+                            </strong>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                              Revenue
                             </span>
                           </div>
                         </div>
 
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                          isPresent ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200/80' :
-                          isLate ? 'bg-amber-100/90 text-amber-800 border border-amber-200/80' :
-                          'bg-rose-100/90 text-rose-800 border border-rose-200/80'
-                        }`}>
-                          {member.attendanceStatus}
-                        </span>
-                      </div>
+                        <div className="bg-[#E6F8F5] border border-[#B2EFE5] text-[#00897B] font-bold text-[10px] px-2.5 py-1 rounded-xl text-center">
+                          {squadPresent} Present • {squadLate} Late • {squadLeave} Leave
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
 
-                      {/* 3 Metric Matrix - Clean Elevated Micro-Cards */}
-                      <div className="grid grid-cols-3 gap-2 bg-slate-50/90 p-1.5 rounded-xl border border-slate-100 text-center">
-                        <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
-                          <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Dials</span>
-                          <strong className="text-xs font-mono font-black text-[#0A2540]">{member.dialsToday || 0}</strong>
-                        </div>
-                        <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
-                          <span className="text-[9px] text-[#00A88B] block font-bold uppercase tracking-wider">Sales</span>
-                          <strong className="text-xs font-mono font-black text-[#00A88B]">{formatInLakhs(member.salesAchieved)}</strong>
-                        </div>
-                        <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
-                          <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Interested</span>
-                          <strong className="text-xs font-mono font-black text-emerald-700">{member.interested || 0}</strong>
-                        </div>
-                      </div>
+                {/* Search within this team */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={`Search in ${selectedAdminTeamGroup.name}...`}
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
+                  />
+                </div>
 
-                      {/* Footer: Check-in Time + Clean Interactive Pill Button */}
-                      <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100">
-                        <span className="text-slate-500 font-mono flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          In: {member.checkInTime || '—'}
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2.5 py-1 rounded-xl bg-[#E6FAF6] text-[#00A88B] font-bold group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors flex items-center gap-1 shadow-2xs">
-                            <span>View 360 Profile</span>
-                            <span>→</span>
-                          </span>
-                        </div>
-                      </div>
+                {/* Filter Pills for this team */}
+                {(() => {
+                  const squad = teamMembers.filter((m) => m.group === selectedAdminTeamGroup.name);
+                  const pCount = squad.filter((m) => m.attendanceStatus === 'PRESENT').length;
+                  const lCount = squad.filter((m) => m.attendanceStatus === 'LATE').length;
+                  const oCount = squad.filter((m) => m.attendanceStatus === 'ON_LEAVE').length;
+
+                  return (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+                      <button
+                        type="button"
+                        onClick={() => setAttendanceFilter('ALL')}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
+                          attendanceFilter === 'ALL'
+                            ? 'bg-[#0A2540] text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        All ({squad.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAttendanceFilter('PRESENT')}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
+                          attendanceFilter === 'PRESENT'
+                            ? 'bg-[#0A2540] text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Present ({pCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAttendanceFilter('LATE')}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
+                          attendanceFilter === 'LATE'
+                            ? 'bg-[#0A2540] text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Late ({lCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAttendanceFilter('ON_LEAVE')}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
+                          attendanceFilter === 'ON_LEAVE'
+                            ? 'bg-[#0A2540] text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Leave ({oCount})
+                      </button>
                     </div>
                   );
-                })}
+                })()}
+
+                {/* Team's Telecallers List */}
+                <div className="space-y-3">
+                  {teamMembers
+                    .filter((m) => m.group === selectedAdminTeamGroup.name)
+                    .filter((m) => {
+                      const matchSearch =
+                        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        m.empCode.toLowerCase().includes(searchQuery.toLowerCase());
+                      const matchFilter =
+                        attendanceFilter === 'ALL' || m.attendanceStatus === attendanceFilter;
+                      return matchSearch && matchFilter;
+                    })
+                    .map((member) => {
+                      const isPresent = member.attendanceStatus === 'PRESENT';
+                      const isLate = member.attendanceStatus === 'LATE';
+
+                      return (
+                        <div
+                          key={member.id}
+                          onClick={() => setSelectedMemberFor360(member)}
+                          className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-2xs hover:shadow-md flex flex-col gap-2.5 cursor-pointer active:scale-[0.98] transition-all group relative overflow-hidden"
+                        >
+                          <div
+                            className={`absolute top-0 left-0 right-0 h-1 ${
+                              isPresent
+                                ? 'bg-gradient-to-r from-emerald-400 to-[#00C9A7]'
+                                : isLate
+                                ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                                : 'bg-gradient-to-r from-rose-400 to-rose-500'
+                            }`}
+                          />
+
+                          <div className="flex items-center justify-between pt-0.5">
+                            <div className="flex items-center gap-3">
+                              <div className="relative flex-shrink-0">
+                                <div className="w-11 h-11 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs group-hover:scale-105 transition-transform">
+                                  {member.avatar || member.name.substring(0, 2).toUpperCase()}
+                                </div>
+                                <span
+                                  className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                                    isPresent
+                                      ? 'bg-emerald-500'
+                                      : isLate
+                                      ? 'bg-amber-500'
+                                      : 'bg-rose-500'
+                                  }`}
+                                />
+                              </div>
+
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <strong className="text-xs font-bold text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                                    {member.name}
+                                  </strong>
+                                  <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded-md border border-slate-200/80">
+                                    {member.group}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Telecaller') : 'Telecaller'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                isPresent
+                                  ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200/80'
+                                  : isLate
+                                  ? 'bg-amber-100/90 text-amber-800 border border-amber-200/80'
+                                  : 'bg-rose-100/90 text-rose-800 border border-rose-200/80'
+                              }`}
+                            >
+                              {member.attendanceStatus}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 bg-slate-50/90 p-1.5 rounded-xl border border-slate-100 text-center">
+                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                              <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Dials</span>
+                              <strong className="text-xs font-mono font-black text-[#0A2540]">{member.dialsToday || 0}</strong>
+                            </div>
+                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                              <span className="text-[9px] text-[#00A88B] block font-bold uppercase tracking-wider">Sales</span>
+                              <strong className="text-xs font-mono font-black text-[#00A88B]">{formatInLakhs(member.salesAchieved)}</strong>
+                            </div>
+                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                              <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Interested</span>
+                              <strong className="text-xs font-mono font-black text-emerald-700">{member.interested || 0}</strong>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100">
+                            <span className="text-slate-500 font-mono flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              In: {member.checkInTime || '—'}
+                            </span>
+                            <span className="px-2.5 py-1 rounded-xl bg-[#E6FAF6] text-[#00A88B] font-bold group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors flex items-center gap-1 shadow-2xs">
+                              <span>View 360 Profile</span>
+                              <span>→</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  {teamMembers.filter((m) => m.group === selectedAdminTeamGroup.name).length === 0 && (
+                    <Empty text={`No telecallers assigned to ${selectedAdminTeamGroup.name} yet.`} />
+                  )}
+                </div>
               </div>
             )}
 
-            <div className="flex items-center justify-between px-1">
-              <SectionTitle>Teams</SectionTitle>
-              <button
-                onClick={() => setIsCreateTeamOpen(true)}
-                className="flex items-center gap-1 text-[11px] font-bold text-[#00A88B] active:scale-95 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create team</span>
-              </button>
-            </div>
-            {!teamGroups.length ? (
-              <Empty text="No teams yet." />
-            ) : (
-              <div className="space-y-2">
-                {teamGroups.map((g) => (
-                  <div key={g.id} className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-sky-600 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-[#0A2540] block truncate">{g.name}</span>
-                        <span className="text-[10px] text-slate-500">
-                          {teamMembers.filter((m) => m.group === g.name).length} members · target {inr(g.monthlyTarget)}
-                        </span>
-                      </div>
-                    </div>
-                    <select
-                      value={g.leaderName || ''}
-                      onChange={(e) => assignTeamLeaderToGroup(g.id, e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-[11px] font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                    >
-                      <option value="">— Assign a Team Leader —</option>
-                      {teamMembers.map((m) => (
-                        <option key={m.id} value={m.name}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setManagingSquad(g)}
-                      className="w-full flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] py-1.5 px-3 rounded-xl transition-all border border-slate-200"
-                    >
-                      <Users className="w-3.5 h-3.5 text-[#00A88B]" />
-                      <span>{teamMembers.filter((m) => m.group === g.name).length === 0 ? '+ Add Members' : `Manage Squad`}</span>
-                    </button>
+            {/* FULL WORKFORCE ROSTER (When adminPeopleMode === 'ALL') */}
+            {adminPeopleMode === 'ALL' && (
+              <div className="space-y-3.5">
+                {/* Filter Pills */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    {(['ALL', 'PRESENT', 'LATE', 'ON_LEAVE'] as const).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setAttendanceFilter(f)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                          attendanceFilter === f ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {f === 'ALL' ? 'All' : f === 'ON_LEAVE' ? 'Leave' : f}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                  <span className="text-[11px] text-slate-400 font-mono font-bold">
+                    {filteredPeople.length} Showing
+                  </span>
+                </div>
+
+                {/* Mobile Search Bar */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search employee by name, code or team..."
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
+                  />
+                </div>
+
+                {!filteredPeople.length ? (
+                  <Empty text={headcount ? 'Nobody matches that search.' : 'No employees yet. Tap Add to begin.'} />
+                ) : (
+                  <div className="space-y-3">
+                    {filteredPeople.map((member) => {
+                      const isPresent = member.attendanceStatus === 'PRESENT';
+                      const isLate = member.attendanceStatus === 'LATE';
+
+                      return (
+                        <div
+                          key={member.id}
+                          onClick={() => setSelectedMemberFor360(member)}
+                          className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-2xs hover:shadow-md flex flex-col gap-2.5 cursor-pointer active:scale-[0.98] transition-all group relative overflow-hidden"
+                        >
+                          <div
+                            className={`absolute top-0 left-0 right-0 h-1 ${
+                              isPresent
+                                ? 'bg-gradient-to-r from-emerald-400 to-[#00C9A7]'
+                                : isLate
+                                ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                                : 'bg-gradient-to-r from-rose-400 to-rose-500'
+                            }`}
+                          />
+
+                          <div className="flex items-center justify-between pt-0.5">
+                            <div className="flex items-center gap-3">
+                              <div className="relative flex-shrink-0">
+                                <div className="w-11 h-11 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs group-hover:scale-105 transition-transform">
+                                  {member.avatar || member.name.substring(0, 2).toUpperCase()}
+                                </div>
+                                <span
+                                  className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                                    isPresent
+                                      ? 'bg-emerald-500'
+                                      : isLate
+                                      ? 'bg-amber-500'
+                                      : 'bg-rose-500'
+                                  }`}
+                                />
+                              </div>
+
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <strong className="text-xs font-bold text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                                    {member.name}
+                                  </strong>
+                                  <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded-md border border-slate-200/80">
+                                    {member.group}
+                                  </span>
+                                  {member.active === 0 && (
+                                    <span className="text-[8px] font-black px-1 py-0.5 rounded bg-slate-200 text-slate-600 uppercase">
+                                      Inactive
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Employee') : 'Employee'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                isPresent
+                                  ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200/80'
+                                  : isLate
+                                  ? 'bg-amber-100/90 text-amber-800 border border-amber-200/80'
+                                  : 'bg-rose-100/90 text-rose-800 border border-rose-200/80'
+                              }`}
+                            >
+                              {member.attendanceStatus}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 bg-slate-50/90 p-1.5 rounded-xl border border-slate-100 text-center">
+                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                              <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Dials</span>
+                              <strong className="text-xs font-mono font-black text-[#0A2540]">{member.dialsToday || 0}</strong>
+                            </div>
+                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                              <span className="text-[9px] text-[#00A88B] block font-bold uppercase tracking-wider">Sales</span>
+                              <strong className="text-xs font-mono font-black text-[#00A88B]">{formatInLakhs(member.salesAchieved)}</strong>
+                            </div>
+                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                              <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Interested</span>
+                              <strong className="text-xs font-mono font-black text-emerald-700">{member.interested || 0}</strong>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100">
+                            <span className="text-slate-500 font-mono flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              In: {member.checkInTime || '—'}
+                            </span>
+                            <span className="px-2.5 py-1 rounded-xl bg-[#E6FAF6] text-[#00A88B] font-bold group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors flex items-center gap-1 shadow-2xs">
+                              <span>View 360 Profile</span>
+                              <span>→</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
