@@ -1,17 +1,21 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   X, 
   Download, 
   Printer, 
   Upload, 
-  TrendingUp, 
-  MapPin, 
-  Mail, 
-  Globe, 
+  Building2, 
   Phone, 
-  UserCheck,
-  Sparkles
+  Mail, 
+  QrCode, 
+  CheckCircle2, 
+  Sparkles,
+  ShieldCheck,
+  CreditCard,
+  TrendingUp,
+  MapPin,
+  Globe
 } from 'lucide-react';
 import { TeamMember } from '../../types';
 
@@ -21,12 +25,20 @@ export const DigitalIdCardModal: React.FC = () => {
     setIsIdCardModalOpen, 
     profile, 
     teamMembers, 
-    triggerToast 
+    triggerToast,
+    selectedIdCardEmpId 
   } = useApp();
 
-  const [selectedEmpId, setSelectedEmpId] = useState<string>(profile.id || 'emp-101');
+  const [selectedEmpId, setSelectedEmpId] = useState<string>(selectedIdCardEmpId || profile.id || 'emp-101');
   const [customPhotoUrl, setCustomPhotoUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (selectedIdCardEmpId) {
+      setSelectedEmpId(selectedIdCardEmpId);
+      setCustomPhotoUrl(null);
+    }
+  }, [selectedIdCardEmpId, isIdCardModalOpen]);
 
   if (!isIdCardModalOpen) return null;
 

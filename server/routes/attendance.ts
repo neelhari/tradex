@@ -87,12 +87,16 @@ router.get('/today', (req: Request, res: Response) => {
     const isCheckedOut = !!r.checkOut;
     return res.status(200).json({
       hasRecord: true,
+      checkedIn: !isCheckedOut && Boolean(r.checkIn),
       id: r.id,
       date: r.date,
       status: isCheckedOut ? 'SHIFT_COMPLETED' : 'ON_DUTY',
+      shiftStatus: isCheckedOut ? 'SHIFT_COMPLETED' : 'ON_DUTY',
       faceIdStatus: isCheckedOut ? 'ON_BREAK' : 'VERIFIED_PRESENT',
       checkIn: r.checkIn,
+      inTime: r.checkIn,
       checkOut: r.checkOut,
+      outTime: r.checkOut,
       workHours: r.workHours,
       method: r.method,
       locationStatus: r.locationStatus,
@@ -143,8 +147,11 @@ router.post('/', (req: Request, res: Response) => {
   try {
     const {
       id, date, dayNumber, status, checkIn, checkOut, workHours, method,
-      employeeId, employeeName, checkInPhoto, latitude, longitude,
+      employeeId, employeeName, checkInPhoto, latitude, longitude, inTime, outTime
     } = req.body;
+
+    const resolvedCheckIn = checkIn || inTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const resolvedCheckOut = checkOut || outTime || null;
 
     const recDate = date || new Date().toISOString().split('T')[0];
     const recDay = dayNumber || new Date(recDate).getDate();
@@ -184,7 +191,7 @@ router.post('/', (req: Request, res: Response) => {
         checkInDistanceM = coalesce(attendance_records.checkInDistanceM, excluded.checkInDistanceM),
         locationStatus = coalesce(attendance_records.locationStatus, excluded.locationStatus)
     `).run(
-      recId, recDate, recDay, status || 'PRESENT', checkIn || null, checkOut || null,
+      recId, recDate, recDay, status || 'PRESENT', resolvedCheckIn, resolvedCheckOut,
       workHours || 'In Progress', method || 'Face ID Biometric',
       employeeId || null, employeeName || null, checkInPhoto || null,
       latitude ?? null, longitude ?? null, distance, locationStatus
@@ -194,11 +201,15 @@ router.post('/', (req: Request, res: Response) => {
     if (employeeId) {
       db.prepare(
         `UPDATE team_members SET attendanceStatus = ?, checkInTime = ?, checkInMethod = ? WHERE id = ?`
-      ).run(status || 'PRESENT', checkIn || null, method || 'Face ID Biometric', employeeId);
+      ).run(status || 'PRESENT', resolvedCheckIn, method || 'Face ID Biometric', employeeId);
     }
 
-    const record = db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(recId);
-    return res.status(201).json(record);
+    const record = db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(recId) as any;
+    return res.status(201).json({
+      ...record,
+      inTime: record.checkIn,
+      outTime: record.checkOut
+    });
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });
   }

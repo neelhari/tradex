@@ -340,6 +340,7 @@ function runMigrations() {
   addColumnIfMissing('team_members', 'active', 'INTEGER NOT NULL DEFAULT 1');
   addColumnIfMissing('team_members', 'email', 'TEXT');
   addColumnIfMissing('team_members', 'deactivatedOn', 'TEXT');
+  addColumnIfMissing('users', 'active', 'INTEGER NOT NULL DEFAULT 1');
 
   // Attendance is per employee, and each check-in carries proof of who and where.
   addColumnIfMissing('attendance_records', 'employeeId', 'TEXT');
@@ -418,5 +419,68 @@ function runMigrations() {
       'INSERT INTO office_settings (id, label, latitude, longitude, radiusMeters) VALUES (?, ?, ?, ?, ?)'
     ).run('office-main', 'Head Office', null, null, 200);
     console.log('[SQLite DB] Migration: created office_settings (address not set yet)');
+  }
+
+  // Hierarchy Company Calendar & Official Holidays
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS company_holidays (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      date TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'FESTIVAL',
+      description TEXT DEFAULT '',
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_company_holidays_date ON company_holidays(date);
+
+    CREATE TABLE IF NOT EXISTS calendar_settings (
+      id TEXT PRIMARY KEY,
+      weeklyOffDays TEXT NOT NULL DEFAULT '[0]',
+      weekendPolicy TEXT NOT NULL DEFAULT 'SUNDAY_ONLY',
+      shiftStartTime TEXT NOT NULL DEFAULT '09:30 AM',
+      shiftEndTime TEXT NOT NULL DEFAULT '06:30 PM',
+      gracePeriodMinutes INTEGER NOT NULL DEFAULT 15,
+      halfDayThresholdHours REAL NOT NULL DEFAULT 4.0,
+      fullDayThresholdHours REAL NOT NULL DEFAULT 8.0,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  const hasCalendarSettings = db.prepare('SELECT COUNT(*) AS c FROM calendar_settings').get() as { c: number };
+  if (!hasCalendarSettings.c) {
+    db.prepare(`
+      INSERT INTO calendar_settings (id, weeklyOffDays, weekendPolicy, shiftStartTime, shiftEndTime, gracePeriodMinutes, halfDayThresholdHours, fullDayThresholdHours)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('settings-default', '[0]', 'SUNDAY_ONLY', '09:30 AM', '06:30 PM', 15, 4.0, 8.0);
+    console.log('[SQLite DB] Migration: created default calendar_settings');
+  }
+
+  const hasHolidays = db.prepare('SELECT COUNT(*) AS c FROM company_holidays').get() as { c: number };
+  if (!hasHolidays.c) {
+    const initialHolidays = [
+      { id: 'hol-1', name: 'Republic Day', date: '2026-01-26', type: 'NATIONAL', description: 'National Republic Day Celebration' },
+      { id: 'hol-2', name: 'Maha Shivratri', date: '2026-02-15', type: 'FESTIVAL', description: 'Hindu Festival of Lord Shiva' },
+      { id: 'hol-3', name: 'Holi Festival', date: '2026-03-03', type: 'FESTIVAL', description: 'Festival of Colors' },
+      { id: 'hol-4', name: 'Eid-ul-Fitr', date: '2026-03-20', type: 'FESTIVAL', description: 'Islamic Festival of Breaking the Fast' },
+      { id: 'hol-5', name: 'Dr. Ambedkar Jayanti', date: '2026-04-14', type: 'NATIONAL', description: 'Birthday of Dr. B. R. Ambedkar' },
+      { id: 'hol-6', name: 'May Day', date: '2026-05-01', type: 'COMPANY', description: 'International Workers Day' },
+      { id: 'hol-7', name: 'Bakrid / Eid al-Adha', date: '2026-05-27', type: 'FESTIVAL', description: 'Feast of the Sacrifice' },
+      { id: 'hol-8', name: 'Muharram', date: '2026-06-26', type: 'FESTIVAL', description: 'Islamic New Year Remembrance' },
+      { id: 'hol-9', name: 'Independence Day', date: '2026-08-15', type: 'NATIONAL', description: 'Indian National Independence Day' },
+      { id: 'hol-10', name: 'Ganesh Chaturthi', date: '2026-09-14', type: 'FESTIVAL', description: 'Vinayaka Chaturthi Festival' },
+      { id: 'hol-11', name: 'Mahatma Gandhi Jayanti', date: '2026-10-02', type: 'NATIONAL', description: 'Father of the Nation Birthday' },
+      { id: 'hol-12', name: 'Dussehra / Vijayadashami', date: '2026-10-20', type: 'FESTIVAL', description: 'Victory of Good over Evil' },
+      { id: 'hol-13', name: 'Diwali Festival', date: '2026-11-08', type: 'FESTIVAL', description: 'Festival of Lights' },
+      { id: 'hol-14', name: 'Guru Nanak Jayanti', date: '2026-11-24', type: 'FESTIVAL', description: 'Sikh Guru Nanak Dev Ji Birthday' },
+      { id: 'hol-15', name: 'Christmas Day', date: '2026-12-25', type: 'FESTIVAL', description: 'Christmas Celebration' },
+    ];
+    const insertHoliday = db.prepare(`
+      INSERT INTO company_holidays (id, name, date, type, description)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    for (const h of initialHolidays) {
+      insertHoliday.run(h.id, h.name, h.date, h.type, h.description);
+    }
+    console.log('[SQLite DB] Migration: seeded 15 official gazetted company_holidays');
   }
 }

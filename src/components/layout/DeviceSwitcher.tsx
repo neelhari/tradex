@@ -8,8 +8,9 @@ export const DeviceSwitcher: React.FC = () => {
 
   const handleRoleChange = (role: UserRole) => {
     setCurrentRole(role);
-    const roleLabels = {
-      telecaller: 'Arjun Kumar (Senior Telecaller)',
+    const roleLabels: Record<UserRole, string> = {
+      telecaller: 'Arjun Kumar (Sales Executive)',
+      employee: 'Arjun Kumar (Sales Executive)',
       team_leader: 'Ramesh Sharma (Team Leader)',
       hr: 'Priya Verma (HR Operations)',
       admin: 'Rajesh Singhal (Managing Director / Admin)'
@@ -51,7 +52,8 @@ export const DeviceSwitcher: React.FC = () => {
 
         {(['telecaller', 'team_leader', 'hr', 'admin'] as UserRole[]).map((r) => {
           const labels: Record<UserRole, string> = {
-            telecaller: 'Telecaller',
+            telecaller: 'Employee',
+            employee: 'Employee',
             team_leader: 'Team Leader',
             hr: 'HR Portal',
             admin: 'Admin Console'

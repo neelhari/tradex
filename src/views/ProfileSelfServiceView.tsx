@@ -116,7 +116,7 @@ export const ProfileSelfServiceView: React.FC = () => {
                 {profile.name || 'Arjun Kumar'}
               </h2>
               <p className="text-xs font-bold text-[#00A88B]">
-                {profile.roleTitle || 'Senior Telecaller / SDR'}
+                {profile.roleTitle ? profile.roleTitle.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'}
               </p>
               <p className="text-[10px] text-slate-400 font-medium">
                 {profile.department || 'Sales & Client Acquisition'}
@@ -406,7 +406,7 @@ export const ProfileSelfServiceView: React.FC = () => {
         </button>
 
         <p className="text-center text-[10px] text-slate-400 font-medium pt-2.5">
-          Trade Nexus Mobile • Telecaller Portal
+          Trade Nexus Mobile • Employee Portal
         </p>
       </div>
 

@@ -67,7 +67,7 @@ router.get('/floor-pulse', (req: Request, res: Response) => {
 
       return {
         id: lead.id,
-        rep: lead.repName || 'Telecaller',
+        rep: lead.repName || 'Employee',
         client: lead.company || 'Enterprise Client',
         contact: lead.contactName || 'Key Decision Maker',
         type,
@@ -98,7 +98,7 @@ router.post('/', (req: Request, res: Response) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       memberId, empCode || `TNX-${Math.floor(8000 + Math.random() * 999)}`, name || 'Team Member',
-      avatar || 'TM', role || 'Telecaller Executive', group || 'Alpha Growth Team',
+      avatar || 'TM', role || 'Sales Executive', group || 'Alpha Growth Team',
       phone || '', attendanceStatus || 'PRESENT', checkInTime || '09:00 AM', checkInMethod || 'Face ID Biometric',
       dialsToday ? Number(dialsToday) : 0, goalCalls ? Number(goalCalls) : 100,
       connected ? Number(connected) : 0, interested ? Number(interested) : 0,

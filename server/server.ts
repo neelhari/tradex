@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { initializeDatabaseSchema } from './db/schema.js';
-import { seedInitialDataIfEmpty } from './db/seed.js';
+import { seedInitialDataIfEmpty, resetDatabaseToClean } from './db/seed.js';
 
 // Route imports
 import profileRoutes from './routes/profile.js';
@@ -25,6 +25,7 @@ import offerLettersRoutes from './routes/offerLetters.js';
 import paymentsRoutes from './routes/payments.js';
 import employeeDocumentsRoutes from './routes/employeeDocuments.js';
 import authRoutes from './routes/auth.js';
+import calendarRoutes from './routes/calendar.js';
 
 // Initialize SQLite DB
 initializeDatabaseSchema();
@@ -58,6 +59,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Admin Reset to Clean Database (0 fake leads, 0 fake calls, 0 fake money)
+app.post('/api/admin/reset-to-clean', (req, res) => {
+  const result = resetDatabaseToClean();
+  if (result.success) {
+    res.status(200).json(result);
+  } else {
+    res.status(500).json(result);
+  }
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
@@ -80,6 +91,7 @@ app.use('/api/biometrics', biometricsRoutes);
 app.use('/api/offer-letters', offerLettersRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/employee-documents', employeeDocumentsRoutes);
+app.use('/api/calendar', calendarRoutes);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

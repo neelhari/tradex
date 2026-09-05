@@ -76,7 +76,7 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
 
   // Form states
   const [candName, setCandName] = useState('');
-  const [candRole, setCandRole] = useState('Senior Telecaller Specialist');
+  const [candRole, setCandRole] = useState('Senior Sales Executive');
   const [candExp, setCandExp] = useState('2+ Years in B2B Sales');
   const [candEmail, setCandEmail] = useState('');
   const [candPhone, setCandPhone] = useState('');
@@ -225,7 +225,7 @@ export const DesktopHrView: React.FC<DesktopHrViewProps> = ({
                   {liveMeeting.title}
                 </h4>
                 <p className="text-xs text-slate-500 font-medium">
-                  {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : 'All team telecallers'} • HR can join to audit or assist
+                  {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : 'All team employees'} • HR can join to audit or assist
                 </p>
               </div>
             </div>

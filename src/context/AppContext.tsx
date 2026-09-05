@@ -24,7 +24,8 @@ import {
   FaceBiometricProfile,
   OfferLetterData,
   NewEmployeeInput,
-  CompanyHoliday
+  CompanyHoliday,
+  CalendarSettings
 } from '../types';
 import { api } from '../services/api';
 import {
@@ -140,6 +141,11 @@ interface AppContextType {
     meetingLink?: string; 
     invitedMemberName?: string;
     attendeesCount?: number;
+    targetAudience?: 'ALL' | 'TEAM' | 'INDIVIDUAL' | 'LEADERSHIP';
+    targetTeam?: string;
+    targetEmployeeId?: string;
+    createdByRole?: string;
+    priority?: 'NORMAL' | 'HIGH' | 'MANDATORY';
   }) => void;
   updateTeamMeeting: (id: string, updates: Partial<TeamMeeting>) => void;
   deleteTeamMeeting: (id: string) => void;
@@ -166,9 +172,13 @@ interface AppContextType {
   weeklyOffDays: number[];
   setWeeklyOffDays: (days: number[]) => void;
   toggleWeeklyOffDay: (dayIndex: number) => void;
+  calendarSettings: CalendarSettings;
+  updateCalendarSettings: (settings: Partial<CalendarSettings>) => Promise<void>;
   companyHolidays: CompanyHoliday[];
-  addCompanyHoliday: (holiday: Omit<CompanyHoliday, 'id'>) => void;
-  deleteCompanyHoliday: (id: string) => void;
+  addCompanyHoliday: (holiday: Omit<CompanyHoliday, 'id'> & { id?: string; description?: string }) => Promise<void>;
+  deleteCompanyHoliday: (id: string) => Promise<void>;
+  loadPresetHolidays: () => Promise<void>;
+  clearAllHolidays: () => Promise<void>;
   
   // Authentication Flow
   authStep: AuthStep;
@@ -194,6 +204,8 @@ interface AppContextType {
   setIsLeaveModalOpen: (open: boolean) => void;
   isIdCardModalOpen: boolean;
   setIsIdCardModalOpen: (open: boolean) => void;
+  selectedIdCardEmpId: string;
+  setSelectedIdCardEmpId: (id: string) => void;
   selectedPayslip: PayslipItem | null;
   setSelectedPayslip: (payslip: PayslipItem | null) => void;
   isPayslipModalOpen: boolean;
@@ -274,6 +286,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
+  // Automated version check: Purge old mock/dummy cached data so real pipeline is clean
+  const CURRENT_DATA_VERSION = 'v3_clean_pipeline';
+  try {
+    if (typeof window !== 'undefined') {
+      const savedVer = localStorage.getItem('tnx_data_version');
+      if (savedVer !== CURRENT_DATA_VERSION) {
+        const keysToPurge = [
+          'tnx_callLogs',
+          'tnx_assignedLeads',
+          'tnx_leadBatches',
+          'tnx_paymentVerifications',
+          'tnx_clients',
+          'tnx_stats',
+          'tnx_attendanceLogs',
+          'tnx_leaveRequests',
+          'tnx_teamMembers',
+          'tnx_teamGroups',
+          'tnx_profile',
+          'tnx_teamTasks',
+          'tnx_teamMeetings',
+          'tnx_candidates',
+          'tnx_onboardingList',
+          'tnx_exitList',
+          'tnx_offerLetters',
+        ];
+        keysToPurge.forEach((k) => localStorage.removeItem(k));
+        localStorage.setItem('tnx_data_version', CURRENT_DATA_VERSION);
+      }
+    }
+  } catch {}
+
   const getStoredState = <T,>(key: string, defaultValue: T): T => {
     try {
       const saved = localStorage.getItem(`tnx_${key}`);
@@ -286,13 +329,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [profile, setProfile] = useState<EmployeeProfile>(() => getStoredState('profile', INITIAL_PROFILE));
   const [stats, setStats] = useState<TelecallerStats>(() => getStoredState('stats', INITIAL_TELECALLER_STATS));
-  const [callLogs, setCallLogs] = useState<CallLogItem[]>(() => {
-    const stored = getStoredState('callLogs', INITIAL_CALL_LOGS);
-    if (!Array.isArray(stored) || stored.length < INITIAL_CALL_LOGS.length || !stored.some((l: any) => l.date)) {
-      return INITIAL_CALL_LOGS;
-    }
-    return stored;
-  });
+  const [callLogs, setCallLogs] = useState<CallLogItem[]>(() => getStoredState('callLogs', INITIAL_CALL_LOGS));
   const [clients, setClients] = useState<ClientLead[]>(() => getStoredState('clients', INITIAL_CLIENT_LEADS));
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(() => getStoredState('attendanceLogs', INITIAL_ATTENDANCE_LOGS));
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => getStoredState('leaveRequests', INITIAL_LEAVE_REQUESTS));
@@ -337,6 +374,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
+  const [calendarSettings, setCalendarSettingsState] = useState<CalendarSettings>({
+    id: 'settings-default',
+    weeklyOffDays: [0],
+    weekendPolicy: 'SUNDAY_ONLY',
+    shiftStartTime: '09:30 AM',
+    shiftEndTime: '06:30 PM',
+    gracePeriodMinutes: 15,
+    halfDayThresholdHours: 4.0,
+    fullDayThresholdHours: 8.0,
+  });
+
   const [companyHolidays, setCompanyHolidaysState] = useState<CompanyHoliday[]>(() => {
     try {
       const stored = localStorage.getItem('tnx_company_holidays');
@@ -348,9 +396,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const setWeeklyOffDays = (days: number[]) => {
     setWeeklyOffDaysState(days);
+    setCalendarSettingsState(prev => ({ ...prev, weeklyOffDays: days }));
     try {
       localStorage.setItem('tnx_weekly_off_days', JSON.stringify(days));
     } catch {}
+    api.updateCalendarSettings({ weeklyOffDays: days }).catch(() => {});
     triggerToast('✓ Weekly off schedule updated across company calendars');
   };
 
@@ -361,27 +411,86 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setWeeklyOffDays(updated);
   };
 
-  const addCompanyHoliday = (holiday: Omit<CompanyHoliday, 'id'>) => {
-    const newHol: CompanyHoliday = {
-      ...holiday,
-      id: `hol-${Date.now()}`
-    };
-    const updated = [...companyHolidays, newHol].sort((a, b) => a.date.localeCompare(b.date));
-    setCompanyHolidaysState(updated);
+  const updateCalendarSettings = async (settings: Partial<CalendarSettings>) => {
+    setCalendarSettingsState(prev => ({ ...prev, ...settings }));
+    if (settings.weeklyOffDays) {
+      setWeeklyOffDaysState(settings.weeklyOffDays);
+      try {
+        localStorage.setItem('tnx_weekly_off_days', JSON.stringify(settings.weeklyOffDays));
+      } catch {}
+    }
     try {
-      localStorage.setItem('tnx_company_holidays', JSON.stringify(updated));
-    } catch {}
-    triggerToast(`✓ Added Holiday "${holiday.name}" to company calendar`);
+      const updated = await api.updateCalendarSettings(settings);
+      setCalendarSettingsState(updated);
+      if (updated.weeklyOffDays) setWeeklyOffDaysState(updated.weeklyOffDays);
+      triggerToast('✓ Shift timings & attendance policies saved to database');
+    } catch {
+      triggerToast('✓ Updated calendar policies (offline mode)');
+    }
   };
 
-  const deleteCompanyHoliday = (id: string) => {
+  const addCompanyHoliday = async (holiday: Omit<CompanyHoliday, 'id'> & { id?: string; description?: string }) => {
+    try {
+      const created = await api.createHoliday(holiday);
+      const updated = [...companyHolidays.filter(h => h.id !== created.id), created].sort((a, b) => a.date.localeCompare(b.date));
+      setCompanyHolidaysState(updated);
+      try {
+        localStorage.setItem('tnx_company_holidays', JSON.stringify(updated));
+      } catch {}
+      triggerToast(`✓ Added Holiday "${holiday.name}" to company calendar`);
+    } catch {
+      const newHol: CompanyHoliday = {
+        ...holiday,
+        id: holiday.id || `hol-${Date.now()}`
+      };
+      const updated = [...companyHolidays, newHol].sort((a, b) => a.date.localeCompare(b.date));
+      setCompanyHolidaysState(updated);
+      try {
+        localStorage.setItem('tnx_company_holidays', JSON.stringify(updated));
+      } catch {}
+      triggerToast(`✓ Added Holiday "${holiday.name}"`);
+    }
+  };
+
+  const deleteCompanyHoliday = async (id: string) => {
     const target = companyHolidays.find(h => h.id === id);
     const updated = companyHolidays.filter(h => h.id !== id);
     setCompanyHolidaysState(updated);
     try {
       localStorage.setItem('tnx_company_holidays', JSON.stringify(updated));
     } catch {}
+    try {
+      await api.deleteHoliday(id);
+    } catch {}
     triggerToast(`✓ Removed Holiday "${target?.name || ''}" from calendar`);
+  };
+
+  const loadPresetHolidays = async () => {
+    try {
+      const presets = await api.loadPresetHolidays();
+      setCompanyHolidaysState(presets);
+      try {
+        localStorage.setItem('tnx_company_holidays', JSON.stringify(presets));
+      } catch {}
+      triggerToast('✨ Loaded 15 official Indian gazetted holidays (2026)');
+    } catch {
+      setCompanyHolidaysState(INITIAL_COMPANY_HOLIDAYS);
+      try {
+        localStorage.setItem('tnx_company_holidays', JSON.stringify(INITIAL_COMPANY_HOLIDAYS));
+      } catch {}
+      triggerToast('✨ Loaded official holidays preset');
+    }
+  };
+
+  const clearAllHolidays = async () => {
+    try {
+      await api.clearAllHolidays();
+    } catch {}
+    setCompanyHolidaysState([]);
+    try {
+      localStorage.removeItem('tnx_company_holidays');
+    } catch {}
+    triggerToast('✓ Cleared all company holidays');
   };
 
   // Modals & UI State
@@ -409,6 +518,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isQuickCallModalOpen, setIsQuickCallModalOpen] = useState(false);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isIdCardModalOpen, setIsIdCardModalOpen] = useState(false);
+  const [selectedIdCardEmpId, setSelectedIdCardEmpId] = useState<string>('');
   const [selectedPayslip, setSelectedPayslip] = useState<PayslipItem | null>(null);
   const [isPayslipModalOpen, setIsPayslipModalOpen] = useState(false);
   const [isRecentPayslipsModalOpen, setIsRecentPayslipsModalOpen] = useState(false);
@@ -464,6 +574,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     faceProfiles: setFaceProfiles,
     offerLetters: setOfferLetters,
     paymentVerifications: setPaymentVerifications,
+    companyHolidays: setCompanyHolidaysState,
+    calendarSettings: (settings: CalendarSettings) => {
+      setCalendarSettingsState(settings);
+      if (settings?.weeklyOffDays) {
+        setWeeklyOffDaysState(settings.weeklyOffDays);
+      }
+    },
   });
 
   const [resourceStatus, setResourceStatus] = useState<Record<ResourceKey, ResourceStatus>>(
@@ -1021,17 +1138,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: 'emp-101',
       empCode: 'TNX-101',
       name: 'Arjun Kumar',
-      role: 'Senior Telecaller',
-      group: 'Alpha Closers',
+      role: 'Telecaller Executive',
+      group: 'HNI Closers',
       phone: '+91 98450 12345',
-      attendanceStatus: 'PRESENT',
-      dialsToday: 42,
+      attendanceStatus: 'ABSENT',
+      dialsToday: 0,
       goalCalls: 100,
-      connected: 28,
-      interested: 9,
-      salesAchieved: 95000,
-      salesTarget: 150000,
-      conversionRate: 14.2
+      connected: 0,
+      interested: 0,
+      salesAchieved: 0,
+      salesTarget: 200000,
+      conversionRate: 0
     } as TeamMember;
 
     // Set Dynamic Profile for this employee
@@ -1096,29 +1213,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     triggerToast(`✓ ${leaderName} assigned as Team Leader to ${targetGroup?.name || 'Group'}`);
   };
 
-  // Team Leader Actions
+  // Team Leader & Admin Leave Actions
   const approveLeaveRequest = async (id: string) => {
+    const approverTitle = currentRole === 'admin' ? 'Super Admin' : currentRole === 'hr' ? 'HR Manager' : 'Ramesh Sharma (Team Leader)';
     setLeaveRequests(prev => prev.map(req => {
       if (req.id === id) {
-        const updated: LeaveRequest = { ...req, status: 'APPROVED', approvedBy: 'Ramesh Sharma (Team Leader)' };
+        const updated: LeaveRequest = { ...req, status: 'APPROVED', approvedBy: approverTitle };
         api.updateLeave(id, updated).catch(console.warn);
         return updated;
       }
       return req;
     }));
-    triggerToast('✓ Leave request APPROVED by Team Leader');
+    triggerToast(`✓ Leave request APPROVED by ${approverTitle}`);
   };
 
   const rejectLeaveRequest = async (id: string, reason: string) => {
+    const rejectorTitle = currentRole === 'admin' ? 'Admin' : currentRole === 'hr' ? 'HR' : 'Team Leader';
     setLeaveRequests(prev => prev.map(req => {
       if (req.id === id) {
-        const updated: LeaveRequest = { ...req, status: 'REJECTED', approvedBy: `Rejected: ${reason || 'Operational requirements'}` };
+        const updated: LeaveRequest = { ...req, status: 'REJECTED', approvedBy: `Rejected by ${rejectorTitle}: ${reason || 'Operational requirements'}` };
         api.updateLeave(id, updated).catch(console.warn);
         return updated;
       }
       return req;
     }));
-    triggerToast('✗ Leave request REJECTED with feedback');
+    triggerToast(`✗ Leave request REJECTED by ${rejectorTitle}`);
   };
 
   const reassignLead = async (leadId: string, newAssigneeName: string) => {
@@ -1292,6 +1411,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     meetingLink?: string; 
     invitedMemberName?: string;
     attendeesCount?: number;
+    targetAudience?: 'ALL' | 'TEAM' | 'INDIVIDUAL' | 'LEADERSHIP';
+    targetTeam?: string;
+    targetEmployeeId?: string;
+    createdByRole?: string;
+    priority?: 'NORMAL' | 'HIGH' | 'MANDATORY';
   }) => {
     const meetingId = `mtg-${Date.now()}`;
     const newMtg: TeamMeeting = {
@@ -1305,6 +1429,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       status: data.status || 'UPCOMING',
       meetingLink: data.meetingLink || `https://meet.tradenexus.io/room/${meetingId}`,
       invitedMemberName: data.invitedMemberName,
+      targetAudience: data.targetAudience || (data.invitedMemberName ? 'INDIVIDUAL' : 'ALL'),
+      targetTeam: data.targetTeam,
+      targetEmployeeId: data.targetEmployeeId,
+      createdByRole: data.createdByRole || currentRole,
+      priority: data.priority || 'NORMAL',
     };
     setTeamMeetings(prev => [newMtg, ...prev]);
     triggerToast(`✓ Meeting "${data.title}" scheduled`);
@@ -1338,13 +1467,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const joinMeeting = (mtg: TeamMeeting) => {
     setActiveMeetingRoom(mtg);
     setIsLiveRoomOpen(true);
-    if (mtg.status !== 'LIVE' && currentRole === 'team_leader') {
+    if (mtg.status !== 'LIVE' && (currentRole === 'team_leader' || currentRole === 'admin')) {
       updateTeamMeeting(mtg.id, { status: 'LIVE' });
     }
   };
 
   const leaveMeeting = () => {
-    if (currentRole === 'team_leader' && activeMeetingRoom) {
+    if ((currentRole === 'team_leader' || currentRole === 'admin') && activeMeetingRoom) {
       updateTeamMeeting(activeMeetingRoom.id, { status: 'COMPLETED' });
       triggerToast('✓ Meeting concluded and saved');
     } else {
@@ -1426,14 +1555,63 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const verifyPayment = async (paymentId: string, status: 'VERIFIED' | 'REJECTED') => {
+    let targetPayment: PaymentVerificationItem | undefined;
+    let oldStatus: string | undefined;
+
     setPaymentVerifications(prev => prev.map(p => {
       if (p.id === paymentId) {
+        targetPayment = p;
+        oldStatus = p.status;
         const updated: PaymentVerificationItem = { ...p, status };
         api.updatePayment(paymentId, updated).catch(console.warn);
         return updated;
       }
       return p;
     }));
+
+    if (targetPayment) {
+      const amount = (targetPayment as PaymentVerificationItem).dealAmount || 0;
+      const telecallerName = (targetPayment as PaymentVerificationItem).telecallerName;
+
+      if (status === 'REJECTED' && oldStatus !== 'REJECTED') {
+        // Reverse sales achieved
+        setTeamMembers(prev => prev.map(m => {
+          if (m.name.toLowerCase() === telecallerName.toLowerCase()) {
+            const newSales = Math.max(0, (m.salesAchieved || 0) - amount);
+            const updated = { ...m, salesAchieved: newSales };
+            api.updateTeamMember(m.id, updated).catch(console.warn);
+            return updated;
+          }
+          return m;
+        }));
+
+        setStats(prev => {
+          const newSales = Math.max(0, (prev.monthlySalesAchieved || 0) - amount);
+          const updated = { ...prev, monthlySalesAchieved: newSales };
+          api.updateStats(updated).catch(console.warn);
+          return updated;
+        });
+      } else if (status === 'VERIFIED' && oldStatus === 'REJECTED') {
+        // Re-credit sales achieved
+        setTeamMembers(prev => prev.map(m => {
+          if (m.name.toLowerCase() === telecallerName.toLowerCase()) {
+            const newSales = (m.salesAchieved || 0) + amount;
+            const updated = { ...m, salesAchieved: newSales };
+            api.updateTeamMember(m.id, updated).catch(console.warn);
+            return updated;
+          }
+          return m;
+        }));
+
+        setStats(prev => {
+          const newSales = (prev.monthlySalesAchieved || 0) + amount;
+          const updated = { ...prev, monthlySalesAchieved: newSales };
+          api.updateStats(updated).catch(console.warn);
+          return updated;
+        });
+      }
+    }
+
     triggerToast(`✓ Payment ${status === 'VERIFIED' ? 'Approved & Verified' : 'Rejected'}`);
   };
 
@@ -1545,7 +1723,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       totalDays: data.totalDays,
       reason: data.reason,
       status: 'PENDING',
-      appliedOn: 'Today, 28 May 2025',
+      appliedOn: `Today, ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`,
     };
 
     setLeaveRequests((prev) => [newLeave, ...prev]);
@@ -1755,9 +1933,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         weeklyOffDays,
         setWeeklyOffDays,
         toggleWeeklyOffDay,
+        calendarSettings,
+        updateCalendarSettings,
         companyHolidays,
         addCompanyHoliday,
         deleteCompanyHoliday,
+        loadPresetHolidays,
+        clearAllHolidays,
         authStep,
         setAuthStep,
         logout,
@@ -1782,6 +1964,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsLeaveModalOpen,
         isIdCardModalOpen,
         setIsIdCardModalOpen,
+        selectedIdCardEmpId,
+        setSelectedIdCardEmpId,
         selectedPayslip,
         setSelectedPayslip,
         isPayslipModalOpen,

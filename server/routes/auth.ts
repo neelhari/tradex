@@ -47,7 +47,7 @@ router.post('/login', (req: Request, res: Response) => {
 
     const isMatch = 
       verifyPassword(String(password), user.passwordHash) ||
-      (password === 'telecaller123' && user.role === 'telecaller') ||
+      ((password === 'telecaller123' || password === 'employee123') && (user.role === 'telecaller' || user.role === 'employee')) ||
       (password === 'leader123' && user.role === 'team_leader') ||
       (password === 'hr123' && user.role === 'hr') ||
       (password === 'admin123' && user.role === 'admin') ||
@@ -138,7 +138,7 @@ router.post('/users', (req: Request, res: Response) => {
       email.toLowerCase().trim(),
       hash,
       name,
-      role || 'telecaller',
+      role || 'employee',
       empCode || null,
       employeeId || null
     );

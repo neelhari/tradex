@@ -186,7 +186,7 @@ export const TelecallerDetailDrawer: React.FC<TelecallerDetailDrawerProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                {member.empCode} • {member.role || 'Telecaller Specialist'} • {member.group || 'Alpha Team'}
+                {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'} • {member.group || 'Alpha Team'}
               </p>
             </div>
           </div>
@@ -399,7 +399,7 @@ export const TelecallerDetailDrawer: React.FC<TelecallerDetailDrawerProps> = ({
                               onChange={(e) => setTargetAssignee(e.target.value)}
                               className="text-[11px] p-1 rounded-lg border border-slate-300 bg-white font-bold"
                             >
-                              <option value="">Select Telecaller</option>
+                              <option value="">Select Employee</option>
                               {teamMembers.filter(m => m.id !== member.id).map(m => (
                                 <option key={m.id} value={m.name}>{m.name}</option>
                               ))}

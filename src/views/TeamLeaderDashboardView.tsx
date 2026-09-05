@@ -169,7 +169,7 @@ export const TeamLeaderDashboardView: React.FC = () => {
 
         return {
           id: lead.id,
-          rep: lead.assignedToEmployeeName || 'Telecaller',
+          rep: lead.assignedToEmployeeName || 'Employee',
           client: lead.company || 'Enterprise Client',
           contact: lead.name,
           type,
@@ -767,7 +767,7 @@ export const TeamLeaderDashboardView: React.FC = () => {
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search telecaller by name or employee code..."
+                placeholder="Search employee by name or employee code..."
                 className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
               />
             </div>
@@ -833,24 +833,23 @@ export const TeamLeaderDashboardView: React.FC = () => {
                   <div 
                     key={member.id}
                     onClick={() => setSelectedMemberFor360(member)}
-                    className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-2xs hover:shadow-md flex flex-col gap-2.5 cursor-pointer active:scale-[0.98] transition-all group relative overflow-hidden"
+                    className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-4 shadow-xs hover:shadow-md flex flex-col gap-3 cursor-pointer active:scale-[0.98] transition-all group"
                   >
-                    {/* Subtle Top Status Accent Line */}
-                    <div className={`absolute top-0 left-0 right-0 h-1 ${
-                      isPresent ? 'bg-gradient-to-r from-emerald-400 to-[#00C9A7]' :
-                      isLate ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
-                      'bg-gradient-to-r from-rose-400 to-rose-500'
-                    }`} />
-
                     {/* Member Header */}
-                    <div className="flex items-center justify-between pt-0.5">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="relative flex-shrink-0">
-                          <div className="w-11 h-11 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs group-hover:scale-105 transition-transform">
+                          <div className={`w-11 h-11 rounded-2xl ${
+                            isPresent 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80' 
+                              : isLate 
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200/80' 
+                              : 'bg-purple-50 text-purple-700 border border-purple-200/80'
+                          } flex items-center justify-center font-display font-black text-xs shadow-2xs group-hover:scale-105 transition-transform`}>
                             {member.avatar || member.name.substring(0, 2).toUpperCase()}
                           </div>
                           <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                            isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-rose-500'
+                            isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-purple-500'
                           }`} />
                         </div>
 
@@ -864,7 +863,7 @@ export const TeamLeaderDashboardView: React.FC = () => {
                             </span>
                           </div>
                           <span className="text-[10px] text-slate-400 font-mono">
-                            {member.empCode} • {member.role || 'Telecaller'}
+                            {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'}
                           </span>
                         </div>
                       </div>

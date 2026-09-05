@@ -36,6 +36,7 @@ import { ManageTeamMembersModal } from '../../components/modals/ManageTeamMember
 import { TeamGroup } from '../../types';
 import { Employee360ProfileView } from '../Employee360ProfileView';
 import { AdminCalendarConfig } from '../../components/common/AdminCalendarConfig';
+import { AdminScheduleMeetingModal } from '../../components/modals/AdminScheduleMeetingModal';
 
 interface DesktopAdminViewProps {
   currentTab?: string;
@@ -85,7 +86,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
   const setTab = onTabChange || setInternalTab;
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'TELECALLER' | 'LEADER'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'EMPLOYEE' | 'LEADER'>('ALL');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [openEmployee, setOpenEmployee] = useState<TeamMember | null>(null);
 
@@ -106,6 +107,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
   const [attendanceFilter, setAttendanceFilter] = useState<'ALL' | 'PROBLEMS'>('ALL');
 
   // Approvals subtab & rejection prompt
+  const [isScheduleMeetingOpen, setIsScheduleMeetingOpen] = useState(false);
   const [approvalTab, setApprovalTab] = useState<'PAYMENTS' | 'LEAVES'>('PAYMENTS');
   const [rejectionTarget, setRejectionTarget] = useState<{
     id: string;
@@ -250,7 +252,18 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
 
   const renderOverview = () => (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <PageHead title="Overview" blurb="Where the company stands today, and what is waiting for you." />
+      <PageHead 
+        title="Overview" 
+        blurb="Where the company stands today, and what is waiting for you."
+      >
+        <button
+          onClick={() => setIsScheduleMeetingOpen(true)}
+          className="px-4 py-2 bg-[#0A2540] hover:bg-teal-950 text-[#00C9A7] hover:text-white border border-[#00C9A7]/40 font-black text-xs rounded-xl flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+        >
+          <Video className="w-4 h-4 text-[#00C9A7]" />
+          <span>Schedule Executive Meeting</span>
+        </button>
+      </PageHead>
 
       {/* 🔴 Live Team Meeting Banner for Admin */}
       {(() => {
@@ -274,7 +287,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
                   {liveMeeting.title}
                 </h4>
                 <p className="text-xs text-slate-500 font-medium">
-                  {liveMeeting.invitedMemberName ? `Participants: ${liveMeeting.invitedMemberName}` : 'All team telecallers'} • Admin can join video session anytime
+                  {liveMeeting.invitedMemberName ? `Participants: ${liveMeeting.invitedMemberName}` : 'All team employees'} • Admin can join video session anytime
                 </p>
               </div>
             </div>
@@ -298,7 +311,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
           sub={`${Math.round((presentToday / Math.max(1, headcount)) * 100)}% checked in`}
           tone={presentToday === headcount ? 'good' : 'warn'}
         />
-        <Card label="Calls made today" value={String(callsToday)} sub="across all telecallers" />
+        <Card label="Calls made today" value={String(callsToday)} sub="across all employees" />
         <Card
           label="Sales this month"
           value={inr(salesAchieved)}
@@ -438,7 +451,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
             className="bg-transparent text-xs text-slate-800 focus:outline-none w-full font-medium"
           />
         </div>
-        {(['ALL', 'TELECALLER', 'LEADER'] as const).map((f) => (
+        {(['ALL', 'EMPLOYEE', 'LEADER'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setRoleFilter(f)}
@@ -448,7 +461,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
             }`}
           >
-            {f === 'ALL' ? 'Everyone' : f === 'TELECALLER' ? 'Telecallers' : 'Team Leaders'}
+            {f === 'ALL' ? 'Everyone' : f === 'EMPLOYEE' ? 'Employees' : 'Team Leaders'}
           </button>
         ))}
       </div>
@@ -901,7 +914,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
 
   const renderLeads = () => (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <PageHead title="Lead Allocation" blurb="Give lists of prospects to the telecallers who will call them.">
+      <PageHead title="Lead Allocation" blurb="Give lists of prospects to the employees who will call them.">
         <button
           onClick={() => setIsExcelUploadModalOpen(true)}
           className="flex items-center gap-2 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-[#00C9A7]/20 transition-all active:scale-95"
@@ -920,7 +933,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
           <table className="w-full text-left text-xs min-w-[40rem]">
             <thead>
               <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-wider font-bold text-[10px] bg-slate-50/70">
-                <th className="py-3 px-5">Telecaller</th>
+                <th className="py-3 px-5">Employee</th>
                 <th className="py-3 px-5">Leads held</th>
                 <th className="py-3 px-5">Called</th>
                 <th className="py-3 px-5">Interested</th>
@@ -946,7 +959,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
       <div className="nexus-card bg-white border border-slate-200 shadow-sm p-5 space-y-3">
         <h3 className="font-display font-black text-base text-[#0A2540]">Move leads</h3>
         <p className="text-[11px] text-slate-500">
-          Hand a telecaller's whole list to someone else — when they leave, go on holiday, or the
+          Hand an employee's whole list to someone else — when they leave, go on holiday, or the
           workload needs balancing.
         </p>
         <div className="flex flex-wrap items-end gap-3">
@@ -957,7 +970,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
               onChange={(e) => setMoveFrom(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
             >
-              <option value="">— Choose telecaller —</option>
+              <option value="">— Choose employee —</option>
               {leadsPerEmployee
                 .filter((r) => r.total > 0)
                 .map((r) => (
@@ -975,7 +988,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
               onChange={(e) => setMoveTo(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
             >
-              <option value="">— Choose telecaller —</option>
+              <option value="">— Choose employee —</option>
               {teamMembers
                 .filter((m) => m.id !== moveFrom && m.active !== 0)
                 .map((m) => {
@@ -1289,7 +1302,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
       },
       {
         label: 'Calls & conversion',
-        blurb: 'Dials, connections and interest per telecaller.',
+        blurb: 'Dials, connections and interest per employee.',
         icon: PhoneCall,
         run: () =>
           downloadCsv(
@@ -1323,7 +1336,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
         run: () =>
           downloadCsv(
             'Payments',
-            'Company,Lead,Telecaller,Amount,Mode,UTR,Status',
+            'Company,Lead,Employee,Amount,Mode,UTR,Status',
             paymentVerifications.map(
               (p) =>
                 `"${p.companyName}","${p.leadName}","${p.telecallerName}",${p.dealAmount},"${p.paymentMode}","${p.utrNumber}","${p.status}"`
@@ -1332,7 +1345,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
       },
       {
         label: 'Lead allocation',
-        blurb: 'Which telecaller holds which leads.',
+        blurb: 'Which employee holds which leads.',
         icon: FileSpreadsheet,
         run: () =>
           downloadCsv(
@@ -1472,6 +1485,12 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Admin Executive Schedule Meeting Modal */}
+      <AdminScheduleMeetingModal
+        isOpen={isScheduleMeetingOpen}
+        onClose={() => setIsScheduleMeetingOpen(false)}
+      />
     </>
   );
 };

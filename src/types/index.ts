@@ -1,4 +1,4 @@
-export type UserRole = 'telecaller' | 'team_leader' | 'hr' | 'admin';
+export type UserRole = 'telecaller' | 'employee' | 'team_leader' | 'hr' | 'admin';
 
 export type AuthStep = 'LOGIN' | 'FACE_SCAN' | 'ATTENDANCE_SUCCESS' | 'AUTHENTICATED';
 
@@ -53,6 +53,19 @@ export interface CompanyHoliday {
   name: string;
   date: string; // YYYY-MM-DD
   type?: 'NATIONAL' | 'FESTIVAL' | 'COMPANY' | 'OPTIONAL';
+  description?: string;
+}
+
+export interface CalendarSettings {
+  id?: string;
+  weeklyOffDays: number[]; // e.g. [0] for Sunday, [0, 6] for Sat & Sun
+  weekendPolicy: 'SUNDAY_ONLY' | 'SATURDAY_SUNDAY' | 'ALTERNATE_SATURDAY' | 'CUSTOM';
+  shiftStartTime: string; // e.g. "09:30 AM"
+  shiftEndTime: string;   // e.g. "06:30 PM"
+  gracePeriodMinutes: number; // e.g. 15
+  halfDayThresholdHours: number; // e.g. 4.0
+  fullDayThresholdHours: number; // e.g. 8.0
+  updatedAt?: string;
 }
 
 export interface AttendanceRecord {
@@ -92,6 +105,9 @@ export interface LeaveRequest {
 
 export interface PayslipItem {
   id: string;
+  employeeId?: string;
+  employeeName?: string;
+  employeeCode?: string;
   month: string;
   year: number;
   basicSalary: number;
@@ -134,7 +150,7 @@ export interface TeamMember {
   attendanceStatus: 'PRESENT' | 'LATE' | 'ON_LEAVE' | 'ABSENT';
   checkInTime?: string;
   checkOutTime?: string;
-  checkInMethod?: 'Face ID Biometric' | 'Geo-tagged';
+  checkInMethod?: 'Face ID Biometric' | 'Geo-tagged' | '' | string;
   dialsToday: number;
   goalCalls: number;
   connected: number;
@@ -182,6 +198,11 @@ export interface TeamMeeting {
   status?: 'LIVE' | 'UPCOMING' | 'COMPLETED';
   meetingLink?: string;
   invitedMemberName?: string;
+  targetAudience?: 'ALL' | 'TEAM' | 'INDIVIDUAL' | 'LEADERSHIP';
+  targetTeam?: string;
+  targetEmployeeId?: string;
+  createdByRole?: string;
+  priority?: 'NORMAL' | 'HIGH' | 'MANDATORY';
 }
 
 export interface CandidateInterview {

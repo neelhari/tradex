@@ -29,6 +29,7 @@ const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 export const PORTAL_LABEL: Record<UserRole, string> = {
   telecaller: 'Employee',
+  employee: 'Employee',
   team_leader: 'Team Leader',
   hr: 'HR',
   admin: 'Admin',

@@ -44,7 +44,7 @@ router.post('/', (req: Request, res: Response) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       onbId, empCode || `TNX-${Math.floor(8000 + Math.random() * 999)}`, name || 'Employee',
-      role || 'Telecaller Executive', department || 'Sales & Client Acquisition',
+      role || 'Sales Executive', department || 'Sales & Client Acquisition',
       joiningDate || 'Today', probationEnd || '6 Months', status || 'IN_PROGRESS',
       checklist?.documentsVerified ? 1 : 0, checklist?.workstationAllocated ? 1 : 0,
       checklist?.biometricEnrolled ? 1 : 0, checklist?.trainingScheduled ? 1 : 0

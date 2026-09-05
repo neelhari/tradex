@@ -26,8 +26,15 @@ export const EmployeeLoginView: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     
+    try {
+      const authRes = await api.login(emailOrPhone.trim(), password.trim()).catch(() => null);
+      if (authRes?.token) {
+        setAuthToken(authRes.token);
+      }
+    } catch {}
+
     const loginResult = loginEmployee(emailOrPhone.trim(), password.trim());
-    triggerToast(`✓ Welcome, ${loginResult.member?.name || 'Telecaller'}! Access granted.`);
+    triggerToast(`✓ Welcome, ${loginResult.member?.name || 'User'}! Access granted.`);
     setTimeout(() => {
       setIsLoading(false);
       setAuthStep('AUTHENTICATED');
@@ -57,14 +64,14 @@ export const EmployeeLoginView: React.FC = () => {
                 TRADE NEXUS
               </h1>
               <p className="text-xs text-[#00C9A7] font-bold tracking-wide">
-                Telecaller
+                Employee
               </p>
             </div>
           </div>
 
           <div className="bg-[#00C9A7]/15 border border-[#00C9A7]/40 px-3 py-1 rounded-full text-[10px] font-mono font-extrabold flex items-center gap-1.5 text-[#38E1B7]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />
-            <span>TELECALLER</span>
+            <span>EMPLOYEE</span>
           </div>
         </div>
 
@@ -74,7 +81,7 @@ export const EmployeeLoginView: React.FC = () => {
             onClick={() => setCurrentRole('telecaller')}
             className={`flex-1 py-1.5 rounded-xl transition-all ${currentRole === 'telecaller' ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-300 hover:text-white'}`}
           >
-            Caller
+            Employee
           </button>
           <button
             onClick={() => setCurrentRole('team_leader')}
@@ -97,13 +104,13 @@ export const EmployeeLoginView: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Telecaller Employee Login Card Body */}
+      {/* 2. Employee Login Card Body */}
       <div className="px-5 -mt-8 relative z-20 flex-1 flex flex-col justify-center">
         <div className="nexus-card p-6 bg-white border border-slate-200/80 shadow-2xl rounded-3xl space-y-4">
           
           <div className="text-center space-y-0.5">
             <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">
-              Telecaller Login
+              Employee Login
             </h2>
             <p className="text-xs text-slate-500 font-medium">
               Enter your credentials to continue

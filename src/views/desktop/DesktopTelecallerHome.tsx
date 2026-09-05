@@ -168,7 +168,7 @@ export const DesktopTelecallerHome: React.FC = () => {
                 {liveMeeting.title}
               </h4>
               <p className="text-xs text-slate-500 font-medium">
-                {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : 'All team telecallers invited'} • Click Join to enter live video session
+                {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : 'All team employees invited'} • Click Join to enter live video session
               </p>
             </div>
           </div>

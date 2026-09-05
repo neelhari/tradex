@@ -30,18 +30,22 @@ export const LiveVideoRoomModal: React.FC = () => {
 
   if (!isLiveRoomOpen || !activeMeetingRoom) return null;
 
-  const isHost = currentRole === 'team_leader';
-  const myName = profile?.name || (isHost ? 'Ramesh Sharma' : 'Team Member');
-  const myRoleLabel = isHost 
+  const isHost = currentRole === 'team_leader' || currentRole === 'admin';
+  const myName = profile?.name || (currentRole === 'admin' ? 'Super Admin' : isHost ? 'Ramesh Sharma' : 'Team Member');
+  const myRoleLabel = currentRole === 'admin'
+    ? 'You (Super Admin / Host)'
+    : isHost 
     ? 'You (Host)' 
     : currentRole === 'telecaller' 
     ? 'You (Telecaller)' 
     : currentRole === 'hr' 
     ? 'You (HR)' 
-    : 'You (Admin)';
+    : 'You';
 
-  const otherPersonName = isHost 
-    ? activeMeetingRoom.invitedMemberName || 'Team Telecallers' 
+  const otherPersonName = activeMeetingRoom.createdByRole === 'admin' && currentRole !== 'admin'
+    ? 'Super Admin (Executive Host)'
+    : isHost 
+    ? activeMeetingRoom.invitedMemberName || (activeMeetingRoom.targetTeam ? `${activeMeetingRoom.targetTeam} Squad` : 'Company Attendees') 
     : 'Ramesh Sharma (Team Leader)';
 
   const copyLink = () => {

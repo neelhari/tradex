@@ -23,7 +23,7 @@ router.post('/', (req: Request, res: Response) => {
       INSERT INTO payment_verifications (id, leadName, companyName, telecallerName, dealAmount, utrNumber, paymentMode, timestamp, status, receiptUrl)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      payId, leadName || 'Client', companyName || 'Company', telecallerName || 'Telecaller',
+      payId, leadName || 'Client', companyName || 'Company', telecallerName || 'Employee',
       dealAmount ? Number(dealAmount) : 0, utrNumber || `TXN${Math.floor(1000000000 + Math.random() * 9000000000)}`,
       paymentMode || 'Online Bank Transfer', timestamp || 'Just now',
       status || 'PENDING_HR_AUDIT', receiptUrl || null

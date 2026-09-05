@@ -21,6 +21,8 @@ router.get('/', (_req: Request, res: Response) => {
 
     return res.status(200).json({
       ...stats,
+      dialsToday: stats.dialsMade,
+      dailyTarget: roster?.goalCalls ?? stats.todayGoalCalls,
       todayGoalCalls: roster?.goalCalls ?? stats.todayGoalCalls,
       monthlySalesTarget: roster?.salesTarget ?? stats.monthlySalesTarget,
       monthlySalesAchieved: roster?.salesAchieved ?? stats.monthlySalesAchieved,
@@ -40,6 +42,13 @@ router.put('/', (req: Request, res: Response) => {
     }
 
     const merged = { ...current, ...data };
+    if (data.dialsToday !== undefined && data.dialsMade === undefined) {
+      merged.dialsMade = Number(data.dialsToday);
+    }
+    if (data.dailyTarget !== undefined && data.todayGoalCalls === undefined) {
+      merged.todayGoalCalls = Number(data.dailyTarget);
+    }
+
     db.prepare(`
       UPDATE telecaller_stats 
       SET todayGoalCalls = ?, dialsMade = ?, connected = ?, interested = ?, rejected = ?, 
@@ -50,8 +59,12 @@ router.put('/', (req: Request, res: Response) => {
       merged.averageCallDurationSec, merged.monthlySalesTarget, merged.monthlySalesAchieved, current.id
     );
 
-    const updated = db.prepare('SELECT * FROM telecaller_stats WHERE id = ?').get(current.id);
-    return res.status(200).json(updated);
+    const updated = db.prepare('SELECT * FROM telecaller_stats WHERE id = ?').get(current.id) as any;
+    return res.status(200).json({
+      ...updated,
+      dialsToday: updated.dialsMade,
+      dailyTarget: updated.todayGoalCalls
+    });
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });
   }

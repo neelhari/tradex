@@ -61,6 +61,8 @@ export const RESOURCE_FETCHERS = {
   faceProfiles: () => api.getBiometrics(),
   offerLetters: () => api.getOfferLetters(),
   paymentVerifications: () => api.getPayments(),
+  companyHolidays: () => api.getHolidays(),
+  calendarSettings: () => api.getCalendarSettings(),
 } as const;
 
 export type ResourceKey = keyof typeof RESOURCE_FETCHERS;
@@ -85,7 +87,7 @@ export const SCREEN_RESOURCES = {
   telecallerHome: ['profile', 'stats', 'clients', 'callLogs', 'assignedLeads'],
   dailyCalling: ['profile', 'callLogs', 'stats', 'clients', 'assignedLeads'],
   clientsPipeline: ['clients', 'assignedLeads'],
-  attendanceLeaves: ['profile', 'attendanceLogs', 'leaveRequests'],
+  attendanceLeaves: ['profile', 'attendanceLogs', 'leaveRequests', 'companyHolidays', 'calendarSettings'],
   profileSelfService: ['profile', 'payslips', 'offerLetters', 'teamTasks', 'teamMeetings'],
   modulesMenu: ['profile'],
 
@@ -98,6 +100,8 @@ export const SCREEN_RESOURCES = {
     'clients',
     'assignedLeads',
     'callLogs',
+    'companyHolidays',
+    'calendarSettings',
   ],
 
   hrDashboard: [
@@ -111,6 +115,8 @@ export const SCREEN_RESOURCES = {
     'payslips',
     'offerLetters',
     'faceProfiles',
+    'companyHolidays',
+    'calendarSettings',
   ],
 
   adminDashboard: [
@@ -122,6 +128,10 @@ export const SCREEN_RESOURCES = {
     'paymentVerifications',
     'attendanceLogs',
     'callLogs',
+    'leaveRequests',
+    'teamMeetings',
+    'companyHolidays',
+    'calendarSettings',
   ],
 } as const satisfies Record<string, readonly ResourceKey[]>;
 

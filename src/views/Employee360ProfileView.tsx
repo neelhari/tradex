@@ -9,9 +9,7 @@ import {
   Calendar, 
   TrendingUp, 
   Award, 
-  ShieldCheck, 
   Search, 
-  Download, 
   UserCheck, 
   AlertTriangle, 
   CheckCircle2, 
@@ -20,7 +18,6 @@ import {
   ChevronRight,
   Briefcase, 
   ArrowRightLeft,
-  DollarSign,
   Filter,
   Users,
   PhoneCall
@@ -48,7 +45,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
     leaveRequests,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'CALLING' | 'ATTENDANCE' | 'LEAVES' | 'COMPLIANCE'>('CALLING');
+  const [activeTab, setActiveTab] = useState<'CALLING' | 'ATTENDANCE' | 'LEAVES'>('CALLING');
   const [leaveCapsuleFilter, setLeaveCapsuleFilter] = useState<'ALL' | 'CASUAL' | 'SICK' | 'ABSENT'>('ALL');
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(0);
   const [reassigningLeadId, setReassigningLeadId] = useState<string | null>(null);
@@ -485,7 +482,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
   };
 
   // Clean role title without buzzwords
-  const cleanRole = member.role ? member.role.replace(/\/.*$/, '').trim() : 'Senior Telecaller';
+  const cleanRole = member.role ? member.role.replace(/\/.*$/, '').replace(/telecaller/gi, 'Sales Executive').trim() : 'Sales Executive';
   const faceProfile = faceProfiles.find(f => f.employeeName?.toLowerCase() === memberNameLower || f.employeeId === member.id);
 
   return (
@@ -494,38 +491,18 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
       {/* Attached Compact Profile Header (Edge-to-edge, no bulky floating outer card) */}
       <div className="bg-white border-b border-slate-200 px-3.5 py-2.5 shadow-2xs space-y-2 sticky top-0 z-30">
         
-        {/* Top utility row: Back button on left, Active Status & CSV on right */}
-        <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-1.5 text-xs font-black text-slate-700 hover:text-[#00A88B] transition-colors py-0.5 group"
-          >
-            <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-[#E6FAF6] transition-colors">
-              <ArrowLeft className="w-3.5 h-3.5 text-slate-600 group-hover:text-[#00A88B]" />
-            </div>
-            <span>Back</span>
-          </button>
-
-          <div className="flex items-center gap-1.5">
-            <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Active Shift
-            </span>
-
-            <button
-              onClick={handleExportCSV}
-              className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition-all inline-flex items-center gap-1 shadow-2xs"
-            >
-              <Download className="w-3 h-3 text-slate-500" />
-              <span>CSV</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Compact Employee Info Row */}
+        {/* Header Row: Back Button + Employee Info on left, Attendance Status on right (Matching 2nd image) */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs flex-shrink-0">
+            <button
+              onClick={onBack}
+              className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#00C9A7] text-slate-700 hover:text-[#0A2540] flex items-center justify-center transition-all active:scale-95 cursor-pointer flex-shrink-0 shadow-2xs"
+              title="Back"
+            >
+              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+            </button>
+
+            <div className="w-9 h-9 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-xs shadow-xs flex-shrink-0">
               {member.name.substring(0, 2).toUpperCase()}
             </div>
             
@@ -534,28 +511,31 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
                 <h2 className="font-display font-black text-sm text-[#0A2540] truncate">
                   {member.name}
                 </h2>
-                <span className={`px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider ${
-                  member.attendanceStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800' :
-                  member.attendanceStatus === 'LATE' ? 'bg-amber-100 text-amber-800' :
-                  'bg-rose-100 text-rose-800'
-                }`}>
-                  {member.attendanceStatus}
-                </span>
                 <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-mono font-bold">
                   {member.empCode}
                 </span>
               </div>
 
-              <p className="text-[11px] text-slate-500 font-medium truncate">
-                <span className="font-bold text-slate-700">{cleanRole}</span> • <span>{member.group || 'Alpha Team'}</span> • <span>TL: Ramesh Sharma</span>
+              <p className="text-[10px] text-slate-500 font-medium truncate">
+                <span className="font-bold text-slate-700">{cleanRole}</span> • <span>{member.group || 'HNI Closers'}</span> • <span>TL: Ramesh Sharma</span>
               </p>
             </div>
           </div>
+
+          {/* Attendance Status Pill on Right (matching 2nd image 4/4 Present style) */}
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${
+            member.attendanceStatus === 'PRESENT' ? 'bg-[#E6FAF6] text-[#00A88B] border border-[#00C9A7]/30' :
+            member.attendanceStatus === 'LATE' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+            'bg-purple-50 text-purple-800 border border-purple-200'
+          }`}>
+            {member.attendanceStatus === 'PRESENT' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00C9A7] mr-1 align-middle animate-pulse" />}
+            {member.attendanceStatus}
+          </span>
         </div>
 
-        {/* Sleek 4-Column Metric Strip (Replaces bulky 4 boxes to free up screen space for main calls content) */}
-        <div className="grid grid-cols-4 gap-1 text-center divide-x divide-slate-100 bg-slate-50/90 rounded-xl py-1.5 px-1 border border-slate-100">
-          <div className="px-0.5">
+        {/* Sleek 4-Column Metric Boxes */}
+        <div className="grid grid-cols-4 gap-1.5 text-center">
+          <div className="bg-slate-50/90 rounded-xl py-1 px-1 border border-slate-100">
             <strong className="text-xs font-display font-black text-[#0A2540] block leading-tight">
               {member.dialsToday} <span className="text-[9px] text-slate-400 font-normal">/{member.goalCalls || 100}</span>
             </strong>
@@ -564,7 +544,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
             </span>
           </div>
 
-          <div className="px-0.5">
+          <div className="bg-slate-50/90 rounded-xl py-1 px-1 border border-slate-100">
             <strong className="text-xs font-display font-black text-[#00A88B] block leading-tight">
               {formatInLakhs(member.salesAchieved)}
             </strong>
@@ -573,7 +553,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
             </span>
           </div>
 
-          <div className="px-0.5">
+          <div className="bg-slate-50/90 rounded-xl py-1 px-1 border border-slate-100">
             <strong className="text-xs font-display font-black text-purple-700 block leading-tight">
               {member.interested || 12}
             </strong>
@@ -582,7 +562,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
             </span>
           </div>
 
-          <div className="px-0.5">
+          <div className="bg-slate-50/90 rounded-xl py-1 px-1 border border-slate-100">
             <strong className={`text-xs font-display font-black block leading-tight ${onTimePercentage >= 85 ? 'text-emerald-600' : 'text-amber-600'}`}>
               {onTimePercentage}%
             </strong>
@@ -634,20 +614,6 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
           <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
           <span>Leaves</span>
         </button>
-
-        {(viewerRole === 'hr' || viewerRole === 'admin') && (
-          <button
-            onClick={() => setActiveTab('COMPLIANCE')}
-            className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center ${
-              activeTab === 'COMPLIANCE'
-                ? 'bg-[#0A2540] text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Audit</span>
-          </button>
-        )}
       </div>
 
       {/* TAB 1: DAILY CALLS & TARGETS */}
@@ -887,7 +853,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
                                     <Filter className="w-3.5 h-3.5 text-slate-400" />
-                                    <span>Filter by Telecaller Result:</span>
+                                    <span>Filter by Call Result:</span>
                                   </div>
                                   <div className="flex flex-wrap items-center gap-1.5">
                                     {[
@@ -1038,23 +1004,13 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
       {activeTab === 'ATTENDANCE' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           {/* Section Header */}
-          <div className="flex items-center justify-between px-1 pt-1 pb-0.5">
-            <div>
-              <h3 className="font-display font-black text-sm text-[#0A2540]">
-                Attendance &amp; Shift Logs
-              </h3>
-              <p className="text-[10px] text-slate-500">
-                Standard shift starts at 09:30 AM (9.0 Hours)
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-bold">
-              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                On-Time: {onTimeCount} Days
-              </span>
-              <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
-                Late: {lateCount} Days
-              </span>
-            </div>
+          <div className="px-1 pt-1 pb-0.5">
+            <h3 className="font-display font-black text-sm text-[#0A2540]">
+              Attendance &amp; Shift Logs
+            </h3>
+            <p className="text-[10px] text-slate-500">
+              Standard shift starts at 09:30 AM (9.0 Hours)
+            </p>
           </div>
 
           {/* MOBILE-ONLY VIEW (Screens < 768px): Clean Daily Shift Cards */}
@@ -1096,26 +1052,13 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
 
           {/* DESKTOP-ONLY ATTENDANCE TABLE (Screens >= 768px) */}
           <div className="hidden md:block bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-display font-black text-lg text-[#0A2540]">
-                  Daily Shift &amp; Attendance Log
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Standard shift starts at 09:30 AM • Required shift duration: 9.0 Hours
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-xl">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  On-Time: {onTimeCount} Days
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-xl">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  Late: {lateCount} Days
-                </span>
-              </div>
+            <div className="border-b border-slate-100 pb-3">
+              <h3 className="font-display font-black text-lg text-[#0A2540]">
+                Daily Shift &amp; Attendance Log
+              </h3>
+              <p className="text-xs text-slate-500">
+                Standard shift starts at 09:30 AM • Required shift duration: 9.0 Hours
+              </p>
             </div>
 
             <div className="overflow-x-auto">
@@ -1499,71 +1442,6 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
             </div>
           )}
 
-        </div>
-      )}
-
-      {/* TAB 3: COMPLIANCE / HR & ADMIN AUDIT */}
-      {activeTab === 'COMPLIANCE' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* HR Payroll & Onboarding Info */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-              <h3 className="font-display font-black text-lg text-[#0A2540] flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-emerald-600" />
-                <span>HR & Payroll Details</span>
-              </h3>
-
-              <div className="space-y-3 text-xs">
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Employment Status</span>
-                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Permanent Staff</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Monthly Compensation Package</span>
-                  <span className="font-bold font-mono text-[#0A2540]">₹35,000 / month + Incentives</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Total Leaves Balance</span>
-                  <span className="font-bold text-[#0A2540]">14 Days Available (Casual + Sick)</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Relieving / Offer Document</span>
-                  <span className="font-bold text-sky-700">✓ Signed Offer Letter on File</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Admin Biometric Compliance */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-              <h3 className="font-display font-black text-lg text-[#0A2540] flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#00C9A7]" />
-                <span>Security & Biometric Verification</span>
-              </h3>
-
-              <div className="space-y-3 text-xs">
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Face Biometric Registration</span>
-                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                    {faceProfile ? '✓ Registered Face ID' : '✓ Verified System Match'}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Geofence Compliance</span>
-                  <span className="font-bold text-emerald-700">Within Office Radius (&lt;50m)</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Device Login Restrictions</span>
-                  <span className="font-bold text-slate-700">Office IP & Authorized Mac Address</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Audit Status</span>
-                  <span className="font-bold text-emerald-700">Zero Compliance Flags</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
         </div>
       )}
 

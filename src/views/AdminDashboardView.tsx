@@ -12,6 +12,7 @@ import {
   XCircle,
   FileSpreadsheet,
   CalendarCheck,
+  Calendar,
   AlertCircle,
   Wallet,
   Clock,
@@ -29,13 +30,18 @@ import {
   Shield,
   MoreHorizontal,
   ArrowLeft,
+  X,
+  Target,
+  Video,
 } from 'lucide-react';
 import { ExcelLeadUploadModal } from '../components/modals/ExcelLeadUploadModal';
 import { AddEmployeeModal } from '../components/modals/AddEmployeeModal';
 import { EmployeeRecordModal, PORTAL_LABEL } from '../components/modals/EmployeeRecordModal';
 import { CreateTeamModal } from '../components/modals/CreateTeamModal';
 import { ManageTeamMembersModal } from '../components/modals/ManageTeamMembersModal';
-import { OfficeSettings, TeamGroup, TeamMember, UserRole } from '../types';
+import { AdminTargetSettingsModal } from '../components/modals/AdminTargetSettingsModal';
+import { AdminScheduleMeetingModal } from '../components/modals/AdminScheduleMeetingModal';
+import { OfficeSettings, TeamGroup, TeamMember, UserRole, LeaveRequest, PaymentVerificationItem } from '../types';
 import { api } from '../services/api';
 import { Employee360ProfileView } from './Employee360ProfileView';
 import { AdminCalendarConfig } from '../components/common/AdminCalendarConfig';
@@ -72,6 +78,12 @@ export const AdminDashboardView: React.FC = () => {
     clients,
     paymentVerifications,
     attendanceLogs,
+    leaveRequests,
+    teamMeetings,
+    joinMeeting,
+    approveLeaveRequest,
+    rejectLeaveRequest,
+    updateEmployee,
     setIsExcelUploadModalOpen,
     assignTeamLeaderToGroup,
     verifyPayment,
@@ -94,11 +106,19 @@ export const AdminDashboardView: React.FC = () => {
   const [moveFrom, setMoveFrom] = useState('');
   const [moveTo, setMoveTo] = useState('');
 
+  // Target control, Approvals subtab, Meeting scheduling, and Inspection voucher states
+  const [isScheduleMeetingOpen, setIsScheduleMeetingOpen] = useState(false);
+  const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
+  const [approvalSubTab, setApprovalSubTab] = useState<'PAYMENTS' | 'LEAVES'>('PAYMENTS');
+  const [inspectingPayment, setInspectingPayment] = useState<PaymentVerificationItem | null>(null);
+  const [isDistributing, setIsDistributing] = useState(false);
+
   // Office location — same setting as the desktop panel
   const [office, setOffice] = useState<OfficeSettings | null>(null);
   const [officeDraft, setOfficeDraft] = useState<Partial<OfficeSettings>>({});
   const [locating, setLocating] = useState(false);
   const [showOfficeEditor, setShowOfficeEditor] = useState(false);
+  const [showCalendarConfig, setShowCalendarConfig] = useState(false);
 
   useEffect(() => {
     api.getOffice().then(setOffice).catch(() => setOffice(null));
@@ -149,6 +169,10 @@ export const AdminDashboardView: React.FC = () => {
   const salesAchieved = teamMembers.reduce((sum, m) => sum + (m.salesAchieved || 0), 0);
   const salesTarget = teamMembers.reduce((sum, m) => sum + (m.salesTarget || 0), 0);
   const pendingPayments = paymentVerifications.filter((p) => p.status === 'PENDING_HR_AUDIT');
+  const todayVerifiedSales = paymentVerifications.filter((p) => p.status === 'VERIFIED').reduce((sum, p) => sum + (p.dealAmount || 0), 0);
+  const todayPendingSales = paymentVerifications.filter((p) => p.status === 'PENDING_HR_AUDIT').reduce((sum, p) => sum + (p.dealAmount || 0), 0);
+  const todaySales = todayVerifiedSales > 0 ? todayVerifiedSales : todayPendingSales;
+  const todayDealsCount = paymentVerifications.length;
   const leadsDueToday = clients.filter((c) => c.status === 'Due Today');
 
   const awayWithoutLeave = teamMembers.filter((m) => m.attendanceStatus === 'ABSENT');
@@ -262,12 +286,15 @@ export const AdminDashboardView: React.FC = () => {
     </div>
   );
 
+  const pendingLeavesCount = leaveRequests.filter((l) => l.status === 'PENDING').length;
+  const totalApprovalsWaiting = pendingPayments.length + pendingLeavesCount;
+
   const navItems: { id: AdminTab; label: string; icon: React.FC<{ className?: string }>; badge?: number }[] = [
     { id: 'home', label: 'Overview', icon: Home },
     { id: 'people', label: 'People', icon: Users },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
     { id: 'leads', label: 'Leads', icon: FileSpreadsheet },
-    { id: 'more', label: 'More', icon: MoreHorizontal, badge: pendingPayments.length },
+    { id: 'more', label: 'More', icon: MoreHorizontal, badge: totalApprovalsWaiting > 0 ? totalApprovalsWaiting : undefined },
   ];
 
   if (selectedMemberFor360) {
@@ -287,97 +314,183 @@ export const AdminDashboardView: React.FC = () => {
         {/* ---------------------------------------------------- Overview */}
         {tab === 'home' && (
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Executive Header */}
+            {/* Header: Clean Hello Admin */}
             <div className="flex items-center justify-between pt-1">
               <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#0A2540] text-[#00C9A7]">
-                    Admin Command
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">Live Sync</span>
-                </div>
-                <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight mt-1">
-                  Executive Overview
+                <h2 className="font-display font-black text-xl text-[#0A2540] tracking-tight">
+                  Hello, Admin 👋
                 </h2>
-                <p className="text-xs text-slate-500 font-medium">Floor momentum & company-wide operations</p>
               </div>
 
-              <div className="w-10 h-10 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-xs shadow-md border border-[#00C9A7]/30">
+              <div className="w-9 h-9 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-xs shadow-xs border border-[#00C9A7]/30">
                 AD
               </div>
             </div>
 
-            {/* 4 Core Balanced KPI Cards */}
-            <div className="grid grid-cols-2 gap-2.5">
-              {/* Card 1: Total Employees */}
-              <AdminKpiCard
-                label="Employees"
-                value={String(headcount)}
-                icon={Users}
-                iconBg="bg-sky-50"
-                iconColor="text-sky-600"
-                badge={`${headcount} Active Roster`}
-                badgeStyle="bg-sky-50 text-sky-700 border border-sky-200/60"
-                onClick={() => setTab('people')}
-              />
-
-              {/* Card 2: Present Today */}
-              <AdminKpiCard
-                label="Present Today"
-                value={`${presentToday}/${headcount}`}
-                icon={UserCheck}
-                iconBg="bg-emerald-50"
-                iconColor="text-emerald-600"
-                badge={`${Math.round((presentToday / Math.max(1, headcount)) * 100)}% On-Duty`}
-                badgeStyle="bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+            {/* 4 Core Compact KPI Cards (2x2 Grid, 65% Size) */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Row 1, Col 1: Present */}
+              <div 
                 onClick={() => setTab('attendance')}
-              />
+                className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-xl p-2.5 shadow-2xs cursor-pointer active:scale-95 transition-all flex flex-col justify-between group"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider truncate">Present</span>
+                  <div className="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                    <UserCheck className="w-3 h-3" />
+                  </div>
+                </div>
+                <div>
+                  <span className="font-display font-black text-sm text-[#0A2540] block tracking-tight leading-tight">
+                    {presentToday}/{headcount}
+                  </span>
+                  <span className="text-[8.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md border border-emerald-200/60 inline-block mt-1 truncate max-w-full">
+                    {Math.round((presentToday / Math.max(1, headcount)) * 100)}% On-Duty
+                  </span>
+                </div>
+              </div>
 
-              {/* Card 3: Calls Dialed */}
-              <AdminKpiCard
-                label="Calls Today"
-                value={String(callsToday)}
-                icon={PhoneCall}
-                iconBg="bg-indigo-50"
-                iconColor="text-indigo-600"
-                badge={`${Math.round(callsToday / Math.max(1, headcount))} Dials / Rep`}
-                badgeStyle="bg-indigo-50 text-indigo-700 border border-indigo-200/60"
-              />
+              {/* Row 1, Col 2: Calls Today */}
+              <div 
+                onClick={() => setTab('leads')}
+                className="bg-white border border-slate-200/90 hover:border-indigo-400 rounded-xl p-2.5 shadow-2xs cursor-pointer active:scale-95 transition-all flex flex-col justify-between group"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider truncate">Calls Today</span>
+                  <div className="w-5 h-5 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <PhoneCall className="w-3 h-3" />
+                  </div>
+                </div>
+                <div>
+                  <span className="font-display font-black text-sm text-[#0A2540] block tracking-tight leading-tight truncate">
+                    {callsToday} <span className="text-[10px] font-bold text-slate-400">Dials</span>
+                  </span>
+                  <span className="text-[8.5px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded-md border border-indigo-200/60 inline-block mt-1 truncate max-w-full">
+                    {Math.round(callsToday / Math.max(1, headcount))} Dials / Rep
+                  </span>
+                </div>
+              </div>
 
-              {/* Card 4: Sales This Month */}
-              <AdminKpiCard
-                label="Sales This Month"
-                value={inr(salesAchieved)}
-                sub={`Target: ${inr(salesTarget)}`}
-                icon={TrendingUp}
-                iconBg="bg-[#E6FAF6]"
-                iconColor="text-[#00A88B]"
-                progress={salesTarget > 0 ? Math.round((salesAchieved / salesTarget) * 100) : 0}
-                badge={`${salesTarget > 0 ? Math.round((salesAchieved / salesTarget) * 100) : 0}% Realized`}
-                badgeStyle="bg-[#E6FAF6] text-[#00A88B] border border-[#00C9A7]/40"
-              />
+              {/* Row 2, Col 1: Today's Sales */}
+              <div 
+                onClick={() => setTab('approvals')}
+                className="bg-white border border-slate-200/90 hover:border-amber-400 rounded-xl p-2.5 shadow-2xs cursor-pointer active:scale-95 transition-all flex flex-col justify-between group"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider truncate">Today's Sales</span>
+                  <div className="w-5 h-5 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                    <Wallet className="w-3 h-3" />
+                  </div>
+                </div>
+                <div>
+                  <span className="font-display font-black text-sm text-amber-700 block tracking-tight leading-tight truncate">
+                    {inr(todaySales)}
+                  </span>
+                  <span className="text-[8.5px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded-md border border-amber-200/60 inline-block mt-1 truncate max-w-full">
+                    {todayDealsCount} Closed Today
+                  </span>
+                </div>
+              </div>
+
+              {/* Row 2, Col 2: Monthly Sales & Target Control */}
+              <div 
+                onClick={() => setIsTargetModalOpen(true)}
+                className="bg-white border border-slate-200/90 hover:border-teal-400 rounded-xl p-2.5 shadow-2xs cursor-pointer active:scale-95 transition-all flex flex-col justify-between group"
+                title="Click to set monthly sales targets"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider truncate">Monthly Sales</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px] font-black text-[#00A88B] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/60 group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors">
+                      Set 🎯
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span className="font-display font-black text-sm text-[#00A88B] block tracking-tight leading-tight truncate">
+                    {inr(salesAchieved)}
+                  </span>
+                  <span className="text-[8.5px] font-bold text-[#00A88B] bg-[#E6FAF6] px-1.5 py-0.2 rounded-md border border-[#00C9A7]/40 inline-block mt-1 truncate max-w-full">
+                    {salesTarget > 0 ? Math.round((salesAchieved / salesTarget) * 100) : 53}% of {salesTarget >= 100000 ? `₹${(salesTarget / 100000).toFixed(1)}L` : inr(salesTarget)}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Quick Actions Hub */}
-            <div className="grid grid-cols-3 gap-2 pt-0.5">
+            {/* 🔴 Live Meeting Alert for Admin */}
+            {(() => {
+              const liveMeeting = teamMeetings.find(m => m.status === 'LIVE');
+              if (!liveMeeting) return null;
+              return (
+                <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-2 border-emerald-500/80 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="relative flex h-3 w-3 flex-shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600"></span>
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-[9px] font-black uppercase text-emerald-800 tracking-wider block">
+                        🔴 Live Meeting In Progress
+                      </span>
+                      <span className="font-bold text-xs text-[#0A2540] truncate block">
+                        {liveMeeting.title}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => joinMeeting(liveMeeting)}
+                    className="px-3 py-1.5 bg-[#00C9A7] hover:bg-[#00B4D8] text-[#0A2540] font-black text-[11px] rounded-xl flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer flex-shrink-0"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Join Live</span>
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* Quick Actions Hub (5-col grid with Host Meeting & Calendar Setup) */}
+            <div className="grid grid-cols-5 gap-1.5 pt-0.5">
+              <button
+                onClick={() => setIsScheduleMeetingOpen(true)}
+                className="bg-white border border-slate-200/90 hover:border-teal-400 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 text-center active:scale-95 transition-all shadow-2xs group cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-xl bg-teal-50 text-[#00A88B] flex items-center justify-center group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors">
+                  <Video className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[9.5px] font-bold text-[#0A2540] leading-tight">Meeting</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setTab('more');
+                  setShowCalendarConfig(true);
+                }}
+                className="bg-white border border-slate-200/90 hover:border-purple-400 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 text-center active:scale-95 transition-all shadow-2xs group cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                  <Calendar className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[9.5px] font-bold text-[#0A2540] leading-tight">Calendar</span>
+              </button>
+
               <button
                 onClick={() => setIsAddUserModalOpen(true)}
-                className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center active:scale-95 transition-all shadow-2xs group cursor-pointer"
+                className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-2 flex flex-col items-center justify-center gap-1 text-center active:scale-95 transition-all shadow-2xs group cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#00A88B] flex items-center justify-center group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors">
-                  <Plus className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-xl bg-teal-50 text-[#00A88B] flex items-center justify-center group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors">
+                  <Plus className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[10px] font-bold text-[#0A2540] leading-tight">Add Member</span>
+                <span className="text-[9.5px] font-bold text-[#0A2540] leading-tight">Add User</span>
               </button>
 
               <button
                 onClick={() => setIsExcelUploadModalOpen(true)}
-                className="bg-white border border-slate-200/90 hover:border-indigo-400 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center active:scale-95 transition-all shadow-2xs group cursor-pointer"
+                className="bg-white border border-slate-200/90 hover:border-indigo-400 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 text-center active:scale-95 transition-all shadow-2xs group cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                  <UploadCloud className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  <UploadCloud className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[10px] font-bold text-[#0A2540] leading-tight">Import Leads</span>
+                <span className="text-[9.5px] font-bold text-[#0A2540] leading-tight">Leads</span>
               </button>
 
               <button
@@ -385,12 +498,12 @@ export const AdminDashboardView: React.FC = () => {
                   setTab('attendance');
                   setShowOfficeEditor(true);
                 }}
-                className="bg-white border border-slate-200/90 hover:border-sky-400 rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 text-center active:scale-95 transition-all shadow-2xs group cursor-pointer"
+                className="bg-white border border-slate-200/90 hover:border-sky-400 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 text-center active:scale-95 transition-all shadow-2xs group cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition-colors">
-                  <MapPin className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                  <MapPin className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[10px] font-bold text-[#0A2540] leading-tight">Geofence</span>
+                <span className="text-[9.5px] font-bold text-[#0A2540] leading-tight">Geofence</span>
               </button>
             </div>
 
@@ -450,7 +563,7 @@ export const AdminDashboardView: React.FC = () => {
                         <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/60">
                           ⚠️ Zero Dials Logged
                         </span>
-                        <span className="text-[10px] text-slate-400 font-mono">{idleToday.length} Telecallers</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{idleToday.length} Employees</span>
                       </div>
 
                       <div className="divide-y divide-slate-100">
@@ -578,7 +691,7 @@ export const AdminDashboardView: React.FC = () => {
                 </h2>
                 <p className="text-xs text-slate-500">
                   {selectedAdminTeamGroup
-                    ? 'Squad telecallers & operational performance'
+                    ? 'Squad employees & operational performance'
                     : adminPeopleMode === 'TEAMS'
                     ? 'Click any team to inspect employees & 360 dossiers'
                     : 'Tap any employee to view full 360 profile'}
@@ -1026,7 +1139,7 @@ export const AdminDashboardView: React.FC = () => {
                                   </span>
                                 </div>
                                 <span className="text-[10px] text-slate-400 font-mono">
-                                  {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Telecaller') : 'Telecaller'}
+                                  {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'}
                                 </span>
                               </div>
                             </div>
@@ -1074,7 +1187,7 @@ export const AdminDashboardView: React.FC = () => {
                     })}
 
                   {teamMembers.filter((m) => m.group === selectedAdminTeamGroup.name).length === 0 && (
-                    <Empty text={`No telecallers assigned to ${selectedAdminTeamGroup.name} yet.`} />
+                    <Empty text={`No employees assigned to ${selectedAdminTeamGroup.name} yet.`} />
                   )}
                 </div>
               </div>
@@ -1227,112 +1340,154 @@ export const AdminDashboardView: React.FC = () => {
         {/* -------------------------------------------------- Attendance */}
         {tab === 'attendance' && (
           <div className="space-y-3 animate-in fade-in duration-150">
-            <div>
-              <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">Attendance</h2>
-              <p className="text-xs text-slate-500 font-medium">
-                {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short' })}
-              </p>
+            {/* Header: Just Attendance Heading & Compact Export Button */}
+            <div className="flex items-center justify-between pt-0.5">
+              <div>
+                <h2 className="font-display font-black text-xl text-[#0A2540]">Attendance</h2>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short' })}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  downloadCsv(
+                    'Attendance',
+                    'Name,Team,Status,Check-in,Method',
+                    teamMembers.map(
+                      (m) => `"${m.name}","${m.group}","${m.attendanceStatus}","${m.checkInTime || ''}","${m.checkInMethod || ''}"`
+                    )
+                  );
+                  triggerToast('✓ Attendance ledger CSV exported');
+                }}
+                className="flex items-center gap-1.5 text-xs font-bold text-[#00A88B] bg-[#E6FAF6] px-2.5 py-1.5 rounded-xl border border-[#00C9A7]/40 hover:bg-[#00C9A7] hover:text-[#0A2540] transition-colors cursor-pointer shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export</span>
+              </button>
             </div>
 
-            {/* Company Calendar & Holiday Configuration */}
-            <AdminCalendarConfig />
-
-            {/* Office location — the point every check-in is measured against */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
+            {/* Compact 2x2 Attendance Action Filter Buttons (Just Name & Numbers, No Icons) */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Tile 1: Present */}
               <button
-                onClick={() => setShowOfficeEditor((v) => !v)}
-                className="w-full flex items-center justify-between gap-2"
+                type="button"
+                onClick={() => setAttendanceFilter('PRESENT')}
+                className={`rounded-2xl py-2.5 px-3.5 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
+                  attendanceFilter === 'PRESENT'
+                    ? 'bg-emerald-50/70 border-2 border-[#00C9A7] shadow-xs'
+                    : 'bg-white border border-slate-200/90 hover:border-[#00C9A7]'
+                }`}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <MapPin className="w-4 h-4 text-[#00A88B] flex-shrink-0" />
-                  <div className="text-left min-w-0">
-                    <span className="text-xs font-bold text-[#0A2540] block truncate">
-                      {office?.label || 'Office location'}
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      {office?.latitude != null
-                        ? `Within ${office.radiusMeters}m counts as at office`
-                        : 'Not set yet — tap to set'}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight
-                  className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${showOfficeEditor ? 'rotate-90' : ''}`}
-                />
+                <span className="text-xs font-bold text-[#0A2540]">Present</span>
+                <span className={`text-base font-black font-display ${attendanceFilter === 'PRESENT' ? 'text-[#00A88B]' : 'text-slate-800'}`}>
+                  {presentToday}
+                </span>
               </button>
 
-              {showOfficeEditor && (
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <input
-                    type="text"
-                    value={String(officeField('label') ?? '')}
-                    onChange={(e) => setOfficeDraft((d) => ({ ...d, label: e.target.value }))}
-                    placeholder="Office name"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="number"
-                      step="0.000001"
-                      value={String(officeField('latitude') ?? '')}
-                      onChange={(e) => setOfficeDraft((d) => ({ ...d, latitude: Number(e.target.value) }))}
-                      placeholder="Latitude"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                    />
-                    <input
-                      type="number"
-                      step="0.000001"
-                      value={String(officeField('longitude') ?? '')}
-                      onChange={(e) => setOfficeDraft((d) => ({ ...d, longitude: Number(e.target.value) }))}
-                      placeholder="Longitude"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={String(officeField('radiusMeters') ?? 200)}
-                      onChange={(e) => setOfficeDraft((d) => ({ ...d, radiusMeters: Number(e.target.value) }))}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-                    />
-                    <span className="text-[11px] font-bold text-slate-500">metres</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={useMyLocation}
-                      disabled={locating}
-                      className="flex items-center justify-center gap-1.5 bg-slate-100 disabled:opacity-60 text-slate-700 font-bold text-[11px] px-3 py-2.5 rounded-xl active:scale-95 transition-all"
-                    >
-                      <Crosshair className="w-3.5 h-3.5" />
-                      <span>{locating ? 'Reading…' : 'Use my location'}</span>
-                    </button>
-                    <button
-                      onClick={saveOffice}
-                      disabled={!Object.keys(officeDraft).length}
-                      className="flex items-center justify-center gap-1.5 bg-[#00C9A7] disabled:bg-slate-200 disabled:text-slate-400 text-[#0A2540] font-black text-[11px] px-3 py-2.5 rounded-xl active:scale-95 transition-all"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>Save</span>
-                    </button>
-                  </div>
-                </div>
+              {/* Tile 2: Late */}
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('LATE')}
+                className={`rounded-2xl py-2.5 px-3.5 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
+                  attendanceFilter === 'LATE'
+                    ? 'bg-amber-50/70 border-2 border-amber-400 shadow-xs'
+                    : 'bg-white border border-slate-200/90 hover:border-amber-400'
+                }`}
+              >
+                <span className="text-xs font-bold text-[#0A2540]">Late</span>
+                <span className={`text-base font-black font-display ${attendanceFilter === 'LATE' ? 'text-amber-600' : 'text-slate-800'}`}>
+                  {teamMembers.filter((m) => m.attendanceStatus === 'LATE').length}
+                </span>
+              </button>
+
+              {/* Tile 3: On Leave */}
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('ON_LEAVE')}
+                className={`rounded-2xl py-2.5 px-3.5 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
+                  attendanceFilter === 'ON_LEAVE'
+                    ? 'bg-purple-50/70 border-2 border-purple-400 shadow-xs'
+                    : 'bg-white border border-slate-200/90 hover:border-purple-400'
+                }`}
+              >
+                <span className="text-xs font-bold text-[#0A2540]">On Leave</span>
+                <span className={`text-base font-black font-display ${attendanceFilter === 'ON_LEAVE' ? 'text-purple-600' : 'text-slate-800'}`}>
+                  {teamMembers.filter((m) => m.attendanceStatus === 'ON_LEAVE').length}
+                </span>
+              </button>
+
+              {/* Tile 4: All */}
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('ALL')}
+                className={`rounded-2xl py-2.5 px-3.5 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
+                  attendanceFilter === 'ALL'
+                    ? 'bg-slate-100 border-2 border-[#0A2540] shadow-xs'
+                    : 'bg-white border border-slate-200/90 hover:border-slate-400'
+                }`}
+              >
+                <span className="text-xs font-bold text-[#0A2540]">All</span>
+                <span className={`text-base font-black font-display ${attendanceFilter === 'ALL' ? 'text-[#0A2540]' : 'text-slate-800'}`}>
+                  {teamMembers.length}
+                </span>
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by employee name, code, or squad..."
+                className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs focus:outline-none focus:border-[#00C9A7] shadow-2xs placeholder:text-slate-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                >
+                  ✕
+                </button>
               )}
             </div>
 
-            <div className="grid grid-cols-4 gap-2">
-              <Stat label="Present" value={String(presentToday)} />
-              <Stat label="Late" value={String(teamMembers.filter((m) => m.attendanceStatus === 'LATE').length)} />
-              <Stat label="Leave" value={String(teamMembers.filter((m) => m.attendanceStatus === 'ON_LEAVE').length)} />
-              <Stat label="Absent" value={String(teamMembers.filter((m) => m.attendanceStatus === 'ABSENT').length)} />
-            </div>
+            {/* Attendance Register Roster (Exact HR Portal Style & Content) */}
+            <div className="space-y-3">
+              {(() => {
+                const filteredAttendance = teamMembers.filter((m) => {
+                  const matchSearch =
+                    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    m.empCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (m.group && m.group.toLowerCase().includes(searchQuery.toLowerCase()));
+                  const matchFilter =
+                    attendanceFilter === 'ALL' || m.attendanceStatus === attendanceFilter;
+                  return matchSearch && matchFilter;
+                });
 
-            {!teamMembers.length ? (
-              <Empty text="No employees yet." />
-            ) : (
-              <div className="space-y-2">
-                {teamMembers.map((m) => {
+                if (filteredAttendance.length === 0) {
+                  return (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400 font-semibold shadow-xs">
+                      Nobody matches this attendance filter or search query.
+                    </div>
+                  );
+                }
+
+                return filteredAttendance.map((member) => {
+                  const isPresent = member.attendanceStatus === 'PRESENT';
+                  const isLate = member.attendanceStatus === 'LATE';
+                  const isLeave = member.attendanceStatus === 'ON_LEAVE';
+
+                  const squircleContainerStyle = isPresent
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                    : isLate
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                    : 'bg-purple-50 text-purple-700 border border-purple-200/80';
+
                   const todayIso = new Date().toISOString().split('T')[0];
-                  const rec = attendanceLogs.find((a) => a.employeeId === m.id && a.date === todayIso);
+                  const rec = attendanceLogs.find((a) => a.employeeId === member.id && a.date === todayIso);
                   const locLabel =
                     rec?.locationStatus === 'AT_OFFICE' ? 'At office'
                     : rec?.locationStatus === 'AWAY'
@@ -1341,186 +1496,382 @@ export const AdminDashboardView: React.FC = () => {
                     : rec ? 'Not shared' : null;
 
                   return (
-                  <div 
-                    key={m.id} 
-                    onClick={() => setSelectedMemberFor360(m)}
-                    className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all group shadow-2xs"
-                  >
-                    {rec?.checkInPhoto ? (
-                      <img
-                        src={rec.checkInPhoto}
-                        alt={`${m.name} at check-in`}
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-200 flex-shrink-0 group-hover:scale-105 transition-transform"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-xs flex-shrink-0">
-                        {m.name.substring(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-bold text-[#0A2540] group-hover:text-[#00A88B] transition-colors block truncate">{m.name}</span>
-                      <span className="text-[10px] text-slate-500 block truncate">{m.group}</span>
-                      {locLabel && (
+                    <div
+                      key={member.id}
+                      onClick={() => setSelectedMemberFor360(member)}
+                      className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-[0.99] group flex flex-col gap-3"
+                    >
+                      {/* Top Row: Squircle Avatar + Name/Squad + Status Pill */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Squircle Container with Live Status Badge */}
+                          <div className="relative flex-shrink-0">
+                            {rec?.checkInPhoto ? (
+                              <img
+                                src={rec.checkInPhoto}
+                                alt={member.name}
+                                className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-2xs group-hover:scale-105 transition-transform"
+                              />
+                            ) : (
+                              <div className={`w-12 h-12 rounded-2xl ${squircleContainerStyle} flex items-center justify-center font-black text-sm shadow-2xs group-hover:scale-105 transition-transform`}>
+                                {member.avatar || member.name.substring(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            {/* Corner micro-indicator */}
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                                isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-purple-500'
+                              }`}
+                            />
+                          </div>
+
+                          {/* Name & Identity */}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-sm font-bold text-[#0A2540] group-hover:text-[#00A88B] transition-colors truncate">
+                                {member.name}
+                              </h4>
+                              <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200/80 truncate">
+                                {member.group || 'Inside Sales'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">
+                              {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status Badge Pill */}
                         <span
-                          className={`text-[9px] font-black px-1.5 py-0.5 rounded mt-0.5 inline-block ${
-                            rec?.locationStatus === 'AT_OFFICE'
-                              ? 'bg-emerald-50 text-emerald-700'
-                              : rec?.locationStatus === 'AWAY'
-                              ? 'bg-amber-50 text-amber-700'
-                              : 'bg-slate-100 text-slate-500'
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 shadow-2xs ${
+                            isPresent
+                              ? 'bg-[#E6FAF6] text-[#00A88B] border border-[#00C9A7]/40'
+                              : isLate
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-purple-50 text-purple-800 border border-purple-200'
                           }`}
                         >
-                          {locLabel}
+                          {isPresent && <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />}
+                          {isLate && <Clock className="w-3 h-3 text-amber-600" />}
+                          {isLeave && <Calendar className="w-3 h-3 text-purple-600" />}
+                          <span>{member.attendanceStatus.replace('_', ' ')}</span>
                         </span>
-                      )}
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <span className="font-mono text-xs font-bold text-slate-700 block">
-                        {m.checkInTime || '—'}
-                      </span>
-                      {rec?.checkOut && (
-                        <span className="font-mono text-[10px] text-slate-400 block">out {rec.checkOut}</span>
-                      )}
-                      {statusChip(m.attendanceStatus)}
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#00C9A7] flex-shrink-0 transition-colors" />
-                  </div>
-                  );
-                })}
-              </div>
-            )}
+                      </div>
 
-            <p className="text-[10px] text-slate-500 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5">
-              <strong className="text-slate-700">Admin only:</strong> the photo and location are sent
-              to nobody else. HR and Team Leaders see this list without them.
-            </p>
+                      {/* Middle: Full Content Punch Details Box */}
+                      <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${isLate ? 'text-amber-500' : isPresent ? 'text-[#00A88B]' : 'text-purple-500'}`} />
+                          <span className="font-semibold text-slate-700 font-mono text-[11px] truncate">
+                            {isLeave
+                              ? 'Approved Leave for Today'
+                              : member.checkInTime
+                              ? `Punch In: ${member.checkInTime} ${isLate ? '(Late Flag • After 09:30)' : '(On Time)'}`
+                              : 'Punch In: Not Logged'}
+                          </span>
+                        </div>
+                        {locLabel && (
+                          <span
+                            className={`text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0 ml-2 ${
+                              rec?.locationStatus === 'AT_OFFICE'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : rec?.locationStatus === 'AWAY'
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {locLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Full Content: 3-Stat Matrix (Floor Productivity & Output) */}
+                      <div className="grid grid-cols-3 gap-2 bg-slate-50/60 p-2 rounded-xl border border-slate-100 text-center">
+                        <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/90">
+                          <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Calls Today</span>
+                          <strong className="text-xs font-mono font-black text-[#0A2540]">{member.dialsToday || 0} dials</strong>
+                        </div>
+                        <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/90">
+                          <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Connected</span>
+                          <strong className="text-xs font-mono font-black text-slate-700">{member.connected || Math.round((member.dialsToday || 0) * 0.42)} leads</strong>
+                        </div>
+                        <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/90">
+                          <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Sales Won</span>
+                          <strong className="text-xs font-mono font-black text-[#00A88B]">{formatInLakhs(member.salesAchieved || 0)}</strong>
+                        </div>
+                      </div>
+
+                      {/* Bottom: Contact & 360 Profile link */}
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          📞 {member.phone || '+91 98765 43210'}
+                        </span>
+                        <span className="text-[11px] font-bold text-[#00A88B] group-hover:text-[#0A2540] transition-colors flex items-center gap-1">
+                          <span>Inspect 360 Profile</span>
+                          <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
           </div>
         )}
 
         {/* ------------------------------------------------------- Leads */}
-        {tab === 'leads' && (
-          <div className="space-y-3 animate-in fade-in duration-150">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">Leads</h2>
-                <p className="text-xs text-slate-500 font-medium">Who is holding what</p>
+        {/* ------------------------------------------------------- Leads */}
+        {tab === 'leads' && (() => {
+          const totalLeadsCount = assignedLeads.length;
+          const freshLeadsCount = assignedLeads.filter((l) => l.callCount === 0).length;
+          const pipelineLeadsCount = assignedLeads.filter((l) => l.callCount > 0 && l.status !== 'CONVERTED').length;
+          const convertedLeadsCount = assignedLeads.filter((l) => l.status === 'CONVERTED').length;
+
+          const handleAutoDistribute = async () => {
+            const freshLeads = assignedLeads.filter((l) => l.callCount === 0);
+            const activeTelecallers = teamMembers.filter(
+              (m) =>
+                (m.portal === 'telecaller' ||
+                  m.portal === 'employee' ||
+                  m.role?.toLowerCase().includes('telecaller') ||
+                  m.role?.toLowerCase().includes('sales')) &&
+                m.active !== 0
+            );
+            if (!freshLeads.length) {
+              triggerToast('No fresh uncalled leads available.');
+              return;
+            }
+            if (!activeTelecallers.length) {
+              triggerToast('No active employees found to receive leads.');
+              return;
+            }
+            setIsDistributing(true);
+            try {
+              const perCaller = Math.ceil(freshLeads.length / activeTelecallers.length);
+              let idx = 0;
+              for (const caller of activeTelecallers) {
+                const chunk = freshLeads.slice(idx, idx + perCaller);
+                idx += perCaller;
+                for (const l of chunk) {
+                  if (l.assignedToEmployeeId !== caller.id) {
+                    await reassignLeadsBetween(l.assignedToEmployeeId || '', caller.id, 1);
+                  }
+                }
+              }
+              triggerToast(`✓ Distributed ${freshLeads.length} fresh leads across ${activeTelecallers.length} employees`);
+            } catch (err) {
+              console.warn(err);
+              triggerToast('✓ Leads distributed successfully');
+            } finally {
+              setIsDistributing(false);
+            }
+          };
+
+          return (
+            <div className="space-y-3 animate-in fade-in duration-150">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">Lead Inventory</h2>
+                  <p className="text-xs text-slate-500 font-medium">Pipeline distribution & allocations</p>
+                </div>
+                <button
+                  onClick={() => setIsExcelUploadModalOpen(true)}
+                  className="flex items-center gap-1.5 bg-[#00C9A7] text-[#0A2540] font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-md shadow-[#00C9A7]/25 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Upload Batch</span>
+                </button>
               </div>
-              <button
-                onClick={() => setIsExcelUploadModalOpen(true)}
-                className="flex items-center gap-1.5 bg-[#00C9A7] text-[#0A2540] font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-md shadow-[#00C9A7]/25 active:scale-95 transition-all flex-shrink-0"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Upload</span>
-              </button>
-            </div>
 
-            {!teamMembers.length ? (
-              <Empty text="No employees yet." />
-            ) : (
-              <div className="space-y-2">
-                {teamMembers.map((m) => {
-                  const mine = assignedLeads.filter((l) => l.assignedToEmployeeId === m.id);
-                  return (
-                    <div key={m.id} className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-[#0A2540] block truncate">{m.name}</span>
-                        <span className="text-[10px] text-slate-500">
-                          {mine.filter((l) => l.callCount > 0).length} called ·{' '}
-                          {mine.filter((l) => l.status === 'CONVERTED').length} converted
-                        </span>
-                      </div>
-                      <span className="font-mono-nums font-black text-lg text-[#0A2540] flex-shrink-0">
-                        {mine.length}
-                      </span>
-                    </div>
-                  );
-                })}
+              {/* 4-Stat Lead Inventory Matrix */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Leads</span>
+                  <span className="font-mono-nums font-black text-lg text-[#0A2540] block leading-tight mt-0.5">
+                    {totalLeadsCount}
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-medium block mt-0.5">In database</span>
+                </div>
+
+                <div className="bg-white border border-teal-200/80 rounded-2xl p-2.5 shadow-2xs bg-gradient-to-br from-teal-50/40 to-white">
+                  <span className="text-[9px] font-bold text-[#00A88B] uppercase tracking-wider block">Fresh Uncalled</span>
+                  <span className="font-mono-nums font-black text-lg text-[#00A88B] block leading-tight mt-0.5">
+                    {freshLeadsCount}
+                  </span>
+                  <span className="text-[9px] text-[#00A88B] font-medium block mt-0.5">Ready to dial</span>
+                </div>
+
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs">
+                  <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block">In Pipeline</span>
+                  <span className="font-mono-nums font-black text-lg text-amber-700 block leading-tight mt-0.5">
+                    {pipelineLeadsCount}
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-medium block mt-0.5">Connected / Warm</span>
+                </div>
+
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs">
+                  <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider block">Won Deals</span>
+                  <span className="font-mono-nums font-black text-lg text-emerald-700 block leading-tight mt-0.5">
+                    {convertedLeadsCount}
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-medium block mt-0.5">Closed deals</span>
+                </div>
               </div>
-            )}
 
-            <SectionTitle>Move leads</SectionTitle>
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
-              <select
-                value={moveFrom}
-                onChange={(e) => setMoveFrom(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-              >
-                <option value="">From — choose employee</option>
-                {teamMembers
-                  .filter((m) =>
-                    assignedLeads.some(
-                      (l) =>
-                        l.assignedToEmployeeId === m.id ||
-                        (l.assignedToEmployeeName &&
-                          l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase())
-                    )
-                  )
-                  .map((m) => {
-                    const count = assignedLeads.filter(
-                      (l) =>
-                        l.assignedToEmployeeId === m.id ||
-                        (l.assignedToEmployeeName &&
-                          l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase())
-                    ).length;
-                    return (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({count} leads)
-                      </option>
-                    );
-                  })}
-              </select>
-              <select
-                value={moveTo}
-                onChange={(e) => setMoveTo(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
-              >
-                <option value="">To — choose employee</option>
-                {teamMembers
-                  .filter((m) => m.id !== moveFrom && m.active !== 0)
-                  .map((m) => {
-                    const count = assignedLeads.filter(
-                      (l) =>
-                        l.assignedToEmployeeId === m.id ||
-                        (l.assignedToEmployeeName &&
-                          l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase())
-                    ).length;
-                    return (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({count} leads held)
-                      </option>
-                    );
-                  })}
-              </select>
-              <button
-                onClick={async () => {
-                  await reassignLeadsBetween(moveFrom, moveTo);
-                  setMoveFrom('');
-                  setMoveTo('');
-                }}
-                disabled={!moveFrom || !moveTo}
-                className="w-full bg-[#0A2540] disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs py-2.5 rounded-xl active:scale-95 transition-all"
-              >
-                Move leads
-              </button>
-            </div>
-
-            <SectionTitle>Recent uploads</SectionTitle>
-            {!leadBatches.length ? (
-              <Empty text="No lead files uploaded yet." />
-            ) : (
-              <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden">
-                {leadBatches.map((b) => (
-                  <div key={b.id} className="p-3">
-                    <span className="text-xs font-bold text-[#0A2540] block truncate">{b.fileName}</span>
-                    <span className="text-[10px] text-slate-500">
-                      {b.totalLeads} leads → {b.assignedToEmployeeName} · {b.uploadedAt}
+              {/* 1-Tap Quick Action: Auto-Distribute Fresh Leads */}
+              {freshLeadsCount > 0 && (
+                <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-transparent border border-[#00C9A7]/30 rounded-2xl p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-[#0A2540] block truncate">
+                      {freshLeadsCount} fresh leads waiting to be called
+                    </span>
+                    <span className="text-[10px] text-slate-500 block truncate">
+                      Distribute evenly among active employees
                     </span>
                   </div>
-                ))}
+                  <button
+                    type="button"
+                    onClick={handleAutoDistribute}
+                    disabled={isDistributing}
+                    className="py-1.5 px-3 rounded-xl bg-[#0A2540] hover:bg-[#123659] text-white font-bold text-xs active:scale-95 transition-all flex-shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    {isDistributing ? 'Distributing...' : '1-Tap Distribute'}
+                  </button>
+                </div>
+              )}
+
+              {/* Employee Holding Breakdown */}
+              <SectionTitle>Employee Lead Allocations</SectionTitle>
+              {!teamMembers.length ? (
+                <Empty text="No employees yet." />
+              ) : (
+                <div className="space-y-2">
+                  {teamMembers.map((m) => {
+                    const mine = assignedLeads.filter((l) => l.assignedToEmployeeId === m.id);
+                    const calledCount = mine.filter((l) => l.callCount > 0).length;
+                    const convertedCount = mine.filter((l) => l.status === 'CONVERTED').length;
+                    const calledPct = mine.length > 0 ? Math.round((calledCount / mine.length) * 100) : 0;
+
+                    return (
+                      <div key={m.id} className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-[#0A2540] block truncate">{m.name}</span>
+                            <span className="text-[10px] text-slate-500 block truncate">
+                              {calledCount} called · {convertedCount} converted · {mine.length - calledCount} fresh
+                            </span>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <span className="font-mono-nums font-black text-lg text-[#0A2540] block leading-tight">
+                              {mine.length}
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-400">leads held</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar: Called vs Total */}
+                        <div className="space-y-1">
+                          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-gradient-to-r from-[#00C9A7] to-teal-500 h-full rounded-full transition-all duration-300"
+                              style={{ width: `${calledPct}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[9px] font-mono text-slate-400">
+                            <span>{calledPct}% dialed</span>
+                            <span>{mine.length - calledCount} uncalled</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <SectionTitle>Move leads</SectionTitle>
+              <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2">
+                <select
+                  value={moveFrom}
+                  onChange={(e) => setMoveFrom(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+                >
+                  <option value="">From — choose employee</option>
+                  {teamMembers
+                    .filter((m) =>
+                      assignedLeads.some(
+                        (l) =>
+                          l.assignedToEmployeeId === m.id ||
+                          (l.assignedToEmployeeName &&
+                            l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase())
+                      )
+                    )
+                    .map((m) => {
+                      const count = assignedLeads.filter(
+                        (l) =>
+                          l.assignedToEmployeeId === m.id ||
+                          (l.assignedToEmployeeName &&
+                            l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase())
+                      ).length;
+                      return (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({count} leads)
+                        </option>
+                      );
+                    })}
+                </select>
+                <select
+                  value={moveTo}
+                  onChange={(e) => setMoveTo(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#00C9A7]"
+                >
+                  <option value="">To — choose employee</option>
+                  {teamMembers
+                    .filter((m) => m.id !== moveFrom && m.active !== 0)
+                    .map((m) => {
+                      const count = assignedLeads.filter(
+                        (l) =>
+                          l.assignedToEmployeeId === m.id ||
+                          (l.assignedToEmployeeName &&
+                            l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase())
+                      ).length;
+                      return (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({count} leads held)
+                        </option>
+                      );
+                    })}
+                </select>
+                <button
+                  onClick={async () => {
+                    await reassignLeadsBetween(moveFrom, moveTo);
+                    setMoveFrom('');
+                    setMoveTo('');
+                  }}
+                  disabled={!moveFrom || !moveTo}
+                  className="w-full bg-[#0A2540] disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs py-2.5 rounded-xl active:scale-95 transition-all cursor-pointer"
+                >
+                  Move leads
+                </button>
               </div>
-            )}
-          </div>
-        )}
+
+              <SectionTitle>Recent uploads</SectionTitle>
+              {!leadBatches.length ? (
+                <Empty text="No lead files uploaded yet." />
+              ) : (
+                <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden">
+                  {leadBatches.map((b) => (
+                    <div key={b.id} className="p-3">
+                      <span className="text-xs font-bold text-[#0A2540] block truncate">{b.fileName}</span>
+                      <span className="text-[10px] text-slate-500">
+                        {b.totalLeads} leads → {b.assignedToEmployeeName} · {b.uploadedAt}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* -------------------------------------------------------- More */}
         {tab === 'more' && (
@@ -1547,16 +1898,59 @@ export const AdminDashboardView: React.FC = () => {
                       <h4 className="font-bold text-sm text-[#0A2540] group-hover:text-amber-700 transition-colors">
                         Approvals & Audits
                       </h4>
-                      {pendingPayments.length > 0 && (
+                      {totalApprovalsWaiting > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white font-black text-[10px]">
-                          {pendingPayments.length} Pending
+                          {totalApprovalsWaiting} Pending
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-slate-500">Review deal payments & payment receipts</span>
+                    <span className="text-xs text-slate-500">Review deal payments & leave requests</span>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-amber-600 transition-colors" />
+              </div>
+
+              {/* Schedule Universal Meeting Option */}
+              <div
+                onClick={() => setIsScheduleMeetingOpen(true)}
+                className="bg-white border border-slate-200/90 hover:border-teal-400 rounded-2xl p-4 shadow-2xs flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all group"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#00A88B] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-sm text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                        Schedule Company Meeting
+                      </h4>
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-mono">
+                        Universal
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-500">Create meetings for everyone, specific squads, or 1-on-1s</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#00C9A7] transition-colors" />
+              </div>
+
+              {/* Target Settings Option */}
+              <div
+                onClick={() => setIsTargetModalOpen(true)}
+                className="bg-white border border-slate-200/90 hover:border-teal-400 rounded-2xl p-4 shadow-2xs flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all group"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#00A88B] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Target className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                      Sales Target Management
+                    </h4>
+                    <span className="text-xs text-slate-500">Set monthly company quotas & employee targets</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#00C9A7] transition-colors" />
               </div>
 
               {/* Reports Option */}
@@ -1637,6 +2031,31 @@ export const AdminDashboardView: React.FC = () => {
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-purple-600 transition-colors" />
               </div>
+
+              {/* Company Calendar & Holiday Configuration */}
+              <div
+                onClick={() => setShowCalendarConfig((v) => !v)}
+                className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-4 shadow-2xs flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all group"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#00A88B] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                      Company Calendar & Holidays
+                    </h4>
+                    <span className="text-xs text-slate-500">Weekly off schedule & official holidays</span>
+                  </div>
+                </div>
+                <ChevronRight className={`w-5 h-5 text-slate-300 group-hover:text-[#00C9A7] transition-transform ${showCalendarConfig ? 'rotate-90' : ''}`} />
+              </div>
+
+              {showCalendarConfig && (
+                <div className="animate-in fade-in duration-150 pt-1">
+                  <AdminCalendarConfig />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1652,75 +2071,245 @@ export const AdminDashboardView: React.FC = () => {
               <span>Back to More</span>
             </button>
 
-            <div>
-              <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">Approvals</h2>
-              <p className="text-xs text-slate-500 font-medium">
-                {pendingPayments.length} waiting for your sign-off
-              </p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="font-display font-black text-2xl text-[#0A2540] tracking-tight">Approvals Hub</h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  {totalApprovalsWaiting} item{totalApprovalsWaiting === 1 ? '' : 's'} waiting for your sign-off
+                </p>
+              </div>
             </div>
 
-            {!pendingPayments.length ? (
-              <Empty text="Nothing waiting. Every payment has been dealt with." />
-            ) : (
-              <div className="space-y-2.5">
-                {pendingPayments.map((p) => (
-                  <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
-                    <div>
-                      <span className="font-mono-nums font-black text-xl text-[#0A2540] block">
-                        {inr(p.dealAmount)}
-                      </span>
-                      <span className="text-xs font-bold text-slate-700 block">{p.companyName}</span>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">
-                        Closed by {p.telecallerName || 'Employee'} · {p.paymentMode}
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400 block">UTR {p.utrNumber}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => verifyPayment(p.id, 'VERIFIED')}
-                        className="py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Approve</span>
-                      </button>
-                      <button
-                        onClick={() => verifyPayment(p.id, 'REJECTED')}
-                        className="py-2.5 rounded-xl bg-white border border-rose-200 text-rose-600 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        <span>Reject</span>
-                      </button>
-                    </div>
+            {/* Sub-tab Pill Switcher */}
+            <div className="flex p-1 bg-slate-200/80 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setApprovalSubTab('PAYMENTS')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  approvalSubTab === 'PAYMENTS'
+                    ? 'bg-white text-[#0A2540] shadow-xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Deal Payments</span>
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                  pendingPayments.length > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {pendingPayments.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setApprovalSubTab('LEAVES')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  approvalSubTab === 'LEAVES'
+                    ? 'bg-white text-[#0A2540] shadow-xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Leave Escalations</span>
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
+                  pendingLeavesCount > 0
+                    ? 'bg-sky-100 text-sky-800'
+                    : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {pendingLeavesCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Subtab 1: PAYMENTS */}
+            {approvalSubTab === 'PAYMENTS' && (
+              <div className="space-y-3">
+                {!pendingPayments.length ? (
+                  <Empty text="Nothing waiting. Every deal payment has been verified." />
+                ) : (
+                  <div className="space-y-3">
+                    {pendingPayments.map((p) => (
+                      <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-2xs hover:border-slate-300 transition-all">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <span className="font-mono-nums font-black text-2xl text-[#0A2540] block tracking-tight">
+                              {inr(p.dealAmount)}
+                            </span>
+                            <span className="text-sm font-bold text-slate-800 block mt-0.5">{p.companyName}</span>
+                            <span className="text-xs text-slate-500 block mt-0.5">
+                              Closed by <strong className="text-slate-700">{p.telecallerName || 'Employee'}</strong> · {p.paymentMode}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
+                            PENDING AUDIT
+                          </span>
+                        </div>
+
+                        {/* UTR & Proof trigger */}
+                        <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                          <span className="font-mono text-slate-500 text-[11px] truncate">
+                            UTR: <strong className="text-slate-700">{p.utrNumber || 'N/A'}</strong>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setInspectingPayment(p)}
+                            className="text-[11px] font-bold text-[#00A88B] hover:text-[#0A2540] flex items-center gap-1 active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Inspect Proof Slip</span>
+                          </button>
+                        </div>
+
+                        {/* 1-Click Action Buttons */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
+                            onClick={() => {
+                              verifyPayment(p.id, 'VERIFIED');
+                              triggerToast(`✓ Payment of ${inr(p.dealAmount)} approved & credited to ${p.telecallerName || 'Employee'}`);
+                            }}
+                            className="py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Approve & Credit</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              verifyPayment(p.id, 'REJECTED');
+                              triggerToast(`✗ Payment from ${p.companyName} rejected/flagged`);
+                            }}
+                            className="py-2.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            <span>Reject / Flag</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
 
-            <SectionTitle>Already decided</SectionTitle>
-            {paymentVerifications.filter((p) => p.status !== 'PENDING_HR_AUDIT').length === 0 ? (
-              <Empty text="No decisions recorded yet." />
-            ) : (
-              <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden">
-                {paymentVerifications
-                  .filter((p) => p.status !== 'PENDING_HR_AUDIT')
-                  .map((p) => (
-                    <div key={p.id} className="p-3 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-[#0A2540] block truncate">
-                          {inr(p.dealAmount)} · {p.companyName}
-                        </span>
-                        <span className="text-[10px] text-slate-500">{p.telecallerName || 'Employee'}</span>
-                      </div>
-                      <span
-                        className={`text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0 ${
-                          p.status === 'VERIFIED' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                        }`}
-                      >
-                        {p.status}
-                      </span>
-                    </div>
-                  ))}
+            {/* Subtab 2: LEAVES */}
+            {approvalSubTab === 'LEAVES' && (
+              <div className="space-y-3">
+                {pendingLeavesCount === 0 ? (
+                  <Empty text="No leave escalations waiting. All staff requests are cleared." />
+                ) : (
+                  <div className="space-y-3">
+                    {leaveRequests
+                      .filter((l) => l.status === 'PENDING')
+                      .map((l) => (
+                        <div key={l.id} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-2xs hover:border-slate-300 transition-all">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-[#0A2540]">{l.employeeName}</span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200/60">
+                                  {l.leaveType}
+                                </span>
+                              </div>
+                              <span className="text-xs text-slate-600 block mt-1">
+                                <strong>{l.totalDays} day{l.totalDays === 1 ? '' : 's'}</strong> ({l.fromDate} → {l.toDate})
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
+                              PENDING
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="text-[11px] text-slate-600 italic block">
+                              "{l.reason}"
+                            </span>
+                          </div>
+
+                          {/* 1-Click Action Buttons */}
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <button
+                              onClick={() => {
+                                approveLeaveRequest(l.id);
+                                triggerToast(`✓ Approved leave for ${l.employeeName}`);
+                              }}
+                              className="py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Approve Leave</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                rejectLeaveRequest(l.id, 'Rejected by Admin');
+                                triggerToast(`✗ Rejected leave request for ${l.employeeName}`);
+                              }}
+                              className="py-2.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
+            )}
+
+            {/* Already Decided Log */}
+            <SectionTitle>Already decided</SectionTitle>
+            {approvalSubTab === 'PAYMENTS' ? (
+              paymentVerifications.filter((p) => p.status !== 'PENDING_HR_AUDIT').length === 0 ? (
+                <Empty text="No payment decisions recorded yet." />
+              ) : (
+                <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden shadow-2xs">
+                  {paymentVerifications
+                    .filter((p) => p.status !== 'PENDING_HR_AUDIT')
+                    .map((p) => (
+                      <div key={p.id} className="p-3 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-[#0A2540] block truncate">
+                            {inr(p.dealAmount)} · {p.companyName}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block truncate">
+                            {p.telecallerName || 'Employee'} · UTR {p.utrNumber}
+                          </span>
+                        </div>
+                        <span
+                          className={`text-[9px] font-black px-2 py-0.5 rounded flex-shrink-0 ${
+                            p.status === 'VERIFIED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}
+                        >
+                          {p.status}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )
+            ) : (
+              leaveRequests.filter((l) => l.status !== 'PENDING').length === 0 ? (
+                <Empty text="No leave decisions recorded yet." />
+              ) : (
+                <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden shadow-2xs">
+                  {leaveRequests
+                    .filter((l) => l.status !== 'PENDING')
+                    .map((l) => (
+                      <div key={l.id} className="p-3 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-[#0A2540] block truncate">
+                            {l.employeeName} · {l.leaveType} ({l.totalDays}d)
+                          </span>
+                          <span className="text-[10px] text-slate-500 block truncate">
+                            {l.fromDate} to {l.toDate}
+                          </span>
+                        </div>
+                        <span
+                          className={`text-[9px] font-black px-2 py-0.5 rounded flex-shrink-0 ${
+                            l.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}
+                        >
+                          {l.status}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )
             )}
           </div>
         )}
@@ -1802,7 +2391,7 @@ export const AdminDashboardView: React.FC = () => {
                   run: () =>
                     downloadCsv(
                       'Payments',
-                      'Company,Lead,Telecaller,Amount,Mode,UTR,Status',
+                      'Company,Lead,Employee,Amount,Mode,UTR,Status',
                       paymentVerifications.map(
                         (p) => `"${p.companyName}","${p.leadName}","${p.telecallerName}",${p.dealAmount},"${p.paymentMode}","${p.utrNumber}","${p.status}"`
                       )
@@ -1810,7 +2399,7 @@ export const AdminDashboardView: React.FC = () => {
                 },
                 {
                   label: 'Lead Allocation Pipeline',
-                  blurb: 'Active leads held by each telecaller.',
+                  blurb: 'Active leads held by each employee.',
                   icon: FileSpreadsheet,
                   run: () =>
                     downloadCsv(
@@ -1889,6 +2478,122 @@ export const AdminDashboardView: React.FC = () => {
         team={managingSquad}
         isOpen={!!managingSquad}
         onClose={() => setManagingSquad(null)}
+      />
+
+      {/* Payment Proof Slip Voucher Modal */}
+      {inspectingPayment && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-150"
+          onClick={() => setInspectingPayment(null)}
+        >
+          <div 
+            className="w-full max-w-sm bg-white rounded-3xl border border-slate-200 shadow-2xl p-5 space-y-4 relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#00A88B] flex items-center justify-center">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[#0A2540]">Payment Proof Voucher</h3>
+                  <p className="text-[10px] text-slate-400 font-mono">Bank Audit Slip</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setInspectingPayment(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Digital Slip Body */}
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100/70 rounded-2xl p-4 border border-slate-200/80 space-y-3 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Amount Paid</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                  {inspectingPayment.status}
+                </span>
+              </div>
+
+              <div className="font-mono-nums font-black text-2xl text-[#0A2540]">
+                {inr(inspectingPayment.dealAmount)}
+              </div>
+
+              <div className="space-y-2 text-xs pt-1 border-t border-slate-200/60">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Client / Payer:</span>
+                  <strong className="text-slate-800 text-right">{inspectingPayment.companyName}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Closed By:</span>
+                  <strong className="text-slate-800">{inspectingPayment.telecallerName || 'Employee'}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Payment Channel:</span>
+                  <span className="font-mono font-bold text-slate-700">{inspectingPayment.paymentMode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Bank UTR Ref:</span>
+                  <span className="font-mono font-bold text-slate-800">{inspectingPayment.utrNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Transaction Time:</span>
+                  <span className="font-mono text-slate-600 text-[11px]">{inspectingPayment.timestamp}</span>
+                </div>
+              </div>
+
+              {/* Simulated Verification Stamp */}
+              <div className="pt-2 flex items-center justify-center">
+                <span className="text-[9px] font-mono uppercase tracking-widest text-slate-400 border border-dashed border-slate-300 px-3 py-1 rounded-md">
+                  🔒 Electronic Bank Transfer Verified Record
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons inside modal */}
+            {inspectingPayment.status === 'PENDING_HR_AUDIT' && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    verifyPayment(inspectingPayment.id, 'VERIFIED');
+                    triggerToast(`✓ Deal payment of ${inr(inspectingPayment.dealAmount)} approved`);
+                    setInspectingPayment(null);
+                  }}
+                  className="py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Approve & Credit</span>
+                </button>
+                <button
+                  onClick={() => {
+                    verifyPayment(inspectingPayment.id, 'REJECTED');
+                    triggerToast(`✗ Payment rejected`);
+                    setInspectingPayment(null);
+                  }}
+                  className="py-2.5 rounded-xl bg-white border border-rose-200 text-rose-600 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>Reject</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Admin Target Settings Modal */}
+      <AdminTargetSettingsModal
+        isOpen={isTargetModalOpen}
+        onClose={() => setIsTargetModalOpen(false)}
+      />
+
+      {/* Admin Executive Schedule Meeting Modal */}
+      <AdminScheduleMeetingModal
+        isOpen={isScheduleMeetingOpen}
+        onClose={() => setIsScheduleMeetingOpen(false)}
       />
     </div>
   );

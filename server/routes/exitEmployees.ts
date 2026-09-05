@@ -44,7 +44,7 @@ router.post('/', (req: Request, res: Response) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       exitId, empCode || `TNX-${Math.floor(8000 + Math.random() * 999)}`, name || 'Employee',
-      role || 'Junior Telecaller', department || 'Sales & Client Acquisition',
+      role || 'Junior Sales Executive', department || 'Sales & Client Acquisition',
       resignationDate || 'Today', lastWorkingDay || 'End of Month', status || 'CLEARANCE_PENDING',
       checklist?.assetsReturned ? 1 : 0, checklist?.accountsSettled ? 1 : 0,
       checklist?.knowledgeTransfer ? 1 : 0, checklist?.relievingLetterIssued ? 1 : 0

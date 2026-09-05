@@ -290,7 +290,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 </button>
               </div>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Team Leader • <span className="text-[#00A88B] font-bold">{profile?.teamName || 'Alpha Growth Team'}</span> • <strong className="text-emerald-600">● {presentCount} Active Telecallers</strong>
+                Team Leader • <span className="text-[#00A88B] font-bold">{profile?.teamName || 'Alpha Growth Team'}</span> • <strong className="text-emerald-600">● {presentCount} Active Employees</strong>
               </p>
             </div>
 
@@ -327,7 +327,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{totalTeamStrength}</span>
-                  <span className="text-xs font-bold text-slate-400">Telecallers</span>
+                  <span className="text-xs font-bold text-slate-400">Employees</span>
                 </div>
                 <span className="text-xs text-[#00A88B] font-extrabold mt-1 block group-hover:underline">
                   View Team List →
@@ -350,7 +350,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono-nums font-black text-2xl text-emerald-600">{presentCount}</span>
-                  <span className="text-xs font-bold text-slate-400">/ {totalTeamStrength} Telecallers</span>
+                  <span className="text-xs font-bold text-slate-400">/ {totalTeamStrength} Employees</span>
                 </div>
                 <span className="text-xs text-emerald-600 font-extrabold mt-1 block">
                   {Math.round((presentCount / Math.max(1, totalTeamStrength)) * 100)}% Attendance Rate
@@ -373,7 +373,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                   <span className="text-xs font-bold text-slate-400">Calls Logged</span>
                 </div>
                 <span className="text-xs text-sky-600 font-extrabold mt-1 block">
-                  Avg {Math.round(totalActivities / Math.max(1, presentCount))} calls per caller
+                  Avg {Math.round(totalActivities / Math.max(1, presentCount))} calls per employee
                 </span>
               </div>
 
@@ -407,21 +407,21 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
 
           </div>
 
-          {/* 2-Column Section: Telecallers Performance + Upcoming Meetings & Tasks */}
+          {/* 2-Column Section: Team Performance + Upcoming Meetings & Tasks */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Left 2 Cols: Real-Time Team Performance Table */}
             <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="font-display font-black text-base text-[#0A2540]">Telecallers Today's Performance</h3>
+                  <h3 className="font-display font-black text-base text-[#0A2540]">Today's Team Performance</h3>
                   <p className="text-xs text-slate-400">Today's call dials, customer interest, and sales done</p>
                 </div>
                 <button 
                   onClick={() => setTab('team')}
                   className="text-xs font-bold text-[#00A88B] hover:underline"
                 >
-                  View All Telecallers →
+                  View All Members →
                 </button>
               </div>
 
@@ -429,7 +429,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3">Telecaller</th>
+                      <th className="pb-3">Employee</th>
                       <th className="pb-3">Check-In</th>
                       <th className="pb-3">Status</th>
                       <th className="pb-3">Dials Today</th>
@@ -612,7 +612,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search telecallers by name or employee ID code..."
+                placeholder="Search employees by name or employee ID code..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
               />
             </div>
@@ -646,7 +646,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                             {member.name}
                           </h4>
                           <span className="text-[11px] text-slate-400 font-mono">
-                            {member.empCode} • {member.role || 'Telecaller'}
+                            {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'}
                           </span>
                         </div>
                       </div>
@@ -762,7 +762,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono-nums font-black text-2xl text-[#0A2540]">{onLeaveCount}</span>
-                  <span className="text-xs font-bold text-slate-400">Telecallers</span>
+                  <span className="text-xs font-bold text-slate-400">Employees</span>
                 </div>
                 <span className="text-xs text-slate-500 font-semibold mt-1 block">
                   Out of office headcount
@@ -985,7 +985,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                   Team Performance & Revenue Analytics
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Live dials, connect rates, quota pacing, and telecaller productivity
+                  Live dials, connect rates, quota pacing, and employee productivity
                 </p>
               </div>
 
@@ -1028,7 +1028,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                     <span className="text-xs font-bold text-slate-400">Calls</span>
                   </div>
                   <span className="text-xs text-slate-500 font-semibold mt-1 block">
-                    {isToday ? `Logged today across ${presentCount} active telecallers` : isWeek ? 'Cumulative calls dialed this week' : 'Total calls logged this month'}
+                    {isToday ? `Logged today across ${presentCount} active employees` : isWeek ? 'Cumulative calls dialed this week' : 'Total calls logged this month'}
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs">
@@ -1102,7 +1102,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                     {tfLabel} Performance & Sales Breakdown
                   </h3>
                   <p className="text-xs text-slate-400">
-                    {isToday ? "Real-time calls dialed, connected, and sales closed today" : isWeek ? "Cumulative weekly telecaller call volume, conversions, and deals" : "Monthly sales targets and achievement pacing for your telecallers"}
+                    {isToday ? "Real-time calls dialed, connected, and sales closed today" : isWeek ? "Cumulative weekly call volume, conversions, and deals" : "Monthly sales targets and achievement pacing for your team"}
                   </p>
                 </div>
               </div>
@@ -1111,7 +1111,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3 pl-2">Telecaller</th>
+                      <th className="pb-3 pl-2">Employee</th>
                       <th className="pb-3">Status</th>
                       <th className="pb-3">{isToday ? 'Dials Today' : isWeek ? 'Dials This Week' : 'Monthly Dials'}</th>
                       <th className="pb-3">{isToday ? 'Today Sales' : isWeek ? 'Weekly Sales' : 'Sales Achieved'}</th>
@@ -1265,7 +1265,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                       {liveMeeting.title}
                     </h4>
                     <p className="text-xs text-slate-500 font-medium">
-                      {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : `Open to entire team (${teamMembers.length} telecallers)`} • Click Join to enter room
+                      {liveMeeting.invitedMemberName ? `Invited: ${liveMeeting.invitedMemberName}` : `Open to entire team (${teamMembers.length} employees)`} • Click Join to enter room
                     </p>
                   </div>
                 </div>
@@ -1365,7 +1365,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                             </p>
                           ) : (
                             <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-1">
-                              <Users className="w-3.5 h-3.5 text-slate-400" /> Open to all team telecallers ({mtg.attendeesCount || teamMembers.length} invited)
+                              <Users className="w-3.5 h-3.5 text-slate-400" /> Open to all team employees ({mtg.attendeesCount || teamMembers.length} invited)
                             </p>
                           )}
                         </div>
@@ -1426,7 +1426,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-display font-black text-lg text-[#0A2540]">Schedule Team Meeting</h3>
-                <p className="text-xs text-slate-400">Plan a video meeting and invite callers</p>
+                <p className="text-xs text-slate-400">Plan a video meeting and invite team members</p>
               </div>
               <button 
                 onClick={() => setIsMeetingModalOpen(false)}
@@ -1488,7 +1488,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    🤝 1-on-1 Caller
+                    🤝 1-on-1 Member
                   </button>
 
                   <button
@@ -1507,14 +1507,14 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 {/* 1-on-1 Invitee Picker */}
                 {inviteeMode === '1ON1' && (
                   <div className="pt-2">
-                    <label className="font-bold text-purple-900 block mb-1">Select Telecaller:</label>
+                    <label className="font-bold text-purple-900 block mb-1">Select Employee:</label>
                     <select
                       value={invitedTelecaller}
                       onChange={(e) => setInvitedTelecaller(e.target.value)}
                       className="w-full p-2.5 rounded-xl bg-white border border-purple-300 text-slate-800 font-bold"
                     >
                       {teamMembers.map(m => (
-                        <option key={m.id} value={m.name}>{m.name} ({m.empCode} • {m.role || 'Telecaller'})</option>
+                        <option key={m.id} value={m.name}>{m.name} ({m.empCode} • {m.role ? m.role.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'})</option>
                       ))}
                     </select>
                   </div>
@@ -1582,7 +1582,7 @@ export const DesktopTeamLeaderView: React.FC<DesktopTeamLeaderViewProps> = ({
                 {/* Whole Team Notice */}
                 {inviteeMode === 'ALL' && (
                   <p className="text-[11px] text-slate-500 font-medium pt-1">
-                    ✓ All {teamMembers.length} telecallers in this team will see this meeting on their dashboard.
+                    ✓ All {teamMembers.length} employees in this team will see this meeting on their dashboard.
                   </p>
                 )}
               </div>

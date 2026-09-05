@@ -18,7 +18,9 @@ import {
   FaceBiometricProfile,
   OfferLetterData,
   PaymentVerificationItem,
-  OfficeSettings
+  OfficeSettings,
+  CompanyHoliday,
+  CalendarSettings,
 } from '../types';
 
 const API_BASE = (typeof window !== 'undefined' && window.location.hostname === 'localhost') 
@@ -77,7 +79,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: 'telecaller' | 'team_leader' | 'hr' | 'admin';
+  role: 'telecaller' | 'employee' | 'team_leader' | 'hr' | 'admin';
   empCode: string | null;
   employeeId: string | null;
 }
@@ -273,4 +275,18 @@ export const api = {
     request<PaymentVerificationItem>('/payments', { method: 'POST', body: JSON.stringify(data) }),
   updatePayment: (id: string, data: Partial<PaymentVerificationItem>) => 
     request<PaymentVerificationItem>(`/payments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Company Calendar & Holidays
+  getHolidays: () => request<CompanyHoliday[]>('/calendar/holidays'),
+  createHoliday: (data: Omit<CompanyHoliday, 'id'> & { id?: string }) =>
+    request<CompanyHoliday>('/calendar/holidays', { method: 'POST', body: JSON.stringify(data) }),
+  deleteHoliday: (id: string) =>
+    request<{ deleted: string }>(`/calendar/holidays/${id}`, { method: 'DELETE' }),
+  clearAllHolidays: () =>
+    request<{ cleared: boolean }>('/calendar/holidays', { method: 'DELETE' }),
+  loadPresetHolidays: () =>
+    request<CompanyHoliday[]>('/calendar/holidays/bulk-preset', { method: 'POST' }),
+  getCalendarSettings: () => request<CalendarSettings>('/calendar/settings'),
+  updateCalendarSettings: (data: Partial<CalendarSettings>) =>
+    request<CalendarSettings>('/calendar/settings', { method: 'PUT', body: JSON.stringify(data) }),
 };

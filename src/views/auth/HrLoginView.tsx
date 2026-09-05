@@ -72,7 +72,7 @@ export const HrLoginView: React.FC = () => {
             onClick={() => setCurrentRole('telecaller')}
             className={`flex-1 py-1.5 rounded-xl transition-all ${currentRole === 'telecaller' ? 'bg-[#00C9A7] text-[#0A2540] shadow-xs' : 'text-slate-300 hover:text-white'}`}
           >
-            Caller
+            Employee
           </button>
           <button
             onClick={() => setCurrentRole('team_leader')}

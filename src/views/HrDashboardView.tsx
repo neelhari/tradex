@@ -39,7 +39,13 @@ import {
   ArrowLeft,
   CalendarCheck,
   AlertCircle,
-  Filter
+  Filter,
+  Copy,
+  Eye,
+  EyeOff,
+  Key,
+  Receipt,
+  ExternalLink
 } from 'lucide-react';
 import { OnboardingEmployee, ExitEmployee, TeamMember, TeamGroup } from '../types';
 import { AddEmployeeModal } from '../components/modals/AddEmployeeModal';
@@ -70,6 +76,10 @@ export const HrDashboardView: React.FC = () => {
     setSelectedOfferLetter,
     setIsOfferLetterModalOpen,
     setIsIdCardModalOpen,
+    selectedIdCardEmpId,
+    setSelectedIdCardEmpId,
+    openPayslipModal,
+    teamMeetings,
     setIsFaceRegistrationModalOpen,
     setFaceRegistrationEmployee,
     scheduleInterview,
@@ -94,12 +104,26 @@ export const HrDashboardView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [attendanceFilter, setAttendanceFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'ON_LEAVE'>('ALL');
 
+  // Dedicated More Tab: Assets, Credentials & History Registry
+  const [moreSubTab, setMoreSubTab] = useState<'id_cards' | 'payslips' | 'meetings' | 'offers' | 'hr_account' | 'onboard' | 'credentials' | 'interviews'>('payslips');
+  const [moreSearchQuery, setMoreSearchQuery] = useState('');
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+
+  const togglePasswordVisibility = (empId: string) => {
+    setVisiblePasswords(prev => ({ ...prev, [empId]: !prev[empId] }));
+  };
+
+  const handleCopyCredentials = (emp: TeamMember) => {
+    const credText = `Trade Nexus Staff Credentials\nName: ${emp.name}\nEmp Code: ${emp.empCode}\nLogin ID: ${emp.email || emp.phone || emp.empCode}\nPassword: ${emp.password || 'Trade@1234'}\nRole: ${emp.role}\nPortal URL: ${window.location.origin}`;
+    navigator.clipboard.writeText(credText);
+    triggerToast(`✓ Copied credentials for ${emp.name} to clipboard!`);
+  };
+
   // Modals
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isGenerateOfferLetterModalOpen, setIsGenerateOfferLetterModalOpen] = useState(false);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
   const [isPayslipGenModalOpen, setIsPayslipGenModalOpen] = useState(false);
-  const [selectedIdCardEmpId, setSelectedIdCardEmpId] = useState('');
 
   // Payslip Generator States
   const [payrollMonth, setPayrollMonth] = useState('May');
@@ -109,7 +133,7 @@ export const HrDashboardView: React.FC = () => {
 
   // Schedule Interview States
   const [candName, setCandName] = useState('');
-  const [candRole, setCandRole] = useState('Senior Telecaller Specialist');
+  const [candRole, setCandRole] = useState('Senior Sales Executive');
   const [candExp, setCandExp] = useState('2+ Years in B2B Sales');
   const [candEmail, setCandEmail] = useState('');
   const [candPhone, setCandPhone] = useState('');
@@ -385,7 +409,79 @@ export const HrDashboardView: React.FC = () => {
               </div>
             </div>
 
-            {/* Today's Attendance Exceptions & Late Arrivals Radar (Replaces Useless Bar Chart) */}
+            {/* Quick Operations Grid (HR Quick Actions moved above attendance exceptions) */}
+            <div className="space-y-2">
+              <h3 className="font-display font-bold text-sm text-[#0A2540]">
+                HR Quick Actions
+              </h3>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                
+                {/* Action 1: Onboard New Employee */}
+                <button
+                  onClick={() => setIsAddEmployeeModalOpen(true)}
+                  className="bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border-2 border-[#00C9A7]/60 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-sm flex items-center gap-3 text-left transition-all active:scale-95 group"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-[#00C9A7] text-slate-950 flex items-center justify-center font-bold flex-shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-black text-[#0A2540] block">Onboard Employee</strong>
+                    <span className="text-[10px] text-teal-800 font-medium">Create credentials</span>
+                  </div>
+                </button>
+
+                {/* Action 2: Generate Offer Letter */}
+                <button
+                  onClick={() => setIsGenerateOfferLetterModalOpen(true)}
+                  className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold flex-shrink-0">
+                    <Award className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-bold text-[#0A2540] block">Offer Letter</strong>
+                    <span className="text-[10px] text-slate-500">Pre-onboarding form</span>
+                  </div>
+                </button>
+
+                {/* Action 3: Generate Payslips */}
+                <button
+                  onClick={() => setIsPayslipGenModalOpen(true)}
+                  className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-[#E6FAF6] text-[#00A88B] flex items-center justify-center font-bold flex-shrink-0">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-bold text-[#0A2540] block">Generate Payslips</strong>
+                    <span className="text-[10px] text-slate-500">Select &amp; calculate</span>
+                  </div>
+                </button>
+
+                {/* Action 4: ID Card Generation */}
+                <button
+                  onClick={() => {
+                    if (!selectedIdCardEmpId && teamMembers.length > 0) {
+                      setSelectedIdCardEmpId(teamMembers[0].id);
+                    }
+                    setIsIdCardModalOpen(true);
+                  }}
+                  className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95 cursor-pointer group"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-bold text-[#0A2540] block">ID Card Generation</strong>
+                    <span className="text-[10px] text-slate-500">Print &amp; QR badge</span>
+                  </div>
+                </button>
+
+              </div>
+            </div>
+
+            {/* Today's Attendance Exceptions & Late Arrivals Radar */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="font-display font-bold text-sm text-[#0A2540] flex items-center gap-1.5">
@@ -493,73 +589,6 @@ export const HrDashboardView: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Operations Grid */}
-            <div className="space-y-2">
-              <h3 className="font-display font-bold text-sm text-[#0A2540]">
-                HR Quick Actions
-              </h3>
-
-              <div className="grid grid-cols-2 gap-2.5">
-                
-                {/* Action 1: Onboard New Employee */}
-                <button
-                  onClick={() => setIsAddEmployeeModalOpen(true)}
-                  className="bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border-2 border-[#00C9A7]/60 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-sm flex items-center gap-3 text-left transition-all active:scale-95 group"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-[#00C9A7] text-slate-950 flex items-center justify-center font-bold flex-shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-                    <UserPlus className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-xs font-black text-[#0A2540] block">Onboard Employee</strong>
-                    <span className="text-[10px] text-teal-800 font-medium">Create credentials</span>
-                  </div>
-                </button>
-
-                {/* Action 2: Generate Offer Letter */}
-                <button
-                  onClick={() => setIsGenerateOfferLetterModalOpen(true)}
-                  className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold flex-shrink-0">
-                    <Award className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-xs font-bold text-[#0A2540] block">Offer Letter</strong>
-                    <span className="text-[10px] text-slate-500">Pre-onboarding form</span>
-                  </div>
-                </button>
-
-                {/* Action 3: Generate Payslips */}
-                <button
-                  onClick={() => setIsPayslipGenModalOpen(true)}
-                  className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-[#E6FAF6] text-[#00A88B] flex items-center justify-center font-bold flex-shrink-0">
-                    <DollarSign className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-xs font-bold text-[#0A2540] block">Generate Payslips</strong>
-                    <span className="text-[10px] text-slate-500">Select &amp; calculate</span>
-                  </div>
-                </button>
-
-                {/* Action 4: Schedule Interview */}
-                <button
-                  onClick={() => setIsInterviewModalOpen(true)}
-                  className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs flex items-center gap-3 text-left transition-all active:scale-95"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold flex-shrink-0">
-                    <Video className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-xs font-bold text-[#0A2540] block">Interview Call</strong>
-                    <span className="text-[10px] text-slate-500">Meeting &amp; alert</span>
-                  </div>
-                </button>
-
-              </div>
-            </div>
-
             {/* Official Offer Letters Feed */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -587,7 +616,7 @@ export const HrDashboardView: React.FC = () => {
                     <div className="space-y-0.5">
                       <strong className="font-bold text-[#0A2540] block">{letter.candidateName}</strong>
                       <p className="text-[11px] text-slate-500 font-medium">
-                        {letter.roleTitle} • CTC: <span className="font-bold text-slate-700">₹{letter.annualCtc.toLocaleString('en-IN')}</span>
+                        {letter.roleTitle} • CTC: <span className="font-bold text-slate-700">₹{(letter.annualCtc ?? 0).toLocaleString('en-IN')}</span>
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -606,153 +635,214 @@ export const HrDashboardView: React.FC = () => {
 
         {/* --- TAB 2: DEDICATED DAILY ATTENDANCE & PUNCH REGISTER --- */}
         {activeHrNav === 'attendance' && (
-          <div className="space-y-3.5 animate-in fade-in duration-150">
-            {/* Header with Date & Cutoff */}
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h2 className="font-display font-black text-xl text-[#0A2540]">Daily Attendance Register</h2>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-                <p className="text-xs text-slate-500 font-medium">
-                  {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })} • Cutoff: 09:30 AM
-                </p>
-              </div>
+          <div className="space-y-3 animate-in fade-in duration-150">
+            {/* Header: Just Attendance Heading & Compact Export Button */}
+            <div className="flex items-center justify-between pt-0.5">
+              <h2 className="font-display font-black text-xl text-[#0A2540]">Attendance</h2>
               <button
                 onClick={exportHrReportCSV}
-                className="flex items-center gap-1 text-[11px] font-bold text-[#00A88B] bg-[#E6FAF6] px-2.5 py-1.5 rounded-xl border border-[#00C9A7]/30 hover:bg-[#00C9A7] hover:text-[#0A2540] transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-xs font-bold text-[#00A88B] bg-[#E6FAF6] px-2.5 py-1.5 rounded-xl border border-[#00C9A7]/40 hover:bg-[#00C9A7] hover:text-[#0A2540] transition-colors cursor-pointer shadow-2xs"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Export Log</span>
+                <span>Export</span>
               </button>
             </div>
 
-            {/* Attendance Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-              <button
-                type="button"
-                onClick={() => setAttendanceFilter('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
-                  attendanceFilter === 'ALL'
-                    ? 'bg-[#0A2540] text-white shadow-xs'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                All ({totalEmployees})
-              </button>
+            {/* Compact 2x2 Attendance Action Filter Buttons (Just Name & Numbers, No Icons) */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Tile 1: Present */}
               <button
                 type="button"
                 onClick={() => setAttendanceFilter('PRESENT')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+                className={`rounded-2xl py-2.5 px-3.5 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
                   attendanceFilter === 'PRESENT'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-white border border-emerald-200/80 text-emerald-700 hover:bg-emerald-50'
+                    ? 'bg-emerald-50/70 border-2 border-[#00C9A7] shadow-xs'
+                    : 'bg-white border border-slate-200/90 hover:border-[#00C9A7]'
                 }`}
               >
-                Present ({presentCount})
+                <span className="text-xs font-bold text-[#0A2540]">Present</span>
+                <span className={`text-base font-black font-display ${attendanceFilter === 'PRESENT' ? 'text-[#00A88B]' : 'text-slate-800'}`}>
+                  {presentCount}
+                </span>
               </button>
+
+              {/* Tile 2: Late */}
               <button
                 type="button"
                 onClick={() => setAttendanceFilter('LATE')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+                className={`rounded-2xl py-2.5 px-3.5 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
                   attendanceFilter === 'LATE'
-                    ? 'bg-amber-500 text-white shadow-xs'
-                    : 'bg-white border border-amber-200/80 text-amber-700 hover:bg-amber-50'
+                    ? 'bg-amber-50/70 border-2 border-amber-400 shadow-xs'
+                    : 'bg-white border border-slate-200/90 hover:border-amber-400'
                 }`}
               >
-                Late ({lateCount})
+                <span className="text-xs font-bold text-[#0A2540]">Late</span>
+                <span className={`text-base font-black font-display ${attendanceFilter === 'LATE' ? 'text-amber-600' : 'text-slate-800'}`}>
+                  {lateCount}
+                </span>
               </button>
+
+              {/* Tile 3: On Leave */}
               <button
                 type="button"
                 onClick={() => setAttendanceFilter('ON_LEAVE')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+                className={`rounded-2xl py-2.5 px-3.5 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
                   attendanceFilter === 'ON_LEAVE'
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'bg-white border border-purple-200/80 text-purple-700 hover:bg-purple-50'
+                    ? 'bg-purple-50/70 border-2 border-purple-400 shadow-xs'
+                    : 'bg-white border border-slate-200/90 hover:border-purple-400'
                 }`}
               >
-                On Leave ({onLeaveCount})
+                <span className="text-xs font-bold text-[#0A2540]">On Leave</span>
+                <span className={`text-base font-black font-display ${attendanceFilter === 'ON_LEAVE' ? 'text-purple-600' : 'text-slate-800'}`}>
+                  {onLeaveCount}
+                </span>
+              </button>
+
+              {/* Tile 4: All */}
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('ALL')}
+                className={`rounded-2xl py-2.5 px-3.5 shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
+                  attendanceFilter === 'ALL'
+                    ? 'bg-slate-100 border-2 border-[#0A2540] shadow-xs'
+                    : 'bg-white border border-slate-200/90 hover:border-slate-400'
+                }`}
+              >
+                <span className="text-xs font-bold text-[#0A2540]">All</span>
+                <span className={`text-base font-black font-display ${attendanceFilter === 'ALL' ? 'text-[#0A2540]' : 'text-slate-800'}`}>
+                  {totalEmployees}
+                </span>
               </button>
             </div>
 
             {/* Search Bar */}
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by employee name, code, or squad..."
-                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7]"
+                className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs focus:outline-none focus:border-[#00C9A7] shadow-2xs placeholder:text-slate-400"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            {/* Attendance Register Roster */}
-            <div className="space-y-2.5">
+            {/* Attendance Register Roster (Image 1 Squircle Container & Full Content) */}
+            <div className="space-y-3">
               {filteredMembers.map((member) => {
                 const isPresent = member.attendanceStatus === 'PRESENT';
                 const isLate = member.attendanceStatus === 'LATE';
                 const isLeave = member.attendanceStatus === 'ON_LEAVE';
 
+                // Image 1 Squircle Container Style Matching
+                const squircleContainerStyle = isPresent
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                  : isLate
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                  : 'bg-purple-50 text-purple-700 border border-purple-200/80';
+
                 return (
                   <div
                     key={member.id}
                     onClick={() => setSelectedEmployeeFor360(member)}
-                    className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3 shadow-2xs hover:shadow-md transition-all cursor-pointer active:scale-[0.99] group flex flex-col gap-2 relative overflow-hidden"
+                    className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-[0.99] group flex flex-col gap-3"
                   >
-                    <div
-                      className={`absolute top-0 left-0 right-0 h-1 ${
-                        isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-purple-500'
-                      }`}
-                    />
-
-                    <div className="flex items-center justify-between pt-0.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform flex-shrink-0">
-                          {member.avatar || member.name.substring(0, 2).toUpperCase()}
+                    {/* Top Row: Image 1 Squircle Avatar + Name/Squad + Premium Status Pill */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Image 1 Squircle Container with Live Status Badge */}
+                        <div className="relative flex-shrink-0">
+                          <div className={`w-12 h-12 rounded-2xl ${squircleContainerStyle} flex items-center justify-center font-black text-sm shadow-2xs group-hover:scale-105 transition-transform`}>
+                            {member.avatar || member.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          {/* Corner micro-indicator */}
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                              isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-purple-500'
+                            }`}
+                          />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <strong className="text-xs font-bold text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+
+                        {/* Name & Identity */}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-sm font-bold text-[#0A2540] group-hover:text-[#00A88B] transition-colors truncate">
                               {member.name}
-                            </strong>
-                            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
-                              {member.group}
+                            </h4>
+                            <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200/80 truncate">
+                              {member.group || 'Inside Sales'}
                             </span>
                           </div>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {member.empCode} • {member.role || 'Telecaller'}
-                          </span>
+                          <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">
+                            {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'}
+                          </p>
                         </div>
                       </div>
 
-                      {/* Status Badge */}
+                      {/* Status Badge Pill */}
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 shadow-2xs ${
                           isPresent
-                            ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200'
+                            ? 'bg-[#E6FAF6] text-[#00A88B] border border-[#00C9A7]/40'
                             : isLate
-                            ? 'bg-amber-100/90 text-amber-800 border border-amber-200'
-                            : 'bg-purple-100/90 text-purple-800 border border-purple-200'
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                            : 'bg-purple-50 text-purple-800 border border-purple-200'
                         }`}
                       >
-                        {member.attendanceStatus}
+                        {isPresent && <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />}
+                        {isLate && <Clock className="w-3 h-3 text-amber-600" />}
+                        {isLeave && <Calendar className="w-3 h-3 text-purple-600" />}
+                        <span>{member.attendanceStatus.replace('_', ' ')}</span>
                       </span>
                     </div>
 
-                    {/* Punch details & dials */}
-                    <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100">
-                      <span className="text-slate-600 font-mono flex items-center gap-1">
-                        <Clock className={`w-3.5 h-3.5 ${isLate ? 'text-amber-500' : isPresent ? 'text-emerald-500' : 'text-slate-400'}`} />
-                        {isLeave
-                          ? 'Approved Leave for Today'
-                          : member.checkInTime
-                          ? `Punch In: ${member.checkInTime}${isLate ? ' (Late Flag)' : ' (On Time)'}`
-                          : 'Punch In: Not Logged'}
+                    {/* Middle: Full Content Punch Details Box (No biometric tag so punch in is fully visible) */}
+                    <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-2.5 flex items-center text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${isLate ? 'text-amber-500' : isPresent ? 'text-[#00A88B]' : 'text-purple-500'}`} />
+                        <span className="font-semibold text-slate-700 font-mono text-[11px] truncate">
+                          {isLeave
+                            ? 'Approved Leave for Today'
+                            : member.checkInTime
+                            ? `Punch In: ${member.checkInTime} ${isLate ? '(Late Flag • After 09:30)' : '(On Time)'}`
+                            : 'Punch In: Not Logged'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Full Content: 3-Stat Matrix (Floor Productivity & Output) */}
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50/60 p-2 rounded-xl border border-slate-100 text-center">
+                      <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/90">
+                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Calls Today</span>
+                        <strong className="text-xs font-mono font-black text-[#0A2540]">{member.dialsToday || 0} dials</strong>
+                      </div>
+                      <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/90">
+                        <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Connected</span>
+                        <strong className="text-xs font-mono font-black text-slate-700">{member.connected || Math.round((member.dialsToday || 0) * 0.42)} leads</strong>
+                      </div>
+                      <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/90">
+                        <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Sales Won</span>
+                        <strong className="text-xs font-mono font-black text-[#00A88B]">{formatInLakhs(member.salesAchieved || 0)}</strong>
+                      </div>
+                    </div>
+
+                    {/* Bottom: Contact & 360 Profile link */}
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        📞 {member.phone || '+91 98765 43210'}
                       </span>
-                      <span className="text-[#00A88B] font-bold group-hover:underline flex items-center gap-0.5">
-                        <span>View 360</span>
-                        <span>→</span>
+                      <span className="text-[11px] font-bold text-[#00A88B] group-hover:text-[#0A2540] transition-colors flex items-center gap-1">
+                        <span>Inspect 360 Profile</span>
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
                   </div>
@@ -760,8 +850,8 @@ export const HrDashboardView: React.FC = () => {
               })}
 
               {filteredMembers.length === 0 && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-400 font-semibold">
-                  Nobody matches this attendance filter or search.
+                <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400 font-semibold shadow-xs">
+                  Nobody matches this attendance filter or search query.
                 </div>
               )}
             </div>
@@ -772,35 +862,41 @@ export const HrDashboardView: React.FC = () => {
         {activeHrNav === 'employees' && (
           <div className="space-y-3.5 animate-in fade-in duration-150">
             {/* If a team is selected -> LEVEL 2: THAT TEAM'S EMPLOYEES */}
+            {/* If a team is selected -> LEVEL 2: THAT TEAM'S EMPLOYEES */}
             {selectedTeamGroup ? (
-              <div className="space-y-3.5 animate-in fade-in duration-150">
-                {/* Back to All Teams Navigation Header */}
-                <div className="flex items-center justify-between pt-0.5">
-                  <button
-                    onClick={() => setSelectedTeamGroup(null)}
-                    className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#00A88B] bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs transition-all active:scale-95 cursor-pointer"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-                    <span>All Teams</span>
-                  </button>
-
-                  <span className="text-[10px] font-bold text-slate-400 font-mono">
-                    Team Scope
-                  </span>
-                </div>
-
-                {/* Team Pulse Box for THIS team */}
+              <div className="space-y-3 animate-in fade-in duration-150">
+                {/* Team Header Box with Integrated Compact Back Button (No wasted top space) */}
                 <div className="bg-white border border-slate-200/90 shadow-xs rounded-2xl p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedTeamGroup.color || '#00C9A7' }} />
-                      <span className="text-xs font-black tracking-wider text-[#0A2540] uppercase">
-                        {selectedTeamGroup.name}
-                      </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <button
+                        onClick={() => setSelectedTeamGroup(null)}
+                        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-[#00C9A7] text-slate-700 hover:text-[#0A2540] flex items-center justify-center transition-all active:scale-95 cursor-pointer flex-shrink-0 shadow-2xs"
+                        title="Back to All Teams"
+                      >
+                        <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+                      </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="font-display font-black text-sm text-[#0A2540] uppercase truncate">
+                            {selectedTeamGroup.name}
+                          </h3>
+                          <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded-md truncate">
+                            TL: {selectedTeamGroup.leaderName || 'Ramesh Sharma'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                      TL: {selectedTeamGroup.leaderName || 'Ramesh Sharma'}
-                    </span>
+
+                    {(() => {
+                      const teamEmps = teamMembers.filter(m => m.group === selectedTeamGroup.name);
+                      const teamPresent = teamEmps.filter(m => m.attendanceStatus === 'PRESENT').length;
+                      return (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E6FAF6] text-[#00A88B] border border-[#00C9A7]/30 whitespace-nowrap flex-shrink-0">
+                          {teamPresent}/{teamEmps.length} Present
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <div className="h-px bg-slate-100" />
@@ -857,9 +953,13 @@ export const HrDashboardView: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Attendance Pill status */}
-                        <div className="bg-[#E6F8F5] border border-[#B2EFE5] text-[#00897B] font-bold text-[10px] px-2.5 py-1 rounded-xl text-center">
-                          {teamPresent} Present • {teamLate} Late • {teamLeave} Leave
+                        {/* Attendance Pill status with no awkward wrapping */}
+                        <div className="bg-[#E6FAF6] border border-[#00C9A7]/20 text-[#00897B] font-bold text-[10px] px-2.5 py-1 rounded-xl text-center flex items-center justify-center gap-2 whitespace-nowrap">
+                          <span>{teamPresent} Present</span>
+                          <span>•</span>
+                          <span>{teamLate} Late</span>
+                          <span>•</span>
+                          <span>{teamLeave} Leave</span>
                         </div>
                       </>
                     );
@@ -938,7 +1038,7 @@ export const HrDashboardView: React.FC = () => {
                   );
                 })()}
 
-                {/* Team's Telecallers List */}
+                {/* Team's Employees List */}
                 <div className="space-y-3">
                   {teamMembers
                     .filter(m => m.group === selectedTeamGroup.name)
@@ -954,26 +1054,26 @@ export const HrDashboardView: React.FC = () => {
                       const isPresent = member.attendanceStatus === 'PRESENT';
                       const isLate = member.attendanceStatus === 'LATE';
 
+                      const squircleStyle = isPresent
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                        : isLate
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                        : 'bg-purple-50 text-purple-700 border border-purple-200/80';
+
                       return (
                         <div 
                           key={member.id}
                           onClick={() => setSelectedEmployeeFor360(member)}
-                          className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-2xs hover:shadow-md flex flex-col gap-2.5 cursor-pointer active:scale-[0.98] transition-all group relative overflow-hidden"
+                          className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-3.5 shadow-xs hover:shadow-md flex flex-col gap-2.5 cursor-pointer active:scale-[0.98] transition-all group"
                         >
-                          <div className={`absolute top-0 left-0 right-0 h-1 ${
-                            isPresent ? 'bg-gradient-to-r from-emerald-400 to-[#00C9A7]' :
-                            isLate ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
-                            'bg-gradient-to-r from-rose-400 to-rose-500'
-                          }`} />
-
-                          <div className="flex items-center justify-between pt-0.5">
+                          <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="relative flex-shrink-0">
-                                <div className="w-11 h-11 rounded-2xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-display font-black text-sm shadow-xs group-hover:scale-105 transition-transform">
+                                <div className={`w-11 h-11 rounded-2xl ${squircleStyle} flex items-center justify-center font-display font-black text-xs shadow-2xs group-hover:scale-105 transition-transform`}>
                                   {member.avatar || member.name.substring(0, 2).toUpperCase()}
                                 </div>
                                 <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                                  isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-rose-500'
+                                  isPresent ? 'bg-emerald-500' : isLate ? 'bg-amber-500' : 'bg-purple-500'
                                 }`} />
                               </div>
 
@@ -982,7 +1082,7 @@ export const HrDashboardView: React.FC = () => {
                                   {member.name}
                                 </strong>
                                 <span className="text-[10px] text-slate-400 font-mono">
-                                  {member.empCode} • {member.role || 'Telecaller'}
+                                  {member.empCode} • {member.role ? member.role.replace(/telecaller/gi, 'Sales Executive') : 'Sales Executive'}
                                 </span>
                               </div>
                             </div>
@@ -990,25 +1090,25 @@ export const HrDashboardView: React.FC = () => {
                             <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
                               isPresent ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200/80' :
                               isLate ? 'bg-amber-100/90 text-amber-800 border border-amber-200/80' :
-                              'bg-rose-100/90 text-rose-800 border border-rose-200/80'
+                              'bg-purple-100/90 text-purple-800 border border-purple-200/80'
                             }`}>
                               {member.attendanceStatus}
                             </span>
                           </div>
 
                           {/* 3 Metric Matrix */}
-                          <div className="grid grid-cols-3 gap-2 bg-slate-50/90 p-1.5 rounded-xl border border-slate-100 text-center">
-                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
+                          <div className="grid grid-cols-3 gap-2 bg-slate-50/70 p-1.5 rounded-xl border border-slate-100 text-center">
+                            <div className="bg-white rounded-lg py-1 px-1 shadow-2xs border border-slate-100/90">
                               <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Dials</span>
                               <strong className="text-xs font-mono font-black text-[#0A2540]">{member.dialsToday}</strong>
                             </div>
-                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
-                              <span className="text-[9px] text-[#00A88B] block font-bold uppercase tracking-wider">Sales</span>
+                            <div className="bg-white rounded-lg py-1 px-1 shadow-2xs border border-slate-100/90">
+                              <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Sales</span>
                               <strong className="text-xs font-mono font-black text-[#00A88B]">{formatInLakhs(member.salesAchieved)}</strong>
                             </div>
-                            <div className="bg-white rounded-lg py-1.5 px-1 shadow-2xs border border-slate-100/80">
-                              <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Interested</span>
-                              <strong className="text-xs font-mono font-black text-emerald-700">{member.interested || 12}</strong>
+                            <div className="bg-white rounded-lg py-1 px-1 shadow-2xs border border-slate-100/90">
+                              <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Interested</span>
+                              <strong className="text-xs font-mono font-black text-slate-700">{member.interested || 12}</strong>
                             </div>
                           </div>
 
@@ -1018,7 +1118,7 @@ export const HrDashboardView: React.FC = () => {
                               <Clock className="w-3 h-3 text-slate-400" />
                               In: {member.checkInTime || '09:12 AM'}
                             </span>
-                            <span className="px-2.5 py-1 rounded-xl bg-[#E6FAF6] text-[#00A88B] font-bold group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors flex items-center gap-1 shadow-2xs">
+                            <span className="px-2.5 py-1 rounded-xl bg-slate-50 group-hover:bg-[#00C9A7] text-[#0A2540] font-bold transition-colors flex items-center gap-1 shadow-2xs">
                               <span>View Profile</span>
                               <span>→</span>
                             </span>
@@ -1033,14 +1133,14 @@ export const HrDashboardView: React.FC = () => {
               <div className="space-y-3.5 animate-in fade-in duration-150">
                 {/* Floor Pulse Box */}
                 <div className="bg-white border border-slate-200/90 shadow-xs rounded-2xl p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-black tracking-wider text-[#0A2540] uppercase">
-                        Organization Floor Pulse
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs font-black tracking-wider text-[#0A2540] uppercase truncate">
+                        Floor Pulse
                       </span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
                     </div>
-                    <div className="bg-[#E6F8F5] border border-[#B2EFE5] text-[#00897B] font-bold text-[10px] px-2.5 py-0.5 rounded-full">
+                    <div className="bg-[#E6FAF6] border border-[#00C9A7]/30 text-[#00897B] font-bold text-[10px] px-2.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
                       {presentCount} Present • {lateCount} Late • {onLeaveCount} Leave
                     </div>
                   </div>
@@ -1094,7 +1194,7 @@ export const HrDashboardView: React.FC = () => {
                       All Sales Teams ({teamGroups.length})
                     </h3>
                     <p className="text-[10px] text-slate-500">
-                      Tap a team to inspect telecallers, attendance &amp; daily calls
+                      Tap a team to inspect employees, attendance &amp; daily calls
                     </p>
                   </div>
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
@@ -1112,59 +1212,59 @@ export const HrDashboardView: React.FC = () => {
                     const groupDials = groupMembers.reduce((s, m) => s + (m.dialsToday || 0), 0);
                     const groupSales = groupMembers.reduce((s, m) => s + (m.salesAchieved || 0), 0);
 
+                    // Soft squircle styling based on squad type
+                    const isTeal = group.name.includes('HNI');
+                    const isBlue = group.name.includes('Inbound');
+                    const squircleStyle = isTeal
+                      ? 'bg-[#E6FAF6] text-[#00A88B] border border-[#00C9A7]/30'
+                      : isBlue
+                      ? 'bg-sky-50 text-sky-600 border border-sky-200/80'
+                      : 'bg-amber-50 text-amber-600 border border-amber-200/80';
+
                     return (
                       <div
                         key={group.id}
                         onClick={() => setSelectedTeamGroup(group)}
-                        className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-4 shadow-2xs hover:shadow-md cursor-pointer transition-all active:scale-[0.98] group relative overflow-hidden space-y-3"
+                        className="bg-white border border-slate-200/90 hover:border-[#00C9A7] rounded-2xl p-4 shadow-xs hover:shadow-md cursor-pointer transition-all active:scale-[0.99] group space-y-3"
                       >
-                        <div 
-                          className="absolute top-0 left-0 right-0 h-1" 
-                          style={{ backgroundColor: group.color || '#00C9A7' }} 
-                        />
-
                         {/* Team Title & TL */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div 
-                              className="w-10 h-10 rounded-2xl flex items-center justify-center font-display font-black text-white text-sm shadow-xs group-hover:scale-105 transition-transform flex-shrink-0"
-                              style={{ backgroundColor: group.color || '#0A2540' }}
-                            >
-                              <Layers className="w-5 h-5" />
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-11 h-11 rounded-2xl ${squircleStyle} flex items-center justify-center font-black text-sm shadow-2xs group-hover:scale-105 transition-transform flex-shrink-0`}>
+                              <Layers className="w-5 h-5 stroke-[2.2]" />
                             </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <h4 className="font-display font-black text-sm text-[#0A2540] group-hover:text-[#00A88B] transition-colors">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h4 className="font-display font-bold text-sm text-[#0A2540] group-hover:text-[#00A88B] transition-colors truncate">
                                   {group.name}
                                 </h4>
-                                <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded-md">
+                                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200/60">
                                   {groupMembers.length} Members
                                 </span>
                               </div>
-                              <span className="text-[10px] text-slate-500 font-medium block mt-0.5">
-                                Team Leader: <strong className="text-slate-700">{group.leaderName || 'Ramesh Sharma'}</strong>
+                              <span className="text-xs text-slate-400 font-medium block mt-0.5 truncate">
+                                Team Leader: <strong className="text-slate-600 font-bold">{group.leaderName || 'Ramesh Sharma'}</strong>
                               </span>
                             </div>
                           </div>
 
-                          <div className="text-right">
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#E6FAF6] text-[#00A88B] border border-[#00C9A7]/30">
-                              {groupPresent}/{groupMembers.length} Present
-                            </span>
-                          </div>
+                          <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-[#E6FAF6] text-[#00A88B] border border-[#00C9A7]/30 whitespace-nowrap flex-shrink-0 shadow-2xs flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00C9A7] animate-pulse" />
+                            <span>{groupPresent}/{groupMembers.length} Present</span>
+                          </span>
                         </div>
 
                         {/* Team Stats Matrix */}
-                        <div className="grid grid-cols-3 gap-2 bg-slate-50/90 p-2 rounded-xl border border-slate-100 text-center">
-                          <div>
+                        <div className="grid grid-cols-3 gap-2 bg-slate-50/70 p-2 rounded-xl border border-slate-100 text-center">
+                          <div className="bg-white rounded-lg py-1 px-1 shadow-2xs border border-slate-100/90">
                             <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Calls Today</span>
                             <strong className="text-xs font-mono font-black text-[#0A2540]">{groupDials} calls</strong>
                           </div>
-                          <div>
-                            <span className="text-[9px] text-[#00A88B] block font-bold uppercase tracking-wider">Revenue</span>
+                          <div className="bg-white rounded-lg py-1 px-1 shadow-2xs border border-slate-100/90">
+                            <span className="text-[9px] text-emerald-600 block font-bold uppercase tracking-wider">Revenue</span>
                             <strong className="text-xs font-mono font-black text-[#00A88B]">{formatInLakhs(groupSales)}</strong>
                           </div>
-                          <div>
+                          <div className="bg-white rounded-lg py-1 px-1 shadow-2xs border border-slate-100/90">
                             <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Attendance</span>
                             <strong className="text-xs font-mono font-bold text-slate-700">
                               {groupPresent}P • {groupLate}L • {groupLeave}O
@@ -1172,13 +1272,13 @@ export const HrDashboardView: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Card Footer Action */}
-                        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                          <span className="text-[11px] text-slate-500 font-medium">
+                        {/* Card Footer Premium App Action */}
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                          <span className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]">
                             {group.description || 'High-velocity client engagement team'}
                           </span>
-                          <span className="text-[11px] font-bold text-[#00A88B] group-hover:underline flex items-center gap-1">
-                            <span>View Employees</span>
+                          <span className="px-3 py-1.5 rounded-xl bg-slate-100 group-hover:bg-[#00C9A7] text-[#0A2540] font-bold text-xs flex items-center gap-1.5 transition-all shadow-2xs group-hover:shadow-xs group-hover:translate-x-0.5">
+                            <span>Open Squad</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </span>
                         </div>
@@ -1203,19 +1303,21 @@ export const HrDashboardView: React.FC = () => {
               <p className="text-xs text-slate-500">Leave applications and floor attendance governance</p>
             </div>
 
-            {/* Sleek Segmented Control (Linear / iOS Style, No bulky color boxes) */}
-            <div className="bg-slate-100/90 p-1 rounded-xl flex items-center gap-1 border border-slate-200/60">
+            {/* Sleek Segmented Control with subtle color touches */}
+            <div className="bg-slate-100/90 p-1 rounded-xl flex items-center gap-1 border border-slate-200/60 shadow-2xs">
               <button
                 onClick={() => setLeaveApprovalTab('PENDING')}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   leaveApprovalTab === 'PENDING'
-                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    ? 'bg-white text-[#0A2540] shadow-xs ring-1 ring-slate-200/70'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 <span>Pending</span>
                 <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                  leaveApprovalTab === 'PENDING' ? 'bg-[#0A2540] text-white font-bold' : 'bg-slate-200 text-slate-600'
+                  leaveApprovalTab === 'PENDING' 
+                    ? 'bg-amber-500 text-white font-bold shadow-2xs' 
+                    : 'bg-slate-200/80 text-slate-600'
                 }`}>
                   {pendingLeaves.length}
                 </span>
@@ -1225,13 +1327,15 @@ export const HrDashboardView: React.FC = () => {
                 onClick={() => setLeaveApprovalTab('APPROVED')}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   leaveApprovalTab === 'APPROVED'
-                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    ? 'bg-white text-[#0A2540] shadow-xs ring-1 ring-slate-200/70'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 <span>Approved</span>
                 <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                  leaveApprovalTab === 'APPROVED' ? 'bg-[#0A2540] text-white font-bold' : 'bg-slate-200 text-slate-600'
+                  leaveApprovalTab === 'APPROVED' 
+                    ? 'bg-[#00A88B] text-white font-bold shadow-2xs' 
+                    : 'bg-slate-200/80 text-slate-600'
                 }`}>
                   {approvedLeaves.length}
                 </span>
@@ -1241,13 +1345,15 @@ export const HrDashboardView: React.FC = () => {
                 onClick={() => setLeaveApprovalTab('REJECTED')}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   leaveApprovalTab === 'REJECTED'
-                    ? 'bg-white text-[#0A2540] shadow-xs'
+                    ? 'bg-white text-[#0A2540] shadow-xs ring-1 ring-slate-200/70'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 <span>Rejected</span>
                 <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                  leaveApprovalTab === 'REJECTED' ? 'bg-[#0A2540] text-white font-bold' : 'bg-slate-200 text-slate-600'
+                  leaveApprovalTab === 'REJECTED' 
+                    ? 'bg-rose-500 text-white font-bold shadow-2xs' 
+                    : 'bg-slate-200/80 text-slate-600'
                 }`}>
                   {rejectedLeaves.length}
                 </span>
@@ -1259,8 +1365,8 @@ export const HrDashboardView: React.FC = () => {
               <div className="space-y-3">
                 {pendingLeaves.length === 0 ? (
                   <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-2 shadow-xs">
-                    <div className="w-10 h-10 rounded-full bg-slate-100 text-[#0A2540] flex items-center justify-center mx-auto">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <div className="w-10 h-10 rounded-full bg-teal-50 text-[#00A88B] flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-5 h-5" />
                     </div>
                     <h4 className="font-display font-bold text-sm text-[#0A2540]">All Clear</h4>
                     <p className="text-xs text-slate-500 max-w-xs mx-auto">
@@ -1269,14 +1375,33 @@ export const HrDashboardView: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {pendingLeaves.map((req) => {
+                    {pendingLeaves.map((req, idx) => {
                       const emp = teamMembers.find(m => m.name === req.employeeName || m.empCode === req.employeeCode);
+                      
+                      // Refined avatar gradients
+                      const avatarGradients = [
+                        'bg-gradient-to-tr from-[#00A88B] to-[#00C9A7]',
+                        'bg-gradient-to-tr from-indigo-600 to-sky-400',
+                        'bg-gradient-to-tr from-purple-600 to-pink-400',
+                        'bg-gradient-to-tr from-blue-600 to-cyan-400',
+                      ];
+                      const avatarGradient = avatarGradients[idx % avatarGradients.length];
+
+                      // Refined jewel-toned leave type tags
+                      const isSick = req.leaveType === 'Sick Leave';
+                      const isPaid = req.leaveType.includes('Earned') || req.leaveType.includes('Paid');
+                      const leaveBadgeStyle = isSick
+                        ? 'bg-rose-50 text-rose-800 border-rose-200/80'
+                        : isPaid
+                        ? 'bg-sky-50 text-sky-800 border-sky-200/80'
+                        : 'bg-amber-50 text-amber-800 border-amber-200/80';
+
                       return (
-                        <div key={req.id} className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-4 shadow-xs space-y-3 transition-all">
-                          {/* Header: Avatar, Name, Group & Clean Leave Pill */}
+                        <div key={req.id} className="bg-white border border-slate-200/90 hover:border-slate-300 rounded-2xl p-3.5 shadow-xs space-y-2.5 transition-all">
+                          {/* Header: Gradient Avatar, Name, Group & Jewel Pill */}
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-10 h-10 rounded-full bg-slate-100 text-[#0A2540] font-bold text-xs flex items-center justify-center border border-slate-200/60 flex-shrink-0">
+                              <div className={`w-10 h-10 rounded-full ${avatarGradient} text-white font-black text-xs flex items-center justify-center shadow-2xs flex-shrink-0`}>
                                 {emp?.avatar || req.employeeName?.substring(0, 2).toUpperCase() || 'EM'}
                               </div>
                               <div className="min-w-0">
@@ -1291,38 +1416,49 @@ export const HrDashboardView: React.FC = () => {
                               </div>
                             </div>
 
-                            {/* Refined Subtle Leave Tag */}
-                            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200/70 whitespace-nowrap flex-shrink-0">
+                            {/* Refined Jewel-Toned Leave Tag */}
+                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg border whitespace-nowrap flex-shrink-0 ${leaveBadgeStyle}`}>
                               {req.leaveType} • {req.totalDays}d
                             </span>
                           </div>
 
-                          {/* Date Range & Timestamp */}
-                          <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
+                          {/* Date Range & 360 Profile link (Placed right above Reject button to save card height) */}
+                          <div className="flex items-center justify-between text-xs px-0.5">
                             <div className="flex items-center gap-1.5 font-medium text-slate-700">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                              <Calendar className="w-3.5 h-3.5 text-[#00A88B]" />
                               <span>{req.fromDate} {req.toDate !== req.fromDate ? `– ${req.toDate}` : ''}</span>
                             </div>
-                            <span className="text-[11px] text-slate-400">
-                              {req.appliedOn || 'Today'}
-                            </span>
+                            {emp ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedEmployeeFor360(emp)}
+                                className="text-[11px] font-bold text-[#00A88B] hover:text-[#0A2540] inline-flex items-center gap-0.5 transition-colors cursor-pointer"
+                              >
+                                <span>View 360 Profile</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-mono">
+                                {req.appliedOn || 'Today'}
+                              </span>
+                            )}
                           </div>
 
-                          {/* Clean Quote Box (No uppercase label) */}
-                          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100">
+                          {/* Refined Quote Box with Teal Accent Border */}
+                          <div className="border-l-[3px] border-[#00C9A7] bg-slate-50/60 pl-3 py-1.5 rounded-r-xl border-y border-r border-slate-100">
                             <p className="text-xs text-slate-700 italic leading-relaxed">
                               "{req.reason}"
                             </p>
                           </div>
 
-                          {/* Action Buttons: Executive Navy + Clean Outlined */}
+                          {/* Action Buttons: Signature Mint/Teal Gradient + Clean Outlined */}
                           <div className="grid grid-cols-2 gap-2 pt-0.5">
                             <button
                               onClick={() => {
                                 approveLeaveRequest(req.id);
                                 triggerToast(`✓ Sanctioned leave for ${req.employeeName || 'Employee'}`);
                               }}
-                              className="py-2.5 rounded-xl bg-[#0A2540] hover:bg-[#133353] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors active:scale-98 cursor-pointer"
+                              className="py-2 rounded-xl bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs flex items-center justify-center gap-1.5 shadow-2xs hover:brightness-105 transition-all active:scale-98 cursor-pointer"
                             >
                               <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                               <span>Approve</span>
@@ -1332,25 +1468,12 @@ export const HrDashboardView: React.FC = () => {
                                 rejectLeaveRequest(req.id, 'Shift coverage constraint');
                                 triggerToast(`✗ Rejected leave application for ${req.employeeName || 'Employee'}`);
                               }}
-                              className="py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-98 cursor-pointer"
+                              className="py-2 rounded-xl bg-white hover:bg-rose-50/60 border border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-98 cursor-pointer"
                             >
                               <XCircle className="w-3.5 h-3.5" />
                               <span>Reject</span>
                             </button>
                           </div>
-
-                          {/* Subtle 360 link */}
-                          {emp && (
-                            <div className="text-right pt-0.5">
-                              <button
-                                onClick={() => setSelectedEmployeeFor360(emp)}
-                                className="text-[11px] font-semibold text-[#00A88B] hover:underline inline-flex items-center gap-0.5"
-                              >
-                                <span>View 360 Profile</span>
-                                <ChevronRight className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -1559,71 +1682,700 @@ export const HrDashboardView: React.FC = () => {
           </div>
         )}
 
-        {/* --- TAB 5: MORE (ID Card Studio, Recruitment) --- */}
+        {/* --- TAB 5: DEDICATED MORE (HR Records & Asset Registry Hub) --- */}
         {activeHrNav === 'more' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div>
-              <h2 className="font-display font-black text-lg text-[#0A2540]">Identity Studio &amp; Lifecycle</h2>
-              <p className="text-xs text-slate-500">Official document studio &amp; candidate management</p>
+          <div className="space-y-3 animate-in fade-in duration-150">
+            
+            {/* 3x2 Quick Action Grid: ID Card, Payslips, Meetings, Offer Letters, HR Account, Onboard (Compacted to 65% size) */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { 
+                  id: 'id_cards', 
+                  label: 'ID Card', 
+                  icon: CreditCard, 
+                  badge: `${teamMembers.length}` 
+                },
+                { 
+                  id: 'payslips', 
+                  label: 'Payslips', 
+                  icon: Receipt, 
+                  badge: `${payslips.length}` 
+                },
+                { 
+                  id: 'meetings', 
+                  label: 'Meetings', 
+                  icon: Video, 
+                  badge: `${teamMeetings.filter(m => m.type?.includes('Interview') || m.title?.includes('Interview')).length}` 
+                },
+                { 
+                  id: 'offers', 
+                  label: 'Offer Letters', 
+                  icon: Award, 
+                  badge: `${offerLetters.length}` 
+                },
+                { 
+                  id: 'hr_account', 
+                  label: 'HR Account', 
+                  icon: Shield, 
+                  badge: 'Admin' 
+                },
+                { 
+                  id: 'onboard', 
+                  label: 'Onboard', 
+                  icon: UserPlus, 
+                  badge: '+ New',
+                  isAccent: true 
+                },
+              ].map((btn) => {
+                const isActive = moreSubTab === btn.id || (btn.id === 'id_cards' && moreSubTab === 'credentials') || (btn.id === 'meetings' && moreSubTab === 'interviews');
+                const Icon = btn.icon;
+
+                return (
+                  <button
+                    key={btn.id}
+                    type="button"
+                    onClick={() => {
+                      setMoreSubTab(btn.id as any);
+                      setMoreSearchQuery('');
+                      if (btn.id === 'onboard') {
+                        setIsAddEmployeeModalOpen(true);
+                      }
+                    }}
+                    className={`py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-center relative cursor-pointer active:scale-95 ${
+                      isActive
+                        ? 'bg-[#0A2540] text-white shadow-sm ring-1.5 ring-[#00C9A7]/60'
+                        : btn.isAccent
+                          ? 'bg-gradient-to-b from-teal-50/70 to-emerald-50/90 border border-teal-200 text-[#00897B] hover:border-teal-300 shadow-2xs'
+                          : 'bg-white border border-slate-200/90 hover:border-slate-300 text-slate-700 shadow-2xs hover:shadow-xs'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
+                      isActive 
+                        ? 'bg-white/10 text-[#00C9A7]' 
+                        : btn.isAccent 
+                          ? 'bg-teal-500/10 text-[#00A88B]' 
+                          : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      <Icon className="w-3 h-3" />
+                    </div>
+                    <span className={`text-[9.5px] font-bold leading-tight truncate max-w-full px-0.5 ${isActive ? 'text-white' : 'text-slate-800'}`}>
+                      {btn.label}
+                    </span>
+                    {btn.badge && (
+                      <span className={`text-[7px] font-extrabold px-1.5 py-0 rounded-full leading-tight ${
+                        isActive 
+                          ? 'bg-[#00C9A7] text-[#0A2540]' 
+                          : btn.isAccent
+                            ? 'bg-[#00C9A7]/20 text-[#00897B]'
+                            : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {btn.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* ID Card Studio Card */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                <strong className="text-xs font-bold text-[#0A2540]">Digital ID Card Studio</strong>
-                <span className="text-[10px] text-[#00A88B] font-bold">Image 1 Template</span>
+            {/* CATEGORY 1: EMPLOYEE CREDENTIALS & DIGITAL ID CARDS */}
+            {(moreSubTab === 'id_cards' || moreSubTab === 'credentials') && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                
+                {/* Search Bar (70%) + Create Button (30%) - Same height */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text" 
+                      value={moreSearchQuery}
+                      onChange={(e) => setMoreSearchQuery(e.target.value)}
+                      placeholder="Search name, TNX code, email..."
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7] shadow-2xs font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddEmployeeModalOpen(true)}
+                    className="px-3 py-2 bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs rounded-xl shadow-2xs hover:brightness-105 active:scale-95 whitespace-nowrap flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer border border-[#00C9A7]/30"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Issue ID</span>
+                  </button>
+                </div>
+
+                {/* Employee Credentials Cards List */}
+                <div className="space-y-3">
+                  {(() => {
+                    const filtered = teamMembers.filter(m => 
+                      m.name.toLowerCase().includes(moreSearchQuery.toLowerCase()) ||
+                      m.empCode.toLowerCase().includes(moreSearchQuery.toLowerCase()) ||
+                      (m.email && m.email.toLowerCase().includes(moreSearchQuery.toLowerCase())) ||
+                      (m.group && m.group.toLowerCase().includes(moreSearchQuery.toLowerCase()))
+                    );
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400">
+                          No employees found matching "{moreSearchQuery}".
+                        </div>
+                      );
+                    }
+
+                    return filtered.map((emp) => {
+                      const isPassVisible = !!visiblePasswords[emp.id];
+                      const passwordDisplay = emp.password || 'Trade@1234';
+
+                      return (
+                        <div key={emp.id} className="bg-white border border-slate-200/90 hover:border-slate-300 rounded-2xl p-3.5 shadow-2xs space-y-3 transition-all">
+                          {/* Header row: Avatar, Name, Code, Squad, Active Badge */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-[#0A2540] text-[#00C9A7] font-display font-black text-xs flex items-center justify-center flex-shrink-0 shadow-xs">
+                                {emp.avatar?.startsWith('http') ? (
+                                  <img src={emp.avatar} alt={emp.name} className="w-full h-full object-cover rounded-xl" />
+                                ) : (
+                                  emp.name.substring(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <strong className="text-xs font-bold text-[#0A2540] truncate">{emp.name}</strong>
+                                  <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-[9px] font-mono font-bold">
+                                    {emp.empCode}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-medium truncate">
+                                  <span className="font-bold text-slate-700">{emp.role}</span> • <span>{emp.group || 'Sales Squad'}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 flex-shrink-0">
+                              Active Staff
+                            </span>
+                          </div>
+
+                          {/* Credentials Box: Login ID & Password with Show/Hide */}
+                          <div className="bg-slate-50/90 border border-slate-100 rounded-xl p-2.5 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-400 font-medium">Login ID:</span>
+                              <span className="font-mono font-bold text-slate-800 selection:bg-teal-100">
+                                {emp.email || emp.phone || emp.empCode}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/60">
+                              <span className="text-slate-400 font-medium">Password:</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-[#0A2540]">
+                                  {isPassVisible ? passwordDisplay : '••••••••••••'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => togglePasswordVisibility(emp.id)}
+                                  className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
+                                  title={isPassVisible ? 'Hide Password' : 'Show Password'}
+                                >
+                                  {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick Actions Row: Copy Credentials | View ID Card | Inspect 360 */}
+                          <div className="flex items-center justify-between gap-2 pt-0.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyCredentials(emp)}
+                                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-[#00C9A7] text-slate-700 hover:text-[#0A2540] font-bold text-[10px] inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                                title="Copy credentials to send to employee"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Copy Credentials</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedIdCardEmpId(emp.id);
+                                  setIsIdCardModalOpen(true);
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#00897B] font-bold text-[10px] inline-flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border border-[#00C9A7]/30 shadow-2xs"
+                                title="Open digital ID Card"
+                              >
+                                <CreditCard className="w-3.5 h-3.5" />
+                                <span>View ID Card</span>
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedEmployeeFor360(emp)}
+                              className="text-[11px] font-bold text-[#00A88B] hover:text-[#0A2540] inline-flex items-center gap-0.5 transition-colors cursor-pointer"
+                            >
+                              <span>360 Profile</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
+            )}
 
-              <p className="text-xs text-slate-600">
-                Generate and print the official Trade Nexus vertical ID card with lanyard clip slot and employee details.
-              </p>
+            {/* CATEGORY 2: OFFICIAL OFFER LETTERS */}
+            {moreSubTab === 'offers' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                
+                {/* Search Bar (70%) + Create Button (30%) - Same height */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text" 
+                      value={moreSearchQuery}
+                      onChange={(e) => setMoreSearchQuery(e.target.value)}
+                      placeholder="Search candidate, role..."
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7] shadow-2xs font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsGenerateOfferLetterModalOpen(true)}
+                    className="px-3 py-2 bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs rounded-xl shadow-2xs hover:brightness-105 active:scale-95 whitespace-nowrap flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer border border-[#00C9A7]/30"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Draft Offer</span>
+                  </button>
+                </div>
 
-              <button
-                onClick={() => setIsIdCardModalOpen(true)}
-                className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs shadow-sm flex items-center justify-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>Open Digital ID Card Studio</span>
-              </button>
-            </div>
+                <div className="space-y-2.5">
+                  {(() => {
+                    const filtered = offerLetters.filter(l => 
+                      l.candidateName.toLowerCase().includes(moreSearchQuery.toLowerCase()) ||
+                      l.roleTitle.toLowerCase().includes(moreSearchQuery.toLowerCase()) ||
+                      (l.candidateEmail && l.candidateEmail.toLowerCase().includes(moreSearchQuery.toLowerCase()))
+                    );
 
-            {/* Offer Letter Generator Card */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                <strong className="text-xs font-bold text-[#0A2540]">Job Offer Letter Generator</strong>
-                <span className="text-[10px] text-amber-600 font-bold">Image 4 Template</span>
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400">
+                          {moreSearchQuery ? `No offer letters found matching "${moreSearchQuery}".` : 'No offer letters created yet. Tap "+ Draft Offer" to generate one.'}
+                        </div>
+                      );
+                    }
+
+                    return filtered.map((letter) => (
+                      <div 
+                        key={letter.id}
+                        className="bg-white p-3.5 rounded-2xl border border-slate-200 hover:border-teal-400 shadow-2xs space-y-2.5 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <strong className="text-xs font-bold text-[#0A2540] block">{letter.candidateName}</strong>
+                            <span className="text-[10px] text-slate-500">{letter.candidateEmail || 'Candidate'} • {letter.candidatePhone}</span>
+                          </div>
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                            Issued
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl text-xs">
+                          <div>
+                            <span className="text-[9px] uppercase font-bold text-slate-400 block">Designation</span>
+                            <strong className="text-slate-700 text-[11px] block truncate">{letter.roleTitle}</strong>
+                          </div>
+                          <div>
+                            <span className="text-[9px] uppercase font-bold text-slate-400 block">Annual CTC</span>
+                            <strong className="text-[#00A88B] text-[11px] block">₹{(letter.annualCtc ?? 0).toLocaleString('en-IN')}</strong>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                          <span className="text-[10px] font-mono text-slate-400">
+                            Issued: {letter.issuedDate}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedOfferLetter(letter);
+                              setIsOfferLetterModalOpen(true);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-[#0A2540] text-white hover:bg-[#133353] font-bold text-[10px] inline-flex items-center gap-1 transition-all"
+                          >
+                            <FileText className="w-3 h-3 text-[#00C9A7]" />
+                            <span>View / Print Offer Letter</span>
+                          </button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
               </div>
+            )}
 
-              <p className="text-xs text-slate-600">
-                Draft, customize and dispatch the official Job Offer Letter before onboarding.
-              </p>
+            {/* CATEGORY 3: GENERATED PAYSLIPS */}
+            {moreSubTab === 'payslips' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                
+                {/* Search Bar (70%) + Create Button (30%) - Same height */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text" 
+                      value={moreSearchQuery}
+                      onChange={(e) => setMoreSearchQuery(e.target.value)}
+                      placeholder="Search employee, month..."
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7] shadow-2xs font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPayslipGenModalOpen(true)}
+                    className="px-3 py-2 bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs rounded-xl shadow-2xs hover:brightness-105 active:scale-95 whitespace-nowrap flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer border border-[#00C9A7]/30"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Run Payroll</span>
+                  </button>
+                </div>
 
-              <button
-                onClick={() => setIsGenerateOfferLetterModalOpen(true)}
-                className="w-full py-2.5 rounded-2xl bg-white border-2 border-[#00C9A7] text-[#0A2540] font-bold text-xs hover:bg-teal-50 flex items-center justify-center gap-2 transition-colors"
-              >
-                <Award className="w-4 h-4 text-[#00A88B]" />
-                <span>Generate Official Offer Letter</span>
-              </button>
-            </div>
+                <div className="space-y-2.5">
+                  {(() => {
+                    const filtered = payslips.filter(ps => 
+                      (ps.employeeName && ps.employeeName.toLowerCase().includes(moreSearchQuery.toLowerCase())) ||
+                      (ps.employeeCode && ps.employeeCode.toLowerCase().includes(moreSearchQuery.toLowerCase())) ||
+                      (ps.month && ps.month.toLowerCase().includes(moreSearchQuery.toLowerCase())) ||
+                      (ps.year && ps.year.toString().includes(moreSearchQuery))
+                    );
 
-            {/* Reports & Analytics Export Card */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                <strong className="text-xs font-bold text-[#0A2540]">Workforce Analytics &amp; Reports</strong>
-                <span className="text-[10px] text-[#00A88B] font-bold">CSV Data</span>
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400">
+                          {moreSearchQuery ? `No payslips found matching "${moreSearchQuery}".` : 'No payslips generated yet. Tap "+ Run Payroll" to issue slips.'}
+                        </div>
+                      );
+                    }
+
+                    return filtered.map((ps) => {
+                      const gross = (ps.basicSalary || 0) + (ps.hra || 0) + (ps.specialAllowance || 0) + (ps.incentives || 0);
+                      const net = ps.netPay ?? (ps as any).netSalary ?? 0;
+                      const pf = ps.pfDeduction ?? (ps as any).deductions ?? 0;
+                      return (
+                        <div 
+                          key={ps.id}
+                          className="bg-white p-3.5 rounded-2xl border border-slate-200 hover:border-teal-400 shadow-2xs space-y-2.5 transition-all"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <strong className="text-xs font-bold text-[#0A2540] block">{ps.employeeName || 'Staff Member'}</strong>
+                              <span className="text-[10px] text-slate-400 font-mono">{ps.employeeCode || ps.id} • {ps.month} {ps.year}</span>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              {ps.status || 'PROCESSED'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl text-xs">
+                            <div>
+                              <span className="text-[9px] uppercase font-bold text-slate-400 block">Gross Salary</span>
+                              <strong className="text-slate-700 text-[11px] block">₹{gross.toLocaleString('en-IN')}</strong>
+                            </div>
+                            <div>
+                              <span className="text-[9px] uppercase font-bold text-slate-400 block">Net Payout</span>
+                              <strong className="text-[#00A88B] text-[11px] block">₹{net.toLocaleString('en-IN')}</strong>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              PF Deduction: ₹{pf.toLocaleString('en-IN')}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => openPayslipModal(ps)}
+                              className="px-2.5 py-1 rounded-lg bg-teal-50 text-[#00897B] hover:bg-teal-100 font-bold text-[10px] inline-flex items-center gap-1 transition-all border border-[#00C9A7]/30"
+                            >
+                              <Receipt className="w-3 h-3" />
+                              <span>Inspect Payslip</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
+            )}
 
-              <p className="text-xs text-slate-600">
-                Download the complete real-time company workforce roster with attendance status and daily dials.
-              </p>
+            {/* CATEGORY 4: INTERVIEW CALLS & MEETINGS */}
+            {(moreSubTab === 'meetings' || moreSubTab === 'interviews') && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                
+                {/* Search Bar (70%) + Create Button (30%) - Same height */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text" 
+                      value={moreSearchQuery}
+                      onChange={(e) => setMoreSearchQuery(e.target.value)}
+                      placeholder="Search interview, candidate..."
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7] shadow-2xs font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsInterviewModalOpen(true)}
+                    className="px-3 py-2 bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs rounded-xl shadow-2xs hover:brightness-105 active:scale-95 whitespace-nowrap flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer border border-[#00C9A7]/30"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Schedule</span>
+                  </button>
+                </div>
 
+                <div className="space-y-2.5">
+                  {(() => {
+                    const interviews = teamMeetings.filter(m => 
+                      (m.type?.includes('Interview') || m.title?.includes('Interview')) &&
+                      (m.title.toLowerCase().includes(moreSearchQuery.toLowerCase()) ||
+                       (m.type && m.type.toLowerCase().includes(moreSearchQuery.toLowerCase())) ||
+                       (m.agenda && m.agenda.toLowerCase().includes(moreSearchQuery.toLowerCase())))
+                    );
+                    if (interviews.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400">
+                          {moreSearchQuery ? `No interviews match "${moreSearchQuery}".` : 'No candidate interviews currently scheduled. Tap "+ Schedule" to book one.'}
+                        </div>
+                      );
+                    }
+
+                    return interviews.map((meet) => (
+                      <div key={meet.id} className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                              <Video className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <strong className="text-xs font-bold text-[#0A2540] block">{meet.title}</strong>
+                              <span className="text-[10px] text-slate-400">{meet.dateTime}</span>
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                            Scheduled
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl">
+                          {meet.agenda || 'HR & Technical Screening interview'}
+                        </p>
+
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            Panel: {meet.invitedMemberName || 'HR Panel'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(meet.meetingLink || 'https://meet.tradenexus.io/interview-hr');
+                              triggerToast('✓ Interview video call link copied to clipboard!');
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] inline-flex items-center gap-1"
+                          >
+                            <Copy className="w-3 h-3 text-slate-500" />
+                            <span>Copy Room Link</span>
+                          </button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* CATEGORY 5: HR EXECUTIVE ACCOUNT & PRIVILEGES */}
+            {moreSubTab === 'hr_account' && (
+              <div className="space-y-3.5 animate-in fade-in duration-150">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0A2540] to-[#133353] text-[#00C9A7] flex items-center justify-center font-display font-black text-base shadow-sm border border-[#00C9A7]/30">
+                      HR
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm font-bold text-[#0A2540]">Sarah Jenkins</strong>
+                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-[9px] font-extrabold border border-emerald-200">
+                          Super Admin
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium">Head of HR &amp; People Operations</p>
+                      <span className="text-[10px] font-mono text-slate-400">ID: TNX-HR-001 • Dept: Human Capital</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl text-xs">
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block">System Access</span>
+                      <strong className="text-[#0A2540] text-[11px] block">Full Org Controller</strong>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Security Tier</span>
+                      <strong className="text-[#00A88B] text-[11px] block">Tier 1 Compliance</strong>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-1 border-t border-slate-100 text-xs">
+                    <div className="flex items-center justify-between text-slate-600">
+                      <span className="text-[11px] text-slate-400">Official Portal Login:</span>
+                      <span className="font-mono font-bold text-slate-800">hr.admin@tradenexus.com</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-600">
+                      <span className="text-[11px] text-slate-400">Biometric Verification:</span>
+                      <span className="font-bold text-emerald-700">Enrolled &amp; Validated</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-600">
+                      <span className="text-[11px] text-slate-400">Workforce Scope:</span>
+                      <span className="font-bold text-slate-800">{teamMembers.length} Active Personnel</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const hrCreds = `Trade Nexus HR Admin Access\nName: Sarah Jenkins\nID: TNX-HR-001\nPortal: hr.admin@tradenexus.com\nTier: Super Admin\nDomain: ${window.location.origin}`;
+                        navigator.clipboard.writeText(hrCreds);
+                        triggerToast('✓ Copied HR Admin profile to clipboard!');
+                      }}
+                      className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-98"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy HR Access Credentials</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportHrReportCSV}
+                      className="w-full py-2 rounded-xl bg-[#0A2540] hover:bg-[#133353] text-[#00C9A7] font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-98"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Export Organization Master Audit</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CATEGORY 6: ONBOARDING PIPELINE */}
+            {moreSubTab === 'onboard' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                
+                {/* Search Bar (70%) + Create Button (30%) - Same height */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text" 
+                      value={moreSearchQuery}
+                      onChange={(e) => setMoreSearchQuery(e.target.value)}
+                      placeholder="Search new hire, role..."
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#00C9A7] shadow-2xs font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddEmployeeModalOpen(true)}
+                    className="px-3 py-2 bg-gradient-to-r from-[#00A88B] to-[#00C9A7] text-[#0A2540] font-black text-xs rounded-xl shadow-2xs hover:brightness-105 active:scale-95 whitespace-nowrap flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer border border-[#00C9A7]/30"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Add Staff</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {(() => {
+                    const filtered = onboardingList.filter(emp =>
+                      emp.name.toLowerCase().includes(moreSearchQuery.toLowerCase()) ||
+                      emp.role.toLowerCase().includes(moreSearchQuery.toLowerCase()) ||
+                      (emp.status && emp.status.toLowerCase().includes(moreSearchQuery.toLowerCase()))
+                    );
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400 space-y-3">
+                          <p>{moreSearchQuery ? `No candidates match "${moreSearchQuery}".` : 'All newly onboarded candidates have completed setup.'}</p>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddEmployeeModalOpen(true)}
+                            className="px-3.5 py-2 rounded-xl bg-[#00A88B] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-xs"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                            <span>+ Onboard New Staff</span>
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return filtered.map((emp) => (
+                      <div key={emp.id} className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <strong className="text-xs font-bold text-[#0A2540] block">{emp.name}</strong>
+                            <span className="text-[10px] text-slate-400">{emp.role} • Joining: {emp.joiningDate}</span>
+                          </div>
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                            {emp.status}
+                          </span>
+                        </div>
+
+                        {/* Checklist progress */}
+                        <div className="space-y-1.5 pt-1 border-t border-slate-100 text-xs">
+                          <span className="text-[9px] uppercase font-bold text-slate-400 block">Onboarding Checklist</span>
+                          {[
+                            { key: 'documentsVerified' as const, task: 'Documents Verified' },
+                            { key: 'workstationAllocated' as const, task: 'Workstation Allocated' },
+                            { key: 'biometricEnrolled' as const, task: 'Biometric Face ID Enrolled' },
+                            { key: 'trainingScheduled' as const, task: 'Training Scheduled' },
+                          ].map((item) => {
+                            const completed = Boolean(emp.checklist?.[item.key]);
+                            return (
+                              <div 
+                                key={item.key}
+                                onClick={() => toggleOnboardingChecklist(emp.id, item.key)}
+                                className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+                              >
+                                <div className={`w-4 h-4 rounded-md flex items-center justify-center transition-colors ${
+                                  completed ? 'bg-emerald-500 text-white' : 'border border-slate-300 bg-white'
+                                }`}>
+                                  {completed && <Check className="w-3 h-3 stroke-[3]" />}
+                                </div>
+                                <span className={`text-[11px] font-medium ${completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                                  {item.task}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Utility Download Bar */}
+            <div className="bg-slate-100/80 border border-slate-200/80 rounded-2xl p-3 flex items-center justify-between text-xs">
+              <span className="text-slate-600 font-semibold">Full Workforce Database</span>
               <button
+                type="button"
                 onClick={exportHrReportCSV}
-                className="w-full py-2.5 rounded-2xl bg-[#0A2540] text-[#00C9A7] font-bold text-xs hover:bg-[#133353] flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
+                className="px-3 py-1.5 rounded-xl bg-[#0A2540] hover:bg-[#133353] text-[#00C9A7] font-bold text-[10px] inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
               >
-                <Download className="w-4 h-4 text-[#00C9A7]" />
-                <span>Export Workforce Report (CSV)</span>
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Master CSV</span>
               </button>
             </div>
 
