@@ -85,8 +85,12 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
 
   // 1. Match assigned leads for this telecaller
   const matchedAssigned = assignedLeads.filter((l) => {
-    const byId = l.assignedToEmployeeId === member.id || l.assignedToEmployeeId === member.empCode;
-    const byName = l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === memberNameLower;
+    const byId = l.assignedToEmployeeId && (l.assignedToEmployeeId === member.id || l.assignedToEmployeeId === member.empCode || member.id?.includes(l.assignedToEmployeeId) || l.assignedToEmployeeId?.includes(member.id));
+    const byName = l.assignedToEmployeeName && (
+      l.assignedToEmployeeName.toLowerCase().trim() === memberNameLower.trim() ||
+      l.assignedToEmployeeName.toLowerCase().includes(memberNameLower) ||
+      memberNameLower.includes(l.assignedToEmployeeName.toLowerCase())
+    );
     return byId || byName;
   });
 
@@ -215,19 +219,24 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
         });
       } else if (i === 0) {
         // Today - Real Values & Live Leads
-        const calledCount = dayCalls.length > 0 ? dayCalls.length : (member.dialsToday || 0);
-        const interestedCount = dayCalls.length > 0
-          ? dayCalls.filter((c: any) => (c.outcome || '').toUpperCase() === 'INTERESTED').length
-          : (member.interested || 0);
-        const callbackCount = dayCalls.length > 0
-          ? dayCalls.filter((c: any) => (c.outcome || '').toUpperCase() === 'CALLBACK').length
-          : memberLeads.filter(l => l.status === 'CALLBACK').length;
-        const notIntCount = dayCalls.length > 0
-          ? dayCalls.filter((c: any) => ['NOT_INTERESTED', 'LOST', 'REJECTED'].includes((c.outcome || '').toUpperCase())).length
-          : memberLeads.filter(l => (l.status as string) === 'NOT_INTERESTED' || (l.status as string) === 'LOST').length;
-        const convertedCount = dayCalls.length > 0
-          ? dayCalls.filter((c: any) => ['CONVERTED', 'WON', 'DEAL_CLOSED'].includes((c.outcome || '').toUpperCase())).length
-          : memberLeads.filter(l => l.status === 'CONVERTED').length;
+        const calledCount = Math.max(dayCalls.length, (member.dialsToday || 0), memberLeads.reduce((s, l) => s + (l.callCount || 0), 0));
+        const interestedCount = Math.max(
+          dayCalls.filter((c: any) => (c.outcome || '').toUpperCase() === 'INTERESTED').length,
+          member.interested || 0,
+          memberLeads.filter(l => l.status === 'INTERESTED').length
+        );
+        const callbackCount = Math.max(
+          dayCalls.filter((c: any) => (c.outcome || '').toUpperCase() === 'CALLBACK').length,
+          memberLeads.filter(l => l.status === 'CALLBACK').length
+        );
+        const notIntCount = Math.max(
+          dayCalls.filter((c: any) => ['NOT_INTERESTED', 'LOST', 'REJECTED'].includes((c.outcome || '').toUpperCase())).length,
+          memberLeads.filter(l => (l.status as string) === 'NOT_INTERESTED' || (l.status as string) === 'LOST').length
+        );
+        const convertedCount = Math.max(
+          dayCalls.filter((c: any) => ['CONVERTED', 'WON', 'DEAL_CLOSED'].includes((c.outcome || '').toUpperCase())).length,
+          memberLeads.filter(l => l.status === 'CONVERTED').length
+        );
 
         // If day revenue calculated is 0, fall back to member.salesAchieved for today
         if (dayRevenue === 0 && (member.salesAchieved || 0) > 0) {
@@ -554,7 +563,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
         <div className="grid grid-cols-4 gap-1.5 text-center">
           <div className="bg-slate-50/90 rounded-xl py-1 px-1 border border-slate-100">
             <strong className="text-xs font-display font-black text-[#0A2540] block leading-tight">
-              {member.dialsToday} <span className="text-[9px] text-slate-400 font-normal">/{member.goalCalls || 0}</span>
+              {Math.max(member.dialsToday || 0, memberLeads.reduce((s, l) => s + (l.callCount || 0), 0), memberCallLogs.length)} <span className="text-[9px] text-slate-400 font-normal">/{member.goalCalls || 0}</span>
             </strong>
             <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
               Dials
@@ -563,7 +572,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
 
           <div className="bg-slate-50/90 rounded-xl py-1 px-1 border border-slate-100">
             <strong className="text-xs font-display font-black text-[#00A88B] block leading-tight">
-              {formatInLakhs(member.salesAchieved)}
+              {formatInLakhs(Math.max(member.salesAchieved || 0, memberPayments.reduce((s, p) => s + (p.dealAmount || 0), 0)))}
             </strong>
             <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
               Sales
@@ -572,7 +581,7 @@ export const Employee360ProfileView: React.FC<Employee360ProfileViewProps> = ({
 
           <div className="bg-slate-50/90 rounded-xl py-1 px-1 border border-slate-100">
             <strong className="text-xs font-display font-black text-purple-700 block leading-tight">
-              {member.interested || 0}
+              {Math.max(member.interested || 0, memberLeads.filter(l => l.status === 'INTERESTED').length)}
             </strong>
             <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
               Interested

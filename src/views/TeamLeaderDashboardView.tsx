@@ -73,7 +73,18 @@ export const TeamLeaderDashboardView: React.FC = () => {
   const presentCount = teamMembers.filter(m => m.attendanceStatus === 'PRESENT').length;
   const lateCount = teamMembers.filter(m => m.attendanceStatus === 'LATE').length;
   const onLeaveCount = teamMembers.filter(m => m.attendanceStatus === 'ON_LEAVE').length;
-  const totalActivities = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
+  const getRepDials = (m: TeamMember) => {
+    const fromLeads = (assignedLeads || [])
+      .filter((l) => l.assignedToEmployeeId === m.id || (l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase()))
+      .reduce((s, l) => s + (l.callCount || 0), 0);
+    const fromLogs = (callLogs || []).filter((c) => c.employeeId === m.id).length;
+    return Math.max(m.dialsToday || 0, fromLeads, fromLogs);
+  };
+
+  const totalDialsFromLeads = (assignedLeads || []).reduce((sum, l) => sum + (l.callCount || 0), 0);
+  const totalDialsFromMembers = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
+  const totalDialsFromLogs = (callLogs || []).length;
+  const totalActivities = Math.max(totalDialsFromMembers, totalDialsFromLeads, totalDialsFromLogs);
   const totalGoalCalls = teamMembers.reduce((sum, m) => sum + (m.goalCalls || 0), 0);
   const totalConnectedCalls = teamMembers.reduce((sum, m) => sum + (m.connected || 0), 0);
   const connectRate = totalActivities > 0 ? Math.round((totalConnectedCalls / totalActivities) * 100) : 0;
@@ -549,8 +560,12 @@ export const TeamLeaderDashboardView: React.FC = () => {
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="relative flex-shrink-0">
-                        <div className="w-9 h-9 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform">
-                          {m.avatar || m.name.substring(0, 2).toUpperCase()}
+                        <div className="w-9 h-9 rounded-xl bg-[#0A2540] text-[#00C9A7] flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform overflow-hidden">
+                          {m.avatar && (m.avatar.startsWith('http') || m.avatar.startsWith('data:') || m.avatar.startsWith('/')) ? (
+                            <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{(m.avatar && m.avatar.length <= 3 ? m.avatar : m.name.substring(0, 2)).toUpperCase()}</span>
+                          )}
                         </div>
                         <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
                           m.attendanceStatus === 'PRESENT' ? 'bg-emerald-500' : 'bg-amber-500'
@@ -566,7 +581,7 @@ export const TeamLeaderDashboardView: React.FC = () => {
                           </span>
                         </div>
                         <span className="text-[10px] text-slate-400 font-mono">
-                          In: {m.checkInTime || '09:15 AM'} • {m.dialsToday} Dials
+                          In: {m.checkInTime || '09:15 AM'} • {getRepDials(m)} Dials
                         </span>
                       </div>
                     </div>
