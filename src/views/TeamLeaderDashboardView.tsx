@@ -33,6 +33,7 @@ export const TeamLeaderDashboardView: React.FC = () => {
     teamMeetings,
     leaveRequests, 
     assignedLeads,
+    callLogs,
     approveLeaveRequest, 
     rejectLeaveRequest,
     scheduleTeamMeeting,
