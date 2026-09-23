@@ -78,6 +78,7 @@ export const AdminDashboardView: React.FC = () => {
     teamGroups,
     leadBatches,
     assignedLeads,
+    callLogs,
     clients,
     paymentVerifications,
     attendanceLogs,

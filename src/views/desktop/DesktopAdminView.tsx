@@ -64,6 +64,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
 }) => {
   const {
     teamMembers,
+    callLogs,
     teamGroups,
     leadBatches,
     assignedLeads,
