@@ -168,7 +168,10 @@ export const AdminDashboardView: React.FC = () => {
 
   const headcount = teamMembers.length;
   const presentToday = teamMembers.filter((m) => m.attendanceStatus === 'PRESENT').length;
-  const callsToday = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
+  const totalDialsFromLeads = assignedLeads.reduce((sum, l) => sum + (l.callCount || 0), 0);
+  const totalDialsFromMembers = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
+  const totalDialsFromLogs = (callLogs || []).length;
+  const callsToday = Math.max(totalDialsFromMembers, totalDialsFromLeads, totalDialsFromLogs);
   const salesAchieved = teamMembers.reduce((sum, m) => sum + (m.salesAchieved || 0), 0);
   const salesTarget = teamMembers.reduce((sum, m) => sum + (m.salesTarget || 0), 0);
   const pendingPayments = paymentVerifications.filter((p) => p.status === 'PENDING_HR_AUDIT');
@@ -178,9 +181,17 @@ export const AdminDashboardView: React.FC = () => {
   const todayDealsCount = paymentVerifications.length;
   const leadsDueToday = clients.filter((c) => c.status === 'Due Today');
 
-  const awayWithoutLeave = teamMembers.filter((m) => m.attendanceStatus === 'ABSENT');
+  const getRepDials = (m: TeamMember) => {
+    const fromLeads = assignedLeads
+      .filter((l) => l.assignedToEmployeeId === m.id || (l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase()))
+      .reduce((s, l) => s + (l.callCount || 0), 0);
+    const fromLogs = (callLogs || []).filter((c) => c.telecallerId === m.id || c.telecallerName?.toLowerCase() === m.name.toLowerCase()).length;
+    return Math.max(m.dialsToday || 0, fromLeads, fromLogs);
+  };
+
+  const awayWithoutLeave = teamMembers.filter((m) => m.attendanceStatus === 'ABSENT' && m.active !== 0);
   const idleToday = teamMembers.filter(
-    (m) => m.attendanceStatus === 'PRESENT' && (m.dialsToday || 0) === 0
+    (m) => m.attendanceStatus === 'PRESENT' && getRepDials(m) === 0
   );
 
   const filteredPeople = teamMembers.filter((m) => {
@@ -526,84 +537,92 @@ export const AdminDashboardView: React.FC = () => {
                 <Empty text="✨ All clear! No pending audits or floor alerts right now." />
               ) : (
                 <div className="space-y-2">
-                  {/* Pending Payment Cards */}
-                  {pendingPayments.map((p) => (
-                    <div
-                      key={p.id}
-                      className="bg-white border border-amber-200/90 rounded-2xl p-3.5 shadow-2xs space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                          💰 Payment Audit Required
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">{p.timestamp || 'Today'}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <strong className="text-sm font-black text-[#0A2540] block">
-                            {inr(p.dealAmount)}
+                  {/* Pending Payment Audits Summary Bar */}
+                  {pendingPayments.length > 0 && (
+                    <div className="bg-white border border-amber-200/90 hover:border-amber-400 rounded-2xl p-3 shadow-2xs flex items-center justify-between gap-3 transition-all">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                          💰
+                        </div>
+                        <div className="min-w-0">
+                          <strong className="text-xs font-bold text-[#0A2540] block truncate">
+                            {pendingPayments.length} Payment Audit{pendingPayments.length > 1 ? 's' : ''} Required ({inr(todayPendingSales)})
                           </strong>
-                          <span className="text-xs text-slate-600 font-medium">
-                            {p.companyName} • <span className="text-slate-400">Rep: {p.telecallerName}</span>
+                          <span className="text-[10px] text-amber-700 font-medium block truncate">
+                            Won deals waiting for your verification
                           </span>
                         </div>
-                        <button
-                          onClick={() => setTab('approvals')}
-                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-[11px] flex items-center gap-1 shadow-xs active:scale-95 transition-all cursor-pointer"
-                        >
-                          <span>Review</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
                       </div>
-                    </div>
-                  ))}
-
-                  {/* Telecallers with Zero Calls Today */}
-                  {idleToday.length > 0 && (
-                    <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/60">
-                          ⚠️ Zero Dials Logged
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">{idleToday.length} Employees</span>
-                      </div>
-
-                      <div className="divide-y divide-slate-100">
-                        {idleToday.map((m) => (
-                          <div key={m.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg bg-[#0A2540] text-[#00C9A7] font-black text-[10px] flex items-center justify-center">
-                                {m.name.substring(0, 2).toUpperCase()}
-                              </div>
-                              <div>
-                                <span className="text-xs font-bold text-[#0A2540] block">{m.name}</span>
-                                <span className="text-[10px] text-slate-400 font-mono">In at {m.checkInTime || '—'}</span>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-                              0 Calls
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      <button
+                        onClick={() => {
+                          setTab('approvals');
+                          setApprovalSubTab('PAYMENTS');
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-[11px] flex items-center gap-1 shadow-xs active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                      >
+                        <span>Review All</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
 
-                  {/* Absent Without Leave */}
-                  {awayWithoutLeave.map((m) => (
-                    <div key={m.id} className="bg-rose-50/50 border border-rose-200 rounded-2xl p-3 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0">
+                  {/* Absent Employees Summary Bar */}
+                  {awayWithoutLeave.length > 0 && (
+                    <div className="bg-white border border-rose-200 hover:border-rose-400 rounded-2xl p-3 shadow-2xs flex items-center justify-between gap-3 transition-all">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0 font-bold text-sm">
                           <XCircle className="w-4 h-4" />
                         </div>
-                        <div>
-                          <strong className="text-xs font-bold text-rose-950 block">{m.name} is Absent</strong>
-                          <span className="text-[10px] text-rose-600">No approved leave logged in system</span>
+                        <div className="min-w-0">
+                          <strong className="text-xs font-bold text-rose-950 block truncate">
+                            {awayWithoutLeave.length} Employee{awayWithoutLeave.length > 1 ? 's' : ''} Absent Today
+                          </strong>
+                          <span className="text-[10px] text-rose-600 font-medium block truncate">
+                            {awayWithoutLeave.map(m => m.name).slice(0, 3).join(', ')}{awayWithoutLeave.length > 3 ? ` +${awayWithoutLeave.length - 3} more` : ''}
+                          </span>
                         </div>
                       </div>
+                      <button
+                        onClick={() => {
+                          setTab('attendance');
+                          setAttendanceFilter('ALL');
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-[11px] flex items-center gap-1 border border-rose-200 shadow-xs active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                      >
+                        <span>View</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  ))}
+                  )}
+
+                  {/* Telecallers with Zero Calls Today Summary Bar */}
+                  {idleToday.length > 0 && (
+                    <div className="bg-white border border-slate-200/90 hover:border-slate-300 rounded-2xl p-3 shadow-2xs flex items-center justify-between gap-3 transition-all">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                          ⚠️
+                        </div>
+                        <div className="min-w-0">
+                          <strong className="text-xs font-bold text-[#0A2540] block truncate">
+                            {idleToday.length} On-Duty Rep{idleToday.length > 1 ? 's' : ''} with 0 Dials
+                          </strong>
+                          <span className="text-[10px] text-slate-500 font-medium block truncate">
+                            {idleToday.map(m => m.name).slice(0, 3).join(', ')}{idleToday.length > 3 ? ` +${idleToday.length - 3} more` : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setTab('people');
+                          setAdminPeopleMode('ALL');
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-[11px] flex items-center gap-1 border border-slate-200 shadow-xs active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                      >
+                        <span>Roster</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1704,20 +1723,40 @@ export const AdminDashboardView: React.FC = () => {
                   <span className="text-[9px] text-[#00A88B] font-medium block mt-0.5">Ready to dial</span>
                 </div>
 
-                <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs">
-                  <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block">In Pipeline</span>
+                <div 
+                  onClick={() => {
+                    setTab('people');
+                    setAdminPeopleMode('ALL');
+                  }}
+                  className="bg-white border border-slate-200/90 hover:border-amber-400 rounded-2xl p-2.5 shadow-2xs cursor-pointer active:scale-95 transition-all group"
+                  title="Click to view telecallers working warm leads"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block">In Pipeline</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
                   <span className="font-mono-nums font-black text-lg text-amber-700 block leading-tight mt-0.5">
                     {pipelineLeadsCount}
                   </span>
-                  <span className="text-[9px] text-slate-400 font-medium block mt-0.5">Connected / Warm</span>
+                  <span className="text-[9px] text-slate-400 font-medium block mt-0.5">Connected / Warm →</span>
                 </div>
 
-                <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs">
-                  <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider block">Won Deals</span>
+                <div 
+                  onClick={() => {
+                    setTab('approvals');
+                    setApprovalSubTab('PAYMENTS');
+                  }}
+                  className="bg-white border border-slate-200/90 hover:border-emerald-500 rounded-2xl p-2.5 shadow-2xs cursor-pointer active:scale-95 transition-all group"
+                  title="Click to audit & verify Won Deals"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider block">Won Deals</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
                   <span className="font-mono-nums font-black text-lg text-emerald-700 block leading-tight mt-0.5">
                     {convertedLeadsCount}
                   </span>
-                  <span className="text-[9px] text-slate-400 font-medium block mt-0.5">Closed deals</span>
+                  <span className="text-[9px] text-slate-400 font-medium block mt-0.5">Audit & verify →</span>
                 </div>
               </div>
 
@@ -1756,13 +1795,26 @@ export const AdminDashboardView: React.FC = () => {
                     const calledPct = mine.length > 0 ? Math.round((calledCount / mine.length) * 100) : 0;
 
                     return (
-                      <div key={m.id} className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2 shadow-2xs">
+                      <div 
+                        key={m.id} 
+                        onClick={() => setSelectedMemberFor360(m)}
+                        className="bg-white border border-slate-200 hover:border-[#00C9A7] rounded-2xl p-3 space-y-2 shadow-2xs cursor-pointer active:scale-[0.99] transition-all group"
+                        title={`Click to view 360 profile for ${m.name}`}
+                      >
                         <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-[#0A2540] block truncate">{m.name}</span>
-                            <span className="text-[10px] text-slate-500 block truncate">
-                              {calledCount} called · {convertedCount} converted · {mine.length - calledCount} fresh
-                            </span>
+                          <div className="min-w-0 flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-[#0A2540] text-[#00C9A7] font-black text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-[#00C9A7] group-hover:text-[#0A2540] transition-colors">
+                              {m.name.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-[#0A2540] truncate group-hover:text-[#00A88B] transition-colors">{m.name}</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#00A88B] group-hover:translate-x-0.5 transition-all" />
+                              </div>
+                              <span className="text-[10px] text-slate-500 block truncate">
+                                {calledCount} called · {convertedCount} converted · {mine.length - calledCount} fresh
+                              </span>
+                            </div>
                           </div>
                           <div className="text-right flex-shrink-0">
                             <span className="font-mono-nums font-black text-lg text-[#0A2540] block leading-tight">

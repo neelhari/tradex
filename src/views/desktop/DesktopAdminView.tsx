@@ -165,7 +165,10 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
   // ---- Real figures, all derived from what is actually in the database ----
   const headcount = teamMembers.length;
   const presentToday = teamMembers.filter((m) => m.attendanceStatus === 'PRESENT').length;
-  const callsToday = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
+  const totalDialsFromLeads = assignedLeads.reduce((sum, l) => sum + (l.callCount || 0), 0);
+  const totalDialsFromMembers = teamMembers.reduce((sum, m) => sum + (m.dialsToday || 0), 0);
+  const totalDialsFromLogs = (callLogs || []).length;
+  const callsToday = Math.max(totalDialsFromMembers, totalDialsFromLeads, totalDialsFromLogs);
   const salesAchieved = teamMembers.reduce((sum, m) => sum + (m.salesAchieved || 0), 0);
   const salesTarget = teamMembers.reduce((sum, m) => sum + (m.salesTarget || 0), 0);
   const salesPercent = Math.round((salesAchieved / Math.max(1, salesTarget)) * 100);
@@ -173,10 +176,18 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
   const pendingPayments = paymentVerifications.filter((p) => p.status === 'PENDING_HR_AUDIT');
   const leadsDueToday = clients.filter((c) => c.status === 'Due Today');
 
+  const getRepDials = (m: TeamMember) => {
+    const fromLeads = assignedLeads
+      .filter((l) => l.assignedToEmployeeId === m.id || (l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase()))
+      .reduce((s, l) => s + (l.callCount || 0), 0);
+    const fromLogs = (callLogs || []).filter((c) => c.telecallerId === m.id || c.telecallerName?.toLowerCase() === m.name.toLowerCase()).length;
+    return Math.max(m.dialsToday || 0, fromLeads, fromLogs);
+  };
+
   // Things that need a decision from the Admin today
-  const awayWithoutLeave = teamMembers.filter((m) => m.attendanceStatus === 'ABSENT');
+  const awayWithoutLeave = teamMembers.filter((m) => m.attendanceStatus === 'ABSENT' && m.active !== 0);
   const idleToday = teamMembers.filter(
-    (m) => m.attendanceStatus === 'PRESENT' && (m.dialsToday || 0) === 0
+    (m) => m.attendanceStatus === 'PRESENT' && getRepDials(m) === 0
   );
 
   const filteredPeople = teamMembers.filter((m) => {
