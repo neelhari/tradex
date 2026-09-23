@@ -181,7 +181,7 @@ export const DesktopAdminView: React.FC<DesktopAdminViewProps> = ({
     const fromLeads = assignedLeads
       .filter((l) => l.assignedToEmployeeId === m.id || (l.assignedToEmployeeName && l.assignedToEmployeeName.toLowerCase() === m.name.toLowerCase()))
       .reduce((s, l) => s + (l.callCount || 0), 0);
-    const fromLogs = (callLogs || []).filter((c) => c.telecallerId === m.id || c.telecallerName?.toLowerCase() === m.name.toLowerCase()).length;
+    const fromLogs = (callLogs || []).filter((c) => c.employeeId === m.id).length;
     return Math.max(m.dialsToday || 0, fromLeads, fromLogs);
   };
 
